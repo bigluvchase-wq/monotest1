@@ -51,3 +51,28 @@ for (const [,url] of html.matchAll(/(?:src|href)="(\.\/[^"?]+)(?:\?[^"]*)?"/g)) 
 }
 assert(html.indexOf('./native-bridge.js')<html.indexOf('./app.js'));
 console.log('Native bridge protocol, reminder queue, bundled assets, parser and backup format passed.');
+
+const day=new Date(2026,10,5);
+for(const phrase of ['300 рублей кофе','300 руб. кофе','кофе 300 рублей','кофе 300 руб.']){
+  const parsed=E.parse(phrase,day,[],E.initialState());
+  assert.deepEqual(parsed.errors,[],phrase);
+  assert.deepEqual(parsed.entries.map(e=>[e.title,e.amount,e.type,e.category]),[['Кофе',30000,'expense','Кафе']],phrase);
+}
+for(const phrase of ['45 000 руб. зарплата','зарплата 45 000 руб.']){
+  const parsed=E.parse(phrase,day,[],E.initialState());
+  assert.deepEqual(parsed.errors,[],phrase);
+  assert.deepEqual(parsed.entries.map(e=>[e.amount,e.type,e.category]),[[4500000,'income','Зарплата']],phrase);
+}
+const ordered=E.parse('вчера 300 руб. кофе, сегодня зарплата 45 тысяч',day,[],E.initialState());
+assert.deepEqual(ordered.errors,[]);
+assert.deepEqual(ordered.entries.map(e=>[e.amount,e.date]),[[30000,'2026-11-04'],[4500000,'2026-11-05']]);
+assert(!E.initialState().categories.includes('Ставки'));
+const old=E.initialState();
+delete old.settings.betsDefaultRemoved;
+old.categories.push('Ставки');
+assert(!E.migrate(old).categories.includes('Ставки'));
+old.entries.push({id:'old-bet',title:'Старая запись',account:'main',date:'2026-11-04',amount:30000,type:'expense',category:'Ставки'});
+const migrated=E.migrate(old);
+assert(E.validateState(migrated));
+assert.deepEqual(migrated.entries,old.entries);
+assert.equal(E.parse('пополнил фонбет 300',day,migrated.entries,migrated).entries[0].category,'Другое');
