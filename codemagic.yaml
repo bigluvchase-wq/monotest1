@@ -1,25 +1,19 @@
-workflows:
-  mono-ios-testflight:
-    name: Моно · TestFlight
-    max_build_duration: 30
-    instance_type: mac_mini_m2
-    integrations:
-      app_store_connect: Mono ASC
-    environment:
-      xcode: latest
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.monomoney.ios
-    scripts:
-      - name: Apply signing profiles
-        script: xcode-project use-profiles
-      - name: Build signed IPA
-        script: |
-          set -eu
-          agvtool new-version -all "$BUILD_NUMBER"
-          xcode-project build-ipa --project Mono.xcodeproj --scheme Mono
-    artifacts:
-      - build/ios/ipa/*.ipa
-    publishing:
-      app_store_connect:
-        auth: integration
+ # 1. Собираем проект без требования цифровой подписи
+      xcodebuild build \
+        -project Mono.xcodeproj \
+        -scheme Mono \
+        -configuration Release \
+        -arch arm64 \
+        -sdk iphoneos \
+        CODE_SIGNING_ALLOWED=NO \
+        CODE_SIGNING_REQUIRED=NO \
+        CODE_SIGN_IDENTITY="" \
+        CONFIGURATION_BUILD_DIR=build/ios_build
+      
+      # 2. Вручную упаковываем полученный .app в формат .ipa
+      mkdir -p build/Payload
+      mv build/ios_build/Mono.app build/Payload/
+      cd build
+      zip -q -r Mono-unsigned.ipa Payload
+artifacts:
+  - build/Mono-unsigned.ipa
