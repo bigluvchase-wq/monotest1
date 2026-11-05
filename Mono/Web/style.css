@@ -277,20 +277,30 @@ body[data-page=payments] #pageBody .payments-agenda .agenda-toggle small,body[da
 .draft-installments ol{list-style:none;padding:0;margin:6px 0 0}
 .draft-installments li{display:flex;justify-content:space-between;gap:12px;padding:4px 0}
 
-/* --- MONO UI FIXES (10 TASKS) --- */
-html, body {
+/* --- MONO UI FIXES (10 TASKS + ANTI-JUMP) --- */
+html {
+    background: var(--paper); 
+    overscroll-behavior: none; 
+}
+body {
     padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    overscroll-behavior: none;
 }
 .app {
     min-height: calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
 }
-.page-ghost, #actionDialog, #entryDialog {
-    padding-top: env(safe-area-inset-top, 0px) !important;
+.bottom-nav {
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
 }
-input, select, textarea,
-.field input, .field select, .field textarea,
-.draft input, .draft select, .limit-row input,
-#periodDialog .field input, #periodDialog .field select {
+dialog {
+    margin-top: env(safe-area-inset-top, 0px);
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+.page-ghost {
+    height: calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+}
+input, select, textarea, .field input, .field select, .field textarea, .draft input, .draft select, .limit-row input, #periodDialog .field input, #periodDialog .field select {
     font-size: 16px !important;
 }
 .payment-form .form-grid {
@@ -301,7 +311,5 @@ input, select, textarea,
     margin: 8px 0 !important; 
 }
 @media(max-width: 480px) {
-    .payment-form .form-grid {
-        grid-template-columns: 1fr 1fr !important;
-    }
+    .payment-form .form-grid { grid-template-columns: 1fr 1fr !important; }
 }
