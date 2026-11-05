@@ -1,19 +1,27 @@
- # 1. Собираем проект без требования цифровой подписи
-      xcodebuild build \
-        -project Mono.xcodeproj \
-        -scheme Mono \
-        -configuration Release \
-        -arch arm64 \
-        -sdk iphoneos \
-        CODE_SIGNING_ALLOWED=NO \
-        CODE_SIGNING_REQUIRED=NO \
-        CODE_SIGN_IDENTITY="" \
-        CONFIGURATION_BUILD_DIR=build/ios_build
-      
-      # 2. Вручную упаковываем полученный .app в формат .ipa
-      mkdir -p build/Payload
-      mv build/ios_build/Mono.app build/Payload/
-      cd build
-      zip -q -r Mono-unsigned.ipa Payload
-artifacts:
-  - build/Mono-unsigned.ipa
+workflows:
+  mono-ios-unsigned:
+    name: Моно · Unsigned Build
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+    scripts:
+      - name: Build unsigned IPA
+        script: |
+          set -eu
+          xcodebuild build \
+            -project Mono.xcodeproj \
+            -scheme Mono \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -derivedDataPath build/derivedData
+          
+          mkdir -p build/payload/Payload
+          cp -r build/derivedData/Build/Products/Release-iphoneos/Mono.app build/payload/Payload/
+          cd build/payload
+          zip -r ../ios/Mono-unsigned.ipa Payload
+    artifacts:
+      - build/ios/Mono-unsigned.ipa
