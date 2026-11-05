@@ -9,28 +9,19 @@ scripts:
 - name: Build unsigned IPA
 script: |
 set -eu
-xcodebuild build 
-
--project Mono.xcodeproj 
-
--scheme Mono 
-
--configuration Release 
-
--sdk iphoneos 
-
-CODE_SIGNING_ALLOWED=NO 
-
-CODE_SIGNING_REQUIRED=NO 
-
-CODE_SIGN_IDENTITY="" 
-
+xcodebuild build   
+-project Mono.xcodeproj   
+-scheme Mono   
+-configuration Release   
+-sdk iphoneos   
+CODE_SIGNING_ALLOWED=NO   
+CODE_SIGNING_REQUIRED=NO   
+CODE_SIGN_IDENTITY=""   
 -derivedDataPath build/derivedData
-
-      mkdir -p build/payload/Payload
-      cp -r build/derivedData/Build/Products/Release-iphoneos/Mono.app build/payload/Payload/
-      cd build/payload
-      mkdir -p ../ios
-      zip -r ../ios/Mono-unsigned.ipa Payload
-artifacts:
-  - build/ios/Mono-unsigned.ipa
+          mkdir -p build/payload/Payload
+          cp -r build/derivedData/Build/Products/Release-iphoneos/Mono.app build/payload/Payload/
+          mkdir -p build/ios
+          cd build/payload
+          zip -r ../ios/Mono-unsigned.ipa Payload
+    artifacts:
+      - build/ios/Mono-unsigned.ipa
