@@ -1,0 +1,25 @@
+workflows:
+  mono-ios-testflight:
+    name: Моно · TestFlight
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Mono ASC
+    environment:
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.monomoney.ios
+    scripts:
+      - name: Apply signing profiles
+        script: xcode-project use-profiles
+      - name: Build signed IPA
+        script: |
+          set -eu
+          agvtool new-version -all "$BUILD_NUMBER"
+          xcode-project build-ipa --project Mono.xcodeproj --scheme Mono
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
