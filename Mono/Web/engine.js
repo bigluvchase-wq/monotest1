@@ -9,7 +9,7 @@ const numword='(?:'+Object.keys(nums).join('|')+'|тысяч[аиу]?|милли
 const amountRe=new RegExp('(?<![\\p{L}\\d])(?:\\d{1,3}(?:[ \\u00a0]\\d{3})+(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?|'+numword+')(?:\\s+'+numword+')*(?![\\p{L}\\d])','giu');
 function rubles(s){let total=0,group=0;for(const w of s.toLowerCase().split(/\s+/)){if(/^тысяч/.test(w)){total+=(group||1)*1000;group=0;}else if(/^миллион/.test(w)){total+=(group||1)*1e6;group=0;}else if(w in nums)group+=nums[w];else if(/^\d/.test(w))group+=Number(w.replace(',','.'));}return Math.round((total+group)*100);}
 function amountValue(s){const compact=s.replace(/(\d)[ \u00a0](?=\d{3}(?:\D|$))/g,'$1');return rubles(compact);}
-function clean(s){return s.replace(/\b\B/g,'').replace(/(?:сегодня|вчера|позавчера|потратил[аи]?|заплатил[аи]?|купил[аи]?|расход(?:ы)?|получил[аи]?|заработал[аи]?|доход|рублей|рубля|рубль|руб\.?|₽|наличными|наличкой|с основной карты|с карты|на карту|на основной сч[её]т|основная карта)/giu,' ').replace(/^[\s,.:;—\-]+|[\s,.:;—\-]+$/g,'').replace(/^(?:и|на|за)\s+/i,'').replace(/\s+/g,' ').trim().replace(/\s+(?:на|за)$/iu,'').replace(/тридцатьшестьишесть/gu,'36,6').replace(/восемьдесятпять/gu,'85');}
+function clean(s){return s.replace(/\b\B/g,'').replace(/(?:сегодня|вчера|позавчера|потратил[аи]?|заплатил[аи]?|купил[аи]?|расход(?:ы)?|получил[аи]?|заработал[аи]?|доход|рублей|рубля|рубль|(?<!\p{L})руб\.?(?!\p{L})|₽|наличными|наличкой|с основной карты|с карты|на карту|на основной сч[её]т|основная карта)/giu,' ').replace(/^[\s,.:;—\-]+|[\s,.:;—\-]+$/g,'').replace(/^(?:и|на|за)\s+/i,'').replace(/\s+/g,' ').trim().replace(/\s+(?:на|за)$/iu,'').replace(/тридцатьшестьишесть/gu,'36,6').replace(/восемьдесятпять/gu,'85');}
 function dateString(date){return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');}
 function normalizeTitle(title){return title.toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}]+/gu,' ').trim();}
 function parseLegacy(text,now=new Date(),history=[],modern=false){
@@ -43,9 +43,16 @@ const incomeCategories=['Зарплата','Работа','Подарки','Пр
 const uid=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
 const isMoney=n=>Number.isSafeInteger(n)&&Math.abs(n)<=1e12;
 const validDate=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&dateString(new Date(d+'T12:00:00'))===d;
-const initialState=()=>({version:2,accounts:[{id:'main',name:'Основной счёт',initial:0,currency:'RUB'}],entries:[],categories:[...categories],incomeCategories:[...incomeCategories],limits:{},goals:[],payments:[],settings:{theme:'system',language:'ru',onboarded:false,beautyCategoryAdded:true,speechCategoriesAdded:true},tickets:[]});
+const initialState=()=>({version:2,accounts:[{id:'main',name:'Основной счёт',initial:0,currency:'RUB'}],entries:[],categories:[...categories],incomeCategories:[...incomeCategories],limits:{},goals:[],payments:[],settings:{theme:'system',language:'ru',onboarded:false,beautyCategoryAdded:true,speechCategoriesAdded:true,betsDefaultRemoved:true},tickets:[]});
 function migrate(s){
-if(s?.version===2){const next=structuredClone(s);if(!next.settings.beautyCategoryAdded){if(!next.categories.includes('Красота'))next.categories.splice(Math.max(0,next.categories.indexOf('Другое')),0,'Красота');next.settings.beautyCategoryAdded=true;}
+if(s?.version===2){const next=structuredClone(s);
+if(!next.settings.betsDefaultRemoved){
+ const name='Ставки',used=next.entries.some(e=>e.type==='expense'&&e.category===name)
+  ||next.payments.some(p=>p.category===name)||Object.values(next.limits).some(limits=>Object.hasOwn(limits,name))
+  ||Object.hasOwn(next.settings.categoryIcons?.expense||{},name);
+ if(!used)next.categories=next.categories.filter(category=>category!==name);
+ next.settings.betsDefaultRemoved=true;
+}if(!next.settings.beautyCategoryAdded){if(!next.categories.includes('Красота'))next.categories.splice(Math.max(0,next.categories.indexOf('Другое')),0,'Красота');next.settings.beautyCategoryAdded=true;}
 if(!next.settings.speechCategoriesAdded){
  for(const [list,additions] of [[next.categories,Speech.extraExpenses],[next.incomeCategories,Speech.extraIncome]]){
   for(const name of additions)if(!list.includes(name))list.splice(list.indexOf('Другое'),0,name);
@@ -54,7 +61,7 @@ if(!next.settings.speechCategoriesAdded){
 }
 return next;}
 if(s?.version!==1)throw Error('Неподдерживаемая версия данных');
-return {...initialState(),accounts:s.accounts.map(a=>({...a,currency:'RUB'})),entries:s.entries.map(e=>({...e})),limits:{RUB:{...s.limits}},settings:{theme:'system',language:'ru',onboarded:false,beautyCategoryAdded:true,speechCategoriesAdded:true}};
+return {...initialState(),accounts:s.accounts.map(a=>({...a,currency:'RUB'})),entries:s.entries.map(e=>({...e})),limits:{RUB:{...s.limits}},settings:{theme:'system',language:'ru',onboarded:false,beautyCategoryAdded:true,speechCategoriesAdded:true,betsDefaultRemoved:true}};
 }
 function balance(state,id){const a=state.accounts.find(a=>a.id===id);if(!a)return 0;return a.initial+state.entries.reduce((sum,e)=>{
 if(e.type==='transfer')return sum-(e.account===id?e.amount:0)+(e.toAccount===id?(e.toAmount||e.amount):0);
@@ -98,7 +105,8 @@ function matchGoal(clause,goals){
  return {goal:chosen.goal,amountText};
 }
 function parse(text,now=new Date(),history=[],state=null,defaultAccount='main'){
-text=slang(text)
+// A currency abbreviation emitted by dictation is not a sentence boundary.
+text=slang(text).replace(/(?<![\p{L}\p{N}])(?:руб|долл)\.(?![\p{L}\p{N}])/gu,m=>m.slice(0,-1))
  .replace(/(?<![\p{L}\d])36[., ]6(?![\p{L}\d])/gu,'аптека тридцатьшестьишесть')
  .replace(/(?<!\p{L})(?:теле|т|t) 2(?![\p{L}\d])/gu,'теле2')
  .replace(/(?<!\p{L})4 лапы(?!\p{L})/gu,'четыре лапы')
@@ -113,9 +121,9 @@ if(part.error){errors.push(part.error);continue;}let clause=part.text;const clau
 let account=state.accounts.find(a=>a.id===defaultAccount)||state.accounts[0];
 const named=[...state.accounts].sort((a,b)=>b.name.length-a.name.length).find(a=>normalizeTitle(clause).includes(normalizeTitle(a.name)));
 if(named){account=named;clause=clause.replace(new RegExp(named.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'),'');}
-const currency=/доллар|\$/i.test(clause)?'USD':/евро|€/i.test(clause)?'EUR':/тенге/i.test(clause)?'KZT':/юан/i.test(clause)?'CNY':/рубл|₽/i.test(clause)?'RUB':null;
+const currency=/доллар|(?<!\p{L})долл(?!\p{L})|\$/iu.test(clause)?'USD':/евро|€/i.test(clause)?'EUR':/тенге/i.test(clause)?'KZT':/юан/i.test(clause)?'CNY':/рубл|(?<!\p{L})руб(?!\p{L})|₽/iu.test(clause)?'RUB':null;
 if(currency&&currency!==account.currency){errors.push('Выберите счёт в '+currency+' для фразы «'+clause+'».');continue;}
-clause=clause.replace(/доллар(?:ов|а)?|евро|тенге|юан(?:ей|я|ь)|\$|€/giu,'');
+clause=clause.replace(/доллар(?:ов|а)?|(?<!\p{L})долл(?!\p{L})|евро|тенге|юан(?:ей|я|ь)|\$|€/giu,'');
 const loan=/(?<![\p{L}])(?:в\s+долг|одолж(?:ил[аи]?|ить|и|у)|заня(?:л[аи]?|ть)\s*(?:деньги|денег)?|дал[аи]?\s+(?:деньги|денег)|вернул[аи]?\s+долг)(?![\p{L}])/iu.test(clause);
 if(loan&&!Speech.income(clause)&&Speech.expense(clause)!=='Ставки'){const matches=[...clause.matchAll(amountRe)];if(/(?:^|\s)не\s/i.test(clause)||matches.length!==1||amountValue(matches[0][0])<=0){errors.push('Уточните одну положительную сумму для записи в долг.');continue;}const date=clauseNow;entries.push({title:'В долг',amount:amountValue(matches[0][0]),type:'expense',category:'Другое',account:account.id,date:dateString(date)});continue;}
 const explicitExpense=!!Speech.income(clause)||/потрат|купил|заплат|оплатил|расход|получил|заработал|зарплат|продал/i.test(clause);
@@ -148,7 +156,7 @@ if(e.type==='expense'&&Speech.installment(clause)){
  e.title=e.title.replace(/(?<!\p{L})долями(?!\p{L})/iu,'').replace(/^(?:оплатил[аи]?|за)\s*/iu,'').trim()||'Покупка';
  e.title=e.title[0].toUpperCase()+e.title.slice(1);
 }
-if(!all.includes(e.category))e.category='Другое';entries.push(e);}
+if(!all.includes(e.category)||e.category==='Ставки'&&!learned)e.category='Другое';entries.push(e);}
 }
 return {entries,errors};}
 

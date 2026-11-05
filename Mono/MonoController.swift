@@ -4,6 +4,7 @@ import WebKit
 
 final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
     private var web: WKWebView!
+    private var didLoadInterface = false
     private lazy var speech = SpeechBridge { [weak self] id, event, info in
         self?.send("speechEvent", [id, event, info])
     }
@@ -20,19 +21,59 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         web.scrollView.contentInsetAdjustmentBehavior = .never
         web.scrollView.bounces = false
         web.isOpaque = false
+        web.isHidden = true
+        web.scrollView.pinchGestureRecognizer?.isEnabled = false
         view.backgroundColor = UIColor { traits in
             traits.userInterfaceStyle == .dark ? UIColor(white: 0.08, alpha: 1) : UIColor(red: 0.96, green: 0.95, blue: 0.93, alpha: 1)
         }
         web.frame = view.bounds
         web.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(web)
-        if let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "Web") {
-            web.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
-        }
         NotificationCenter.default.addObserver(self, selector: #selector(interruptSpeech),
                                                name: UIApplication.didEnterBackgroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(refreshReminders),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        guard !didLoadInterface, view.window != nil,
+              let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "Web") else { return }
+        didLoadInterface = true
+        let cssURL = url.deletingLastPathComponent().appendingPathComponent("style.css")
+        let css = (try? String(contentsOf: cssURL, encoding: .utf8)) ?? ""
+        let data = (try? JSONEncoder().encode(css)) ?? Data()
+        let source = "window.monoBundledCSS = " + (String(data: data, encoding: .utf8) ?? "null")
+        let scripts = web.configuration.userContentController
+        scripts.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        scripts.addUserScript(WKUserScript(source: safeAreaScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        web.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+    }
+
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        if didLoadInterface { web.evaluateJavaScript(safeAreaScript) }
+    }
+
+    private var safeAreaScript: String {
+        let insets = view.safeAreaInsets
+        return """
+        (() => {
+            const apply = () => {
+                const root = document.documentElement;
+                root.style.setProperty('--mono-native-top', '\(insets.top)px');
+                root.style.setProperty('--mono-native-bottom', '\(insets.bottom)px');
+            };
+            if (document.documentElement) apply();
+            else document.addEventListener('DOMContentLoaded', apply, {once: true});
+        })()
+        """
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        webView.evaluateJavaScript(safeAreaScript) { [weak self] _, _ in
+            self?.web.isHidden = false
+        }
     }
 
     @objc private func interruptSpeech() { speech.cancel() }
