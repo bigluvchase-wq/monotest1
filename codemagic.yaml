@@ -1,23 +1,24 @@
 workflows:
-mono-ios-unsigned:
-name: Моно · Unsigned Build
-max_build_duration: 30
-instance_type: mac_mini_m2
-environment:
-xcode: latest
-scripts:
-- name: Build unsigned IPA
-script: |
-set -eu
-xcodebuild build   
--project Mono.xcodeproj   
--scheme Mono   
--configuration Release   
--sdk iphoneos   
-CODE_SIGNING_ALLOWED=NO   
-CODE_SIGNING_REQUIRED=NO   
-CODE_SIGN_IDENTITY=""   
--derivedDataPath build/derivedData
+  mono-ios-unsigned:
+    name: Моно · Unsigned Build
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+    scripts:
+      - name: Build unsigned IPA
+        script: |
+          set -eu
+          xcodebuild build \
+            -project Mono.xcodeproj \
+            -scheme Mono \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -derivedDataPath build/derivedData
+          
           mkdir -p build/payload/Payload
           cp -r build/derivedData/Build/Products/Release-iphoneos/Mono.app build/payload/Payload/
           mkdir -p build/ios
