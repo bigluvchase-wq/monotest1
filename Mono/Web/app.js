@@ -264,5 +264,21 @@ document.body.dataset.page='home';applyTheme();refreshAccounts();renderHomeRemin
 if(lockRecord)lockApp();else if(!state.settings.onboarded&&!storageProblem)startTour();
 if(storageProblem)notify(storageMessage);
 window.MonoNative?.refreshReminders();
+
+// Смахивание вверх на главной открывает ввод текстом
+(()=>{const home=$('#home');let g=null;
+ home.addEventListener('touchstart',e=>{if(page!=='home'||e.touches.length!==1||holding||listening||tourActive||e.target.closest('#mic,#voiceAccount,.reminder')){g=null;return;}const t=e.touches[0];g={x:t.clientX,y:t.clientY,t:performance.now()};},{passive:true});
+ home.addEventListener('touchend',e=>{if(!g)return;const t=e.changedTouches[0],dx=t.clientX-g.x,dy=g.y-t.clientY,dt=performance.now()-g.t;g=null;if(dy>70&&Math.abs(dx)<dy*.6&&dt<800&&!document.querySelector('dialog[open]')&&!document.body.classList.contains('offscreen-locked'))openEntry();},{passive:true});
+ home.addEventListener('touchcancel',()=>{g=null;},{passive:true});})();
+// Уведомления и плашка «Отменить» убираются смахиванием вправо или влево
+(()=>{function attach(el){if(!el||el._swipeDismiss)return;el._swipeDismiss=true;let g=null;el.style.touchAction='pan-y';
+ el.addEventListener('pointerdown',e=>{if(!e.isPrimary||e.target.closest('button'))return;g={id:e.pointerId,x:e.clientX,dx:0};el.setPointerCapture?.(e.pointerId);},{passive:true});
+ el.addEventListener('pointermove',e=>{if(!g||g.id!==e.pointerId)return;g.dx=e.clientX-g.x;el.style.translate=g.dx+'px 0';el.style.opacity=String(1-Math.min(.55,Math.abs(g.dx)/360));},{passive:true});
+ const end=e=>{if(!g||g.id!==e.pointerId)return;const dx=g.dx;g=null;const ease='cubic-bezier(.22,1,.36,1)';
+  if(Math.abs(dx)>56){const sign=dx>0?1:-1,an=el.animate([{translate:dx+'px 0',opacity:el.style.opacity||1},{translate:sign*innerWidth+'px 0',opacity:0}],{duration:reducedMotion()?0:230,easing:ease,fill:'forwards'});an.finished.catch(()=>{}).finally(()=>{an.cancel();el.style.translate='';el.style.opacity='';if(el.id==='toast'){toastTimer?.cancel();el.hidden=true;}else el.remove();});}
+  else{const an=el.animate([{translate:dx+'px 0'},{translate:'0px 0'}],{duration:reducedMotion()?0:260,easing:ease});an.finished.catch(()=>{}).finally(()=>{el.style.translate='';el.style.opacity='';});}};
+ el.addEventListener('pointerup',end,{passive:true});el.addEventListener('pointercancel',end,{passive:true});}
+ attach($('#toast'));
+ new MutationObserver(list=>{for(const m of list)for(const n of m.addedNodes)if(n.nodeType===1){if(n.classList.contains('delete-undo'))attach(n);else n.querySelectorAll?.('.delete-undo').forEach(attach);}}).observe(document.body,{childList:true,subtree:true});})();
 // Первый кадр готов — показываем интерфейс сразу в нужных размерах
 requestAnimationFrame(()=>requestAnimationFrame(()=>document.documentElement.classList.remove('booting')));
