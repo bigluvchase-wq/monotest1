@@ -310,7 +310,7 @@ body[data-page=payments] #pageBody .payments-agenda .agenda-toggle small,body[da
 /* ===== MONO · единый блок адаптации под все iPhone (от SE до Pro Max) ===== */
 html{background:var(--paper);overscroll-behavior:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{overscroll-behavior:none;padding-top:env(safe-area-inset-top,0px);transition:opacity .22s ease}
-html.booting body{opacity:0;transition:none}
+html.booting body>:not(#splash){opacity:0;transition:none}
 button,a,select,input,label{touch-action:manipulation}
 .bottom-nav,.mic{touch-action:none}
 /* высота главной и меню: учитываем чёлку и нижнюю панель */
@@ -360,6 +360,27 @@ dialog{max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-a
  dialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog)::backdrop{animation:backdrop-in .5s ease both}
  dialog.closing::backdrop{opacity:0;transition:opacity .26s ease}
 }
+
+/* ===== Заставка ===== */
+#splash{position:fixed;inset:0;z-index:2147483000;background:#fdfdfd;transition:opacity .45s ease}
+#splash video{display:block;width:100%;height:100%;object-fit:cover;pointer-events:none}
+#splash.out{opacity:0;pointer-events:none}
+/* ===== Окна над клавиатурой (visualViewport) ===== */
+:root{--vv-h:100dvh;--vv-top:0px}
+dialog#entryDialog:not(#chartDialog):not(#onboarding):not(#lockDialog){top:calc(var(--vv-top) + env(safe-area-inset-top,0px) + 10px);bottom:auto;margin:0 auto;max-height:calc(var(--vv-h) - env(safe-area-inset-top,0px) - 20px);overflow-y:auto}
+html.kb dialog:not(#chartDialog):not(#onboarding):not(#lockDialog):not(#entryDialog){top:calc(var(--vv-top) + env(safe-area-inset-top,0px) + 10px);bottom:auto;margin:0 auto;max-height:calc(var(--vv-h) - env(safe-area-inset-top,0px) - 20px);overflow-y:auto}
+#entryDialog textarea{min-height:84px;max-height:30vh}
+/* ===== Лимиты: компактнее, «Без лимита» помещается ===== */
+#limitForm .card.limit-items{padding:4px 14px}
+.limit-item{padding:0 30px 0 0}
+.limit-item .limit-row{grid-template-columns:minmax(0,1fr) 124px;gap:10px;margin:8px 0;font-size:14px;line-height:1.25}
+.limit-row>span{min-width:0}.limit-row small{font-size:11px}
+.limit-row input{height:38px;min-height:38px;padding:0 10px;border-radius:10px;text-align:right}
+.limit-row input::placeholder{font-size:13px;color:var(--muted);opacity:1}
+.limit-item .bar{height:4px;margin:0 0 8px}.limit-item .warn{margin:0 0 8px;padding:8px 10px;font-size:11px}
+.limit-item>.entity-x{top:7px}
+.limit-row>span>.category-symbol{width:16px;height:16px;margin-right:7px}
+@media(max-width:600px){.limit-item .limit-row{grid-template-columns:minmax(0,1fr) 118px;gap:8px}}
 
 /* ===== Статическая копия правил для превью вкладок (WKWebView по file:// не отдаёт cssRules). Пересобирать при правках CSS выше. ===== */
 [data-preview-id="home"]{position: relative; flex: 1 1 0%; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 52px 0px 24px;}
@@ -515,6 +536,7 @@ body.pointer-navigation .operation-card:focus, body.pointer-navigation .menu-til
 [data-preview-id="categoryForm"] .category-icon-current{width: 46px; height: 46px; min-height: 46px;}
 .root-preview[data-page="payments"] [data-preview-id="pageBody"] .payments-agenda .agenda-toggle strong, .root-preview[data-page="payments"] [data-preview-id="pageBody"] .payments-agenda .agenda-payment, .root-preview[data-page="payments"] [data-preview-id="pageBody"] .payments-agenda .agenda-payment strong{font-weight: 550;}
 .root-preview[data-page="payments"] [data-preview-id="pageBody"] .payments-agenda .agenda-toggle small, .root-preview[data-page="payments"] [data-preview-id="pageBody"] .payments-agenda .agenda-payment small{font-weight: 500;}
+html.booting body > :not([data-preview-id="splash"]){opacity: 0; transition: none;}
 .root-preview[data-page="home"] .app, .root-preview[data-page="menu"] .app{height: calc(100svh - var(--main-nav-space) - env(safe-area-inset-top,0px)); min-height: 0px;}
 @supports (height:100dvh) {.root-preview[data-page="home"] .app, .root-preview[data-page="menu"] .app{height: calc(100dvh - var(--main-nav-space) - env(safe-area-inset-top,0px));}
 }
@@ -524,3 +546,10 @@ body.pointer-navigation .operation-card:focus, body.pointer-navigation .menu-til
 dialog[data-preview-id="entryDialog"][data-enter="swipe"][open]:not([data-preview-id="chartDialog"]):not([data-preview-id="onboarding"]):not([data-preview-id="lockDialog"]){animation: 0.72s cubic-bezier(0.16, 1, 0.3, 1) 0s 1 normal both running sheet-rise;}
 dialog[open]:not([data-preview-id="chartDialog"]):not([data-preview-id="onboarding"]):not([data-preview-id="lockDialog"])::backdrop{animation: 0.5s ease 0s 1 normal both running backdrop-in;}
 }
+[data-preview-id="splash"]{position: fixed; inset: 0px; z-index: 2147483000; background: rgb(253, 253, 253); transition: opacity 0.45s;}
+[data-preview-id="splash"] video{display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none;}
+[data-preview-id="splash"].out{opacity: 0; pointer-events: none;}
+dialog[data-preview-id="entryDialog"]:not([data-preview-id="chartDialog"]):not([data-preview-id="onboarding"]):not([data-preview-id="lockDialog"]){top: calc(var(--vv-top) + env(safe-area-inset-top,0px) + 10px); bottom: auto; margin: 0px auto; max-height: calc(var(--vv-h) - env(safe-area-inset-top,0px) - 20px); overflow-y: auto;}
+html.kb dialog:not([data-preview-id="chartDialog"]):not([data-preview-id="onboarding"]):not([data-preview-id="lockDialog"]):not([data-preview-id="entryDialog"]){top: calc(var(--vv-top) + env(safe-area-inset-top,0px) + 10px); bottom: auto; margin: 0px auto; max-height: calc(var(--vv-h) - env(safe-area-inset-top,0px) - 20px); overflow-y: auto;}
+[data-preview-id="entryDialog"] textarea{min-height: 84px; max-height: 30vh;}
+[data-preview-id="limitForm"] .card.limit-items{padding: 4px 14px;}
