@@ -52,13 +52,14 @@ function navigate(p,options={}){
  if(p==='profile')window.MonoProfile?.startTrial();
  const previous=page,nested=!rootPages.includes(p),app=$('.app');
  const menuMotion=options.noAnimation?null:window.MonoMenuMotion?.prepare(previous,p);
- $$('.page-ghost').forEach(el=>el.remove());app.getAnimations().forEach(animation=>animation.cancel());
+ $$('.nav-ghost').forEach(el=>el.remove());app.getAnimations().forEach(animation=>animation.cancel());
  const direction=options.direction||(rootPages.includes(previous)&&rootPages.includes(p)?(rootPages.indexOf(p)>rootPages.indexOf(previous)?1:-1):nested?1:-1);
  const oldScroll=window.scrollY,fromRect=app.getBoundingClientRect();const profileMotion=previous!==p&&(p==='profile'||previous==='profile')&&!options.noAnimation&&!reducedMotion();
  let ghost=null;
  if(previous!==p&&!reducedMotion()&&!menuMotion&&!options.noAnimation){
-  ghost=app.cloneNode(true);ghost.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));ghost.removeAttribute('id');ghost.className='page-ghost';ghost.inert=true;ghost.setAttribute('aria-hidden','true');ghost.style.cssText=`position:fixed;left:${fromRect.left-(options.dragOffset||0)}px;top:${fromRect.top}px;width:${fromRect.width}px;height:${fromRect.height}px;margin:0;padding:0 ${getComputedStyle(app).paddingLeft};pointer-events:none;z-index:7;background:var(--paper);`;
-  document.body.append(ghost);
+  ghost=document.createElement('div');ghost.className='root-preview nav-ghost';ghost.dataset.page=previous;ghost.inert=true;ghost.setAttribute('aria-hidden','true');
+  const clone=app.cloneNode(true);clone.querySelectorAll('[id]').forEach(el=>{el.dataset.previewId=el.id;el.removeAttribute('id');});clone.querySelectorAll('label[for]').forEach(el=>el.removeAttribute('for'));clone.style.cssText='margin-top:'+(-oldScroll)+'px;transform:none;opacity:1';ghost.append(clone);
+  ghost.style.zIndex='7';document.body.append(ghost);
  }
  page=p;document.body.dataset.page=p;document.body.classList.toggle('nested-page',nested);
  $('#home').hidden=p!=='home';$('#workspace').hidden=p==='home';$('#backToMenu').hidden=!nested;
@@ -69,13 +70,13 @@ function navigate(p,options={}){
  app.style.transform='';app.style.opacity='';
  if(ghost){
   const duration=options.duration||560,easing='cubic-bezier(.25,.7,.25,1)';
-  if(profileMotion){const b=$('#helpButton').getBoundingClientRect(),cx=b.left+b.width/2,cy=b.top+b.height/2,R=Math.hypot(Math.max(cx,innerWidth-cx),Math.max(cy,innerHeight-cy))+10,at=`at ${cx}px ${cy}px`,e2='cubic-bezier(.22,1,.36,1)';
+  if(profileMotion){const b=$('#helpButton').getBoundingClientRect(),cx=b.left+b.width/2,cy=b.top+b.height/2,R=Math.hypot(Math.max(cx,innerWidth-cx),Math.max(cy,innerHeight-cy))+10,at=`at ${cx}px ${cy}px`,e2='cubic-bezier(.65,0,.3,1)';
    if(p==='profile'){app.style.position='relative';app.style.zIndex='9';app.style.background='var(--paper)';
-    const an=app.animate([{clipPath:`circle(0px ${at})`,transform:'scale(1.04)'},{clipPath:`circle(${R}px ${at})`,transform:'scale(1)'}],{duration:720,easing:e2});
-    ghost.animate([{transform:'scale(1)',opacity:1},{transform:'scale(.95)',opacity:.4}],{duration:720,easing:e2,fill:'forwards'});
+    const an=app.animate([{clipPath:`circle(0px ${at})`,transform:'scale(1.04)'},{clipPath:`circle(${R}px ${at})`,transform:'scale(1)'}],{duration:800,easing:e2});
+    ghost.animate([{transform:'scale(1)',opacity:1},{transform:'scale(.95)',opacity:.4}],{duration:800,easing:e2,fill:'forwards'});
     an.finished.catch(()=>{}).finally(()=>{app.style.position='';app.style.zIndex='';app.style.background='';ghost.remove();});}
-   else{ghost.style.zIndex='12';const an=ghost.animate([{clipPath:`circle(${R}px ${at})`,opacity:1},{clipPath:`circle(0px ${at})`,opacity:.7}],{duration:620,easing:'cubic-bezier(.5,0,.2,1)',fill:'forwards'});
-    app.animate([{transform:'scale(.95)',opacity:.5},{transform:'scale(1)',opacity:1}],{duration:620,easing:e2});an.finished.catch(()=>{}).finally(()=>ghost.remove());}
+   else{ghost.style.zIndex='12';const an=ghost.animate([{clipPath:`circle(${R}px ${at})`,opacity:1},{clipPath:`circle(0px ${at})`,opacity:.7}],{duration:680,easing:'cubic-bezier(.65,0,.3,1)',fill:'forwards'});
+    app.animate([{transform:'scale(.95)',opacity:.5},{transform:'scale(1)',opacity:1}],{duration:680,easing:e2});an.finished.catch(()=>{}).finally(()=>ghost.remove());}
   }else{
   ghost.animate([{transform:`translateX(${options.dragOffset||0}px)`,opacity:1},{transform:`translateX(${-direction*100}%)`,opacity:.65}],{duration,easing}).finished.catch(()=>{}).finally(()=>ghost.remove());
   app.animate([{transform:`translateX(${direction*20}%)`,opacity:.35},{transform:'translateX(0)',opacity:1}],{duration,easing});
@@ -178,7 +179,7 @@ $('#pageBody').onclick=e=>{const b=e.target.closest('button');if(!b)return;const
  else if(d.ticket){const t=state.tickets.find(t=>t.id===d.ticket);download('mono-ticket-'+t.id.slice(0,8)+'.txt',`Обращение моно #${t.id}\nСтатус: черновик, не отправлен\nДата: ${t.date}\nТема: ${t.topic}\nПочта для ответа: ${t.email}\n\n${t.text}`,'text/plain;charset=utf-8');}
 };
 function openEntry(text='',how=''){$('#entryDialog').dataset.enter=how;
- if(listening||holding)cancelVoice();drafts=[];parseErrors=[];$('#dictation').value=text;$('#drafts').innerHTML='';$('#parseErrors').textContent='';$('#saveButton').hidden=true;$('#sheetTitle').textContent='Что запишем?';if(!$('#entryDialog').open)$('#entryDialog').showModal();if(text)parseInput();else $('#dictation').focus();translateUI();
+ if(listening||holding)cancelVoice();drafts=[];parseErrors=[];$('#dictation').value=text;$('#drafts').innerHTML='';$('#parseErrors').textContent='';$('#saveButton').hidden=true;$('#sheetTitle').textContent='Что запишем?';if(!$('#entryDialog').open)$('#entryDialog').showModal();if(text)parseInput();else $('#dictation').focus({preventScroll:true});translateUI();
 }
 $('#textEntry').onclick=()=>openEntry();$('#closeEntry').onclick=()=>$('#entryDialog').close();
 $('#dictation').oninput=()=>{drafts=[];parseErrors=[];$('#drafts').innerHTML='';$('#saveButton').hidden=true;$('#parseErrors').textContent='';};
@@ -281,10 +282,14 @@ function translateUI(){document.documentElement.lang=state.settings.language;con
 }
 try{const lock=JSON.parse(localStorage.getItem('mono-lock'));if(lock&&Array.isArray(lock.salt)&&typeof lock.hash==='string')lockRecord=lock;}catch{}
 document.body.dataset.page='home';applyTheme();refreshAccounts();renderHomeReminders();translateUI();
-if(lockRecord)lockApp();else if(!state.settings.onboarded&&!storageProblem)startTour();
+(window.MonoSplash?.done||Promise.resolve()).then(()=>{if(lockRecord)lockApp();else if(!state.settings.onboarded&&!storageProblem)startTour();});
 if(storageProblem)notify(storageMessage);
 window.MonoNative?.refreshReminders();
 
+// Видимая область над клавиатурой: окна не уходят под клавиатуру на любых iPhone
+(()=>{const vv=window.visualViewport,root=document.documentElement;if(!vv)return;
+ const sync=()=>{root.style.setProperty('--vv-h',vv.height+'px');root.style.setProperty('--vv-top',vv.offsetTop+'px');root.classList.toggle('kb',innerHeight-vv.height>120);};
+ vv.addEventListener('resize',sync);vv.addEventListener('scroll',sync);addEventListener('orientationchange',()=>setTimeout(sync,250));sync();})();
 // Смахивание вверх на главной открывает ввод текстом
 (()=>{const home=$('#home');let g=null;
  home.addEventListener('touchstart',e=>{if(page!=='home'||e.touches.length!==1||holding||listening||tourActive||e.target.closest('#mic,#voiceAccount,.reminder')){g=null;return;}const t=e.touches[0];g={x:t.clientX,y:t.clientY,t:performance.now()};},{passive:true});
