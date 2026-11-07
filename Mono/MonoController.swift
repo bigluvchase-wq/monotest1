@@ -13,6 +13,8 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         super.viewDidLoad()
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
+        config.allowsInlineMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
         config.userContentController.add(self, name: "mono")
         web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = self
