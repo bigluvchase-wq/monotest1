@@ -592,7 +592,7 @@ a.premium-button:active{background:#5648bb}
 @media(prefers-reduced-motion:reduce){.holding .voice-ripple,.holding .mic::after{animation:none}.holding .ripple-first{opacity:.6}}
 
 /* Short launch transition over the already rendered home screen. */
-.launch-intro{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;justify-content:center;align-items:center;background:radial-gradient(ellipse at 60% 66%,#352061,#181426 75%);overflow:hidden;isolation:isolate;animation:launch-exit .44s 1.15s cubic-bezier(.4,0,.2,1) both}
+.launch-intro{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1c1c21;overflow:hidden;isolation:isolate;animation:launch-exit .44s 1.15s cubic-bezier(.4,0,.2,1) both}
 .launch-wallet{display:block;flex:none;width:clamp(112px,34vw,142px);height:auto;aspect-ratio:1.33;object-fit:cover;object-position:center 43%;-webkit-mask-image:radial-gradient(ellipse 50% 50%,#000 72%,transparent 100%);mask-image:radial-gradient(ellipse 50% 50%,#000 72%,transparent 100%);animation:launch-art .62s cubic-bezier(.22,1,.36,1) both}
 .launch-name{margin-top:2px;text-align:center;color:#fff;font-size:clamp(19px,5.5vw,24px);font-weight:850;line-height:1;letter-spacing:-.045em;text-shadow:0 2px 24px #c6adff60;animation:launch-name .55s .25s cubic-bezier(.22,1,.36,1) both}
 .launch-name span{margin-inline-start:.12em;color:#ae91ff}
@@ -607,5 +607,18 @@ a.premium-button:active{background:#5648bb}
 .monthly-bars button{min-width:0;display:grid;justify-items:center;gap:6px;padding:4px 0;font-size:clamp(8px,2.5vw,11px);color:var(--muted);border-radius:5px}
 .monthly-track{position:relative;display:block;width:100%;height:clamp(78px,18vh,135px);border-bottom:1px solid var(--line)}
 .monthly-track span{position:absolute;inset:auto 12% 0;height:var(--height);border-radius:4px 4px 0 0;background:var(--bar-colour)}
-.monthly-bars button[aria-current=date]{background:var(--soft);color:var(--ink)}
 .monthly-bars button:focus-visible{outline:2px solid var(--accent)}
+
+.chart-visual,.chart-totals{display:grid;isolation:isolate}
+.chart-visual>*,.chart-totals>*{grid-area:1/1;min-width:0}
+.chart-static-view .chart-visual .chart-ring-stage{transition:opacity .26s ease,transform .36s var(--motion-ease)}
+.monthly-chart{align-self:center;z-index:8;width:100%;padding:12px clamp(8px,3vw,20px);border:1px solid var(--line);border-radius:22px;background:var(--surface);opacity:0;transform:scale(.9);pointer-events:none;transition:opacity .3s ease,transform .4s var(--motion-ease)}
+.chart-totals>*{transition:opacity .24s ease}
+.monthly-total{opacity:0}
+.show-monthly .monthly-chart,.show-monthly .monthly-total{opacity:1;transform:none;pointer-events:auto}
+.show-monthly .chart-ring-stage{opacity:0;transform:scale(.86);pointer-events:none}
+.show-monthly .chart-totals>.chart-details-total:not(.monthly-total){opacity:0}
+.show-monthly :is(.chart-colour-legend,.chart-category-list,.chart-category-filter,.chart-transaction-list){display:none}
+.monthly-month{text-align:center;text-transform:capitalize;margin:2px 0 0}
+.monthly-bars{margin-bottom:4px;gap:clamp(1px,1vw,6px)}
+.monthly-bars button[aria-pressed=true]{background:var(--soft);color:var(--ink)}

@@ -93,7 +93,7 @@
   const items=selectedEntries().filter(inChart),values=categoryValues(items,type),total=sum(items,type),source=rect(button),bar=rect(button.querySelector('.mini-chart'));
   const rows=items.filter(e=>e.type===type).slice().sort((a,b)=>b.date.localeCompare(a.date));
   current={type,values,rows,total,category:null,closing:false};closed=false;closeQueued=false;
-  panel.innerHTML=`<div class="chart-origin summary-pair" aria-hidden="true" style="left:${source.left}px;top:${source.top}px;width:${source.width}px;height:${source.height}px"><div class="operation-card">${button.innerHTML}</div></div>`+`<div class="chart-details-content chart-static-view chart-animated-view"><div class="chart-details-head"><h1 id="chartDetailsTitle">${current.type==='income'?'Доходы':'Расходы'}</h1><button class="chart-close icon-btn" aria-label="Закрыть подробности">×</button></div><div class="chart-summary"><div class="chart-details-total ${current.type==='income'?'positive':''}">${money(total,selectedCurrency)}</div><div class="chart-period-actions"><button class="chart-period-button" aria-label="Выбрать период: ${esc(periodLabel())}" aria-haspopup="dialog">${esc(periodLabel(true))}<span aria-hidden="true">⌄</span></button><button type="button" class="chart-period-button" data-monthly-chart="${type}" aria-haspopup="dialog">График</button></div></div><div class="chart-ring-stage"><button class="chart-side-arrow" data-chart-month="-1" aria-label="Предыдущий месяц">‹</button><div class="chart-morph-space">${MonoChartRing.render(values,palette,current.type)}<div class="chart-ring-label"><strong>${values.length}</strong><span>${categoryWord(values.length)}</span></div></div><button class="chart-side-arrow" data-chart-month="1" aria-label="Следующий месяц">›</button></div><ul class="chart-colour-legend" aria-label="Цвета категорий">${categoryLegend(values)}</ul><div class="chart-category-list">${categoryList(values,total)}</div><div class="chart-category-filter" hidden><strong></strong><button type="button" class="secondary" data-chart-all>Все категории</button></div><div class="chart-transaction-list"></div></div>`;
+  panel.innerHTML=`<div class="chart-origin summary-pair" aria-hidden="true" style="left:${source.left}px;top:${source.top}px;width:${source.width}px;height:${source.height}px"><div class="operation-card">${button.innerHTML}</div></div>`+`<div class="chart-details-content chart-static-view chart-animated-view"><div class="chart-details-head"><h1 id="chartDetailsTitle">${current.type==='income'?'Доходы':'Расходы'}</h1><button class="chart-close icon-btn" aria-label="Закрыть подробности">×</button></div><div class="chart-summary"><div class="chart-totals"><div class="chart-details-total ${current.type==='income'?'positive':''}">${money(total,selectedCurrency)}</div><div class="monthly-total chart-details-total ${current.type==='income'?'positive':''}" aria-live="polite" inert></div></div><div class="chart-period-actions"><button class="chart-period-button" aria-label="Выбрать период: ${esc(periodLabel())}" aria-haspopup="dialog">${esc(periodLabel(true))}<span aria-hidden="true">⌄</span></button><button type="button" class="chart-period-button" data-monthly-chart="${type}" aria-pressed="false" aria-controls="monthlyChart">График</button></div></div><div class="chart-visual"><div class="chart-ring-stage"><button class="chart-side-arrow" data-chart-month="-1" aria-label="Предыдущий месяц">‹</button><div class="chart-morph-space">${MonoChartRing.render(values,palette,current.type)}<div class="chart-ring-label"><strong>${values.length}</strong><span>${categoryWord(values.length)}</span></div></div><button class="chart-side-arrow" data-chart-month="1" aria-label="Следующий месяц">›</button></div><section class="monthly-chart" id="monthlyChart" aria-label="График по месяцам" inert><div class="monthly-year"><button type="button" class="icon-btn" data-monthly-year="-1" aria-label="Предыдущий год">‹</button><strong class="monthly-year-value"></strong><button type="button" class="icon-btn" data-monthly-year="1" aria-label="Следующий год">›</button></div><p class="monthly-month muted" aria-live="polite"></p><div class="monthly-bars" aria-label="Месяцы"></div></section></div><ul class="chart-colour-legend" aria-label="Цвета категорий">${categoryLegend(values)}</ul><div class="chart-category-list">${categoryList(values,total)}</div><div class="chart-category-filter" hidden><strong></strong><button type="button" class="secondary" data-chart-all>Все категории</button></div><div class="chart-transaction-list"></div></div>`;
   panel.style.cssText='';panel.scrollTop=0;dialog.showModal();document.body.classList.add('chart-detail-open');button.setAttribute('aria-expanded','true');
   panel.querySelector('.chart-close').onclick=close;
   // Removing an operation is handled by the existing guarded deletion flow after closing.
@@ -105,7 +105,7 @@
   animatePaths(values,bar,circle,true,()=>{if(!current)return;cancelAnimations();panel.querySelector('.chart-origin').style.opacity='0';showRing();if(closeQueued){closeQueued=false;close();}});
  }
  function close(options={}){
-  if(!current||!dialog.open)return;root.MonoMonthMotion?.cancel();if(running){if(!current.closing)closeQueued=true;return;}
+  if(!current||!dialog.open||current.closing)return;root.MonoMonthMotion?.cancel();if(running){if(!current.closing)closeQueued=true;return;}
   const type=current.type,button=document.querySelector(`[data-operation="${type}"]`);
   if(!button){finish();return;}
   panel.scrollTop=0;
@@ -114,7 +114,11 @@
   if(reducedMotion()){finish();return;}
   current.closing=true;panel.querySelector('.chart-morph-space').classList.remove('ring-ready');
   const origin=panel.querySelector('.chart-origin');origin.style.left=source.left+'px';origin.style.top=source.top+'px';origin.style.width=source.width+'px';origin.style.height=source.height+'px';origin.style.opacity='0';
-  surfaceAnimation({left:0,top:dragOffset,width:innerWidth,height:innerHeight},source,true);
+  const transition=surfaceAnimation({left:0,top:dragOffset,width:innerWidth,height:innerHeight},source,true);
+  if(root.MonoChartPeriod?.isMonthly()){
+   transition.finished.then(finish,()=>{});
+   return;
+  }
   animatePaths(values,bar,circle,false,()=>finish());
  }
  function finish(){current?.labels?.remove();closed=true;closeQueued=false;const type=current?.type;cancelAnimations();dialog.querySelectorAll('.chart-morph-layer').forEach(el=>el.remove());if(dialog.open)dialog.close();document.body.classList.remove('chart-detail-open');const button=document.querySelector(`[data-operation="${type}"]`);button?.setAttribute('aria-expanded','false');if(root.MonoFocus?.isKeyboard())button?.focus({preventScroll:true});else button?.blur();current=null;panel.innerHTML='';}
@@ -137,10 +141,10 @@
   panel.querySelector('.chart-ring-label strong').textContent=values.length;panel.querySelector('.chart-ring-label span').textContent=categoryWord(values.length);
   panel.querySelector('.chart-category-list').innerHTML=categoryList(values,total);
   panel.querySelector('.chart-static-ring').outerHTML=MonoChartRing.render(values,palette,current.type);
-  showRing();showTransactions();
+  showRing();showTransactions();root.MonoChartPeriod?.refreshMonthly();
  }
  panel.addEventListener('click',event=>{
-  if(!current||running||root.MonoMonthMotion?.isBusy())return;
+  if(!current||running||root.MonoMonthMotion?.isBusy()||root.MonoChartPeriod?.isMonthly())return;
   const choice=event.target.closest('[data-chart-category],[data-ring-category]');
   const clear=event.target.closest('[data-chart-all]');
   if(!choice&&!clear)return;
@@ -149,5 +153,5 @@
   showTransactions();
   if(clear)panel.querySelector('.chart-category-item')?.focus({preventScroll:true});
  });
- root.MonoCharts={open,close,refresh,isBusy:()=>running};
+ root.MonoCharts={open,close,refresh,isBusy:()=>running||Boolean(current?.closing)};
 })(window);

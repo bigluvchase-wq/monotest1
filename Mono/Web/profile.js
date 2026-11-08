@@ -2,17 +2,17 @@
 'use strict';
 const DAY=86400000;
 function startTrial(){
- if(acc.trialUntil)return;
+ if(acc.trialUntil||!accessAvailable)return;
  const oldStart=Date.parse(state.settings.profileTrialStartedAt);
  acc.trialUntil=Number.isFinite(oldStart)?oldStart+7*DAY:Date.now()+3*DAY;
- save();
+ saveIdentity();
 }
 const daysLeft=end=>Math.max(0,Math.ceil((end-Date.now())/DAY));
 const socialPaths={telegram:'<path d="m3 10 18-7-5 18-5-7-8-4zm8 4 10-11M11 14v5l4-3"/>',vk:'<path d="M3 6h4c0 5 2 8 4 9V6h4v5c2-1 3-3 4-5h3c-1 4-3 6-5 7 2 1 4 3 5 6h-4c-1-2-2-4-3-4v4h-2C6 19 3 13 3 6z"/>',instagram:'<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6"/>'};
 function socials(){return `<div class="support-socials">${Object.entries(socialPaths).map(([key,path])=>`<button type="button" disabled aria-label="${{telegram:'Telegram',vk:'VK',instagram:'Instagram'}[key]} — ссылка пока не добавлена" title="Ссылка пока не добавлена"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg></button>`).join('')}</div><p class="tiny muted">Ссылки на соцсети скоро появятся.</p>`;}
 function codeBlock(){
  const code=MonoAccess.codeText();
- const hint=code?'Это твой личный код.':'Код появится, когда приложение подключится к серверу.';
+ const hint=code?'Это твой личный код.':accessAvailable?'Код появится, когда приложение подключится к серверу.':'Откройте Моно снова, чтобы загрузить ваш код.';
  return `<section class="card profile-code"><h3>Код привязки</h3><div class="code-row"><strong class="profile-code-value">${esc(code||'··· ···')}</strong><button type="button" class="secondary" data-profile-copy ${code?'':'disabled'}>Копировать</button></div><p class="tiny muted">${hint}</p></section>`;
 }
 
@@ -56,16 +56,27 @@ const CFG=root.MONO_CONFIG||{},AK='mono-access',SK='mono-sync',hex=n=>Array.from
 let acc={},paidUntil=0,activeWithoutDate=false,syncTimer=null,syncing=false,refreshTask=null;
 const isPremium=()=>activeWithoutDate||paidUntil>Date.now();
 try{acc=JSON.parse(localStorage.getItem(AK))||{};}catch{}
+const stored=root.monoStoredAccess;
+delete root.monoStoredAccess;
+const accessAvailable=stored!==false;
+if(stored)acc={...(acc.deviceId===stored.deviceId?acc:{}),...stored};
 const save=()=>{try{localStorage.setItem(AK,JSON.stringify(acc));}catch{}};
-if(!acc.deviceId){acc.deviceId=hex(16);acc.secret=hex(32);save();}
+const saveIdentity=()=>{
+ save();
+ if(accessAvailable&&acc.trialUntil){
+  const {deviceId,secret,code,provisional,trialUntil}=acc;
+  root.MonoNative?.storeAccess?.({deviceId,secret,code:code||'',provisional:Boolean(provisional),trialUntil});
+ }
+};
+if(accessAvailable&&(!acc.deviceId||!acc.secret)){acc.deviceId=hex(16);acc.secret=hex(32);save();}
 const sha=async s=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s))),b=>b.toString(16).padStart(2,'0')).join('');
 const call=(path,opt={})=>fetch(CFG.apiBase+path,{...opt,headers:{'Content-Type':'application/json',Authorization:'Bearer '+acc.deviceId+'.'+acc.secret,...(opt.headers||{})}});
 const redraw=()=>{if(typeof page==='string'&&page==='profile')render();};
 function localCode(){const a=new Uint32Array(1);crypto.getRandomValues(a);return String(100000+a[0]%900000);}
 async function ensureCode(){
- if(acc.code&&!acc.provisional)return;
- if(CFG.apiBase){try{const r=await call('/v1/register',{method:'POST',body:JSON.stringify({deviceId:acc.deviceId,secretHash:await sha(acc.secret)})});if(r.ok){const j=await r.json();acc.code=String(j.code);acc.provisional=false;save();redraw();return;}}catch{}return;}
- if(!acc.code){acc.code=localCode();acc.provisional=true;save();redraw();}
+ if(!accessAvailable||acc.code&&(!acc.provisional||!CFG.apiBase))return;
+ if(CFG.apiBase){try{const r=await call('/v1/register',{method:'POST',body:JSON.stringify({deviceId:acc.deviceId,secretHash:await sha(acc.secret)})});if(r.ok){const j=await r.json();if(/^\d{6}$/.test(String(j.code))){acc.code=String(j.code);acc.provisional=false;saveIdentity();redraw();return;}}}catch{}return;}
+ if(!acc.code){acc.code=localCode();acc.provisional=true;saveIdentity();redraw();}
 }
 async function verifyToken(t){
  try{if(!t||t.deviceId!==acc.deviceId||!CFG.publicKey||Date.parse(t.premiumUntil)<=Date.now())return false;
@@ -91,8 +102,8 @@ function refresh(force=false){
 }
 async function refreshAccess(force){
  const was=isPremium();
- if(CFG.apiBase&&(force||!acc.checkedAt||Date.now()-acc.checkedAt>12*3600e3)){
-  try{const r=await call('/v1/entitlement');if(r.ok){const j=await r.json();if(j.code&&(!acc.code||acc.provisional)){acc.code=String(j.code);acc.provisional=false;}acc.token=j.token||null;acc.checkedAt=Date.now();save();}}catch{}
+ if(accessAvailable&&CFG.apiBase&&(force||!acc.checkedAt||Date.now()-acc.checkedAt>12*3600e3)){
+  try{const r=await call('/v1/entitlement');if(r.ok){const j=await r.json();if(/^\d{6}$/.test(String(j.code))&&(!acc.code||acc.provisional)){acc.code=String(j.code);acc.provisional=false;saveIdentity();}acc.token=j.token||null;acc.checkedAt=Date.now();save();}}catch{}
  }
  if(await verifyToken(acc.token)){
   paidUntil=Date.parse(acc.token.premiumUntil);activeWithoutDate=false;
@@ -161,7 +172,7 @@ root.MonoAccess={
  devGrant:days=>{if(!CFG.devMode)return false;acc.devUntil=Date.now()+days*864e5;save();refresh();return true;}
 };
 root.MonoProfile={render:renderProfile,startTrial,socials,decorate,safeAvatar,profileName,premiumDialog};decorate();
-startTrial();
+if(acc.trialUntil)saveIdentity();else startTrial();
 ensureCode().then(()=>refresh());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureCode().then(()=>refresh(true));}});
 addEventListener('online',()=>{ensureCode().then(()=>refresh(true));});

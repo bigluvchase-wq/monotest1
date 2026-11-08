@@ -274,6 +274,7 @@ function translateUI(){document.documentElement.lang=state.settings.language;con
 try{localStorage.removeItem('mono-lock');}catch{}
 document.body.dataset.page='home';applyTheme();refreshAccounts();renderHomeReminders();translateUI();
 const launch=$('.launch-intro');
+document.documentElement.classList.remove('booting');
 function afterLaunch(){
  if(!launch.isConnected)return;
  launch.remove();

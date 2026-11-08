@@ -46,6 +46,8 @@ function refreshReminders(){
 }
 root.MonoNative={
  Recognition:NativeRecognition,speechEvent,refreshReminders,
+ storeAccess:access=>post('storeAccess',{access}),
+ refreshAccess:()=>root.MonoAccess?.refresh(true),
  share:(name,text)=>post('share',{name,text}),
  invite:()=>post('invite'),
  openURL:url=>post('openURL',{url}),
