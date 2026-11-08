@@ -12,7 +12,7 @@
  <key>LSRequiresIPhoneOS</key><true/>
  <key>NSMicrophoneUsageDescription</key><string>Моно использует микрофон, чтобы записывать доходы и расходы голосом.</string>
  <key>NSSpeechRecognitionUsageDescription</key><string>Моно преобразует вашу речь в текст для заполнения операций.</string>
- <key>UILaunchScreen</key><dict/>
+ <key>UILaunchScreen</key><dict><key>UIColorName</key><string>LaunchBackground</string></dict>
  <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
 <key>NSAppTransportSecurity</key>
 <dict>

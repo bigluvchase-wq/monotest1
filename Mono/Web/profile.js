@@ -1,8 +1,13 @@
 (function(root){
 'use strict';
-const TRIAL=7*24*60*60*1000;
-function trial(start,now=Date.now()){const time=Date.parse(start);return Number.isFinite(time)?{started:true,remaining:Math.max(0,Math.ceil((time+TRIAL-now)/86400000)),ends:new Date(time+TRIAL).toISOString()}:{started:false,remaining:7,ends:null};}
-function startTrial(){if(trial(state.settings.profileTrialStartedAt).started||storageProblem)return;const next=structuredClone(state);next.settings.profileTrialStartedAt=new Date().toISOString();persist(next);}
+const DAY=86400000;
+function startTrial(){
+ if(acc.trialUntil)return;
+ const oldStart=Date.parse(state.settings.profileTrialStartedAt);
+ acc.trialUntil=Number.isFinite(oldStart)?oldStart+7*DAY:Date.now()+3*DAY;
+ save();
+}
+const daysLeft=end=>Math.max(0,Math.ceil((end-Date.now())/DAY));
 const socialPaths={telegram:'<path d="m3 10 18-7-5 18-5-7-8-4zm8 4 10-11M11 14v5l4-3"/>',vk:'<path d="M3 6h4c0 5 2 8 4 9V6h4v5c2-1 3-3 4-5h3c-1 4-3 6-5 7 2 1 4 3 5 6h-4c-1-2-2-4-3-4v4h-2C6 19 3 13 3 6z"/>',instagram:'<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6"/>'};
 function socials(){return `<div class="support-socials">${Object.entries(socialPaths).map(([key,path])=>`<button type="button" disabled aria-label="${{telegram:'Telegram',vk:'VK',instagram:'Instagram'}[key]} — ссылка пока не добавлена" title="Ссылка пока не добавлена"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg></button>`).join('')}</div><p class="tiny muted">Ссылки на соцсети скоро появятся.</p>`;}
 function codeBlock(){
@@ -11,47 +16,14 @@ function codeBlock(){
  return `<section class="card profile-code"><h3>Код привязки</h3><div class="code-row"><strong class="profile-code-value">${esc(code||'··· ···')}</strong><button type="button" class="secondary" data-profile-copy ${code?'':'disabled'}>Копировать</button></div><p class="tiny muted">${hint}</p></section>`;
 }
 
-// 🛒 Функция создания платежа через твой сервер на VPS
-async function handlePaymentClick(price = 129, planTitle = 'Месяц') {
- const deviceCode = acc.code ? acc.code.replace(/\s+/g, '') : '';
- if (!deviceCode) {
-  alert('Код устройства еще не загружен, подождите пару секунд...');
-  return;
- }
- try {
-const response = await fetch('http://82.148.255.200:3000/api/pay', {
-   method: 'POST',
-   headers: { 'Content-Type': 'application/json' },
-   body: JSON.stringify({
-    code: deviceCode,
-    price: price,
-    planTitle: planTitle
-   })
-  });
-  const data = await response.json();
-  if (data.url) {
-   window.location.href = data.url;
-  } else {
-   alert('Не удалось создать ссылку на оплату');
-  }
- } catch (err) {
-  console.error('Ошибка оплаты:', err);
-  alert('Ошибка соединения с сервером оплаты');
- }
-}
-
 function premiumLink(){
- const isPrem = MonoAccess.isPremium();
- if (isPrem) {
-  return `<span class="primary premium-button" style="background: #27ae60; text-align: center; display: block; cursor: default;">Премиум активен ✓</span>`;
- }
- return `<button type="button" class="primary premium-button" id="payButton">Премиум <span aria-hidden="true">↗</span></button>`;
+ return `<a class="primary premium-button" href="${esc(CFG.premiumUrl)}">Премиум <span aria-hidden="true">↗</span></a>`;
 }
 
 function renderProfile(){
- const days=MonoAccess.trialDays();
- const status=MonoAccess.isPremium()?'Премиум активен':days?'Пробный доступ':'Пробный доступ завершён';
- const details=!MonoAccess.isPremium()&&days?`Осталось дней: ${days}`:'';
+ const paid=isPremium(),days=daysLeft(paid?paidUntil:acc.trialUntil);
+ const status=paid?'Премиум активен':days?'Пробный доступ':'Пробный доступ завершён';
+ const details=days?`Осталось дней: ${days}`:paid?'Срок действия не указан сервером.':'';
  return `<div class="profile-layout">
   <section class="card profile-intro"><button type="button" class="profile-avatar" data-profile-edit aria-label="Изменить аватарку">${avatar()}</button><div class="profile-identity"><h2>${esc(profileName())}</h2></div><button type="button" class="profile-edit" data-profile-edit aria-label="Изменить имя и аватарку"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16 11-11 4 4L8 20H4zm9-9 4 4m-1-7 2-2 4 4-2 2"/></svg></button></section>
   <section class="card profile-subscription"><h3>Доступ</h3><p class="profile-access-status">${status}</p>${details?`<p class="tiny muted">${details}</p>`:''}${premiumLink()}</section>
@@ -65,7 +37,6 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-profile-edit]'))editProfile();
  if(e.target.closest('[data-profile-copy]'))MonoAccess.copyCode();
  if(e.target.closest('[data-profile-invite]'))invite();
- if(e.target.closest('#payButton')) handlePaymentClick(129, 'Месяц');
 });
 
 const person='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3"/><path d="M5 20a7 6 0 0 1 14 0"/></svg>';
@@ -82,7 +53,8 @@ function editProfile(){let image=safeAvatar(state.settings.profileAvatar);action
 
 // ---------- Доступ: пробный период, Премиум, код, синхронизация ----------
 const CFG=root.MONO_CONFIG||{},AK='mono-access',SK='mono-sync',hex=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
-let acc={},premium=false,syncTimer=null,syncing=false;
+let acc={},paidUntil=0,activeWithoutDate=false,syncTimer=null,syncing=false,refreshTask=null;
+const isPremium=()=>activeWithoutDate||paidUntil>Date.now();
 try{acc=JSON.parse(localStorage.getItem(AK))||{};}catch{}
 const save=()=>{try{localStorage.setItem(AK,JSON.stringify(acc));}catch{}};
 if(!acc.deviceId){acc.deviceId=hex(16);acc.secret=hex(32);save();}
@@ -102,35 +74,57 @@ async function verifyToken(t){
   return await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},key,sig,new TextEncoder().encode(t.deviceId+'.'+t.premiumUntil));
  }catch{return false;}
 }
-async function refresh(force=false){
+function expiryMillis(value){
+ if(value==null||value==='')return NaN;
+ const seconds=value?.seconds??value?._seconds;
+ if(typeof seconds==='number')return seconds*1000;
+ if(typeof value==='number'||/^\d{10,13}$/.test(value)){
+  const timestamp=Number(value);
+  return timestamp<1e12?timestamp*1000:timestamp;
+ }
+ return Date.parse(value);
+}
+function refresh(force=false){
+ if(refreshTask)return refreshTask;
+ refreshTask=refreshAccess(force).finally(()=>{refreshTask=null;});
+ return refreshTask;
+}
+async function refreshAccess(force){
+ const was=isPremium();
  if(CFG.apiBase&&(force||!acc.checkedAt||Date.now()-acc.checkedAt>12*3600e3)){
   try{const r=await call('/v1/entitlement');if(r.ok){const j=await r.json();if(j.code&&(!acc.code||acc.provisional)){acc.code=String(j.code);acc.provisional=false;}acc.token=j.token||null;acc.checkedAt=Date.now();save();}}catch{}
  }
- const was=premium;
- premium=(await verifyToken(acc.token))||!!(CFG.devMode&&acc.devUntil>Date.now());
- 
- // Проверяем статус в Firestore напрямую через наш бэкенд, если сервер доступен
- if (!premium && acc.code) {
-  try {
-   const checkRes = await fetch(`http://82.148.255.200:3000/api/check?code=${acc.code}`);
-   if (checkRes.ok) {
-    const checkData = await checkRes.json();
-    if (checkData.premium) premium = true;
+ if(await verifyToken(acc.token)){
+  paidUntil=Date.parse(acc.token.premiumUntil);activeWithoutDate=false;
+ }else if(CFG.devMode&&acc.devUntil>Date.now()){
+  paidUntil=acc.devUntil;activeWithoutDate=false;
+ }else if(CFG.statusUrl&&acc.code){
+  try{
+   const url=new URL(CFG.statusUrl);url.searchParams.set('code',acc.code);
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),7000);
+   const response=await fetch(url,{cache:'no-store',signal:controller.signal}).finally(()=>clearTimeout(timer));
+   if(response.ok){
+    const result=await response.json();
+    const expiry=expiryMillis(result.premiumUntil??result.expiresAt??result.expiryDate??result.premiumExpiresAt);
+    if(result.premium===true||result.premium===false){
+     paidUntil=result.premium&&Number.isFinite(expiry)?expiry:0;
+     activeWithoutDate=result.premium&&!Number.isFinite(expiry);
+    }
    }
-  } catch(e) {}
- }
-
- if(premium&&!was)reconcile();if(was!==premium||page==='profile'||page==='settings')render?.();
+  }catch{}
+ }else{paidUntil=0;activeWithoutDate=false;}
+ if(isPremium()&&!was)reconcile();
+ if(page==='profile')render();
 }
 const meta=()=>{try{return JSON.parse(localStorage.getItem(SK))||{};}catch{return {};}};
 const setMeta=m=>{try{localStorage.setItem(SK,JSON.stringify(m));}catch{}};
-function queueSync(){const m=meta();m.updatedAt=new Date().toISOString();setMeta(m);if(!premium||!CFG.apiBase)return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1500);}
+function queueSync(){const m=meta();m.updatedAt=new Date().toISOString();setMeta(m);if(!isPremium()||!CFG.apiBase)return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1500);}
 async function push(){
  if(syncing){queueSync();return;}syncing=true;
  try{const m=meta(),r=await call('/v1/state',{method:'PUT',body:JSON.stringify({updatedAt:m.updatedAt||new Date().toISOString(),state})});if(r.ok){const j=await r.json();m.revision=j.revision;m.syncedAt=new Date().toISOString();setMeta(m);}}catch{}finally{syncing=false;}
 }
 async function reconcile(){
- if(!premium||!CFG.apiBase)return;
+ if(!isPremium()||!CFG.apiBase)return;
  try{const r=await call('/v1/state');if(r.status===404){push();return;}if(!r.ok)return;
   const j=await r.json(),m=meta();
   if(!m.updatedAt||Date.parse(j.updatedAt)>Date.parse(m.updatedAt)){
@@ -149,23 +143,27 @@ async function copyCode(){
  notify('Код скопирован',true);
 }
 function premiumDialog(reason){
- const text={voice:'Голосовой ввод доступен в пробной версии (7 дней) и в Премиум.',export:'Выгрузка данных доступна только в Премиум.'}[reason]||'';
+ const text={
+  voice:'Голосовой ввод доступен в пробный период и с Премиумом.',
+  export:'Выгрузка операций доступна в пробный период и с Премиумом.',
+  goals:'Настройка целей доступна в пробный период и с Премиумом.',
+  limits:'Настройка лимитов доступна в пробный период и с Премиумом.',
+  accounts:'Дополнительные счета доступны в пробный период и с Премиумом.',
+  payments:'Добавление обязательных платежей доступно в пробный период и с Премиумом.'
+ }[reason]||'';
  actionDialog('Премиум',`${text?`<p class="muted">${esc(text)}</p>`:''}${codeBlock()}${premiumLink()}`);
 }
-const trialLeft=()=>trial(state.settings.profileTrialStartedAt);
 root.MonoAccess={
- canSetPIN:()=>false,
- isPremium:()=>premium,
- canUseVoice:()=>premium||trialLeft().remaining>0,
- canExport:()=>premium,
- trialDays:()=>trialLeft().remaining,
+ isPremium,
+ canUse:()=>isPremium()||daysLeft(acc.trialUntil)>0,
  codeText:()=>acc.code?acc.code.slice(0,3)+' '+acc.code.slice(3):'',
  copyCode,queueSync,refresh,
  devGrant:days=>{if(!CFG.devMode)return false;acc.devUntil=Date.now()+days*864e5;save();refresh();return true;}
 };
-root.MonoProfile={render:renderProfile,startTrial,socials,trial,decorate,safeAvatar,profileName,premiumDialog};decorate();
+root.MonoProfile={render:renderProfile,startTrial,socials,decorate,safeAvatar,profileName,premiumDialog};decorate();
 startTrial();
 ensureCode().then(()=>refresh());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureCode().then(()=>refresh(true));}});
 addEventListener('online',()=>{ensureCode().then(()=>refresh(true));});
+if(root.MonoNative)addEventListener('focus',()=>refresh(true));
 })(window);

@@ -22,9 +22,9 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         web.scrollView.contentInsetAdjustmentBehavior = .never
         web.scrollView.bounces = false
         web.isOpaque = false
-        view.backgroundColor = UIColor { traits in
-            traits.userInterfaceStyle == .dark ? UIColor(white: 0.08, alpha: 1) : UIColor(red: 0.96, green: 0.95, blue: 0.93, alpha: 1)
-        }
+        view.backgroundColor = UIColor(named: "LaunchBackground")
+        web.backgroundColor = .clear
+        web.scrollView.backgroundColor = .clear
         web.frame = view.bounds
         web.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(web)
@@ -107,8 +107,9 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
             decisionHandler(.allow)
         } else {
             decisionHandler(.cancel)
+            let isMonoWebsite = url.scheme == "http" && url.host == "monoapp.ru" && url.port == nil
             if navigationAction.navigationType == .linkActivated,
-               ["https", "mailto", "tg"].contains(url.scheme ?? "") { UIApplication.shared.open(url) }
+               isMonoWebsite || ["https", "mailto", "tg"].contains(url.scheme ?? "") { UIApplication.shared.open(url) }
         }
     }
 
