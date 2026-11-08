@@ -182,9 +182,7 @@ function openEntry(text='',how=''){$('#entryDialog').dataset.enter=how;
 $('#textEntry').onclick=()=>openEntry();$('#closeEntry').onclick=()=>$('#entryDialog').close();
 $('#dictation').oninput=()=>{drafts=[];parseErrors=[];$('#drafts').innerHTML='';$('#saveButton').hidden=true;$('#parseErrors').textContent='';};
 function parseInput(){
- let text=$('#dictation').value.trim();
- const rev=text.match(/^(\d+(?:[.,]\d+)?)\s*(?:руб\.|рублей|руб|р|₽|rub|usd|eur)?\s+(.+)$/i);
- if(rev)text=rev[2]+' '+rev[1];
+ const text=$('#dictation').value.trim();
  const r=E.parse(text,new Date(),state.entries,state,voiceAccount);drafts=r.entries;parseErrors=r.errors;$('#parseErrors').innerHTML=r.errors.map(e=>`<p class="warn">${esc(e)}</p>`).join('')+(r.errors.length&&drafts.length?'<p class="warn">Исправьте неразобранные части текста перед сохранением.</p>':'');renderDrafts();}
 $('#parseButton').onclick=parseInput;
 function installmentRows(plan,currency){
@@ -280,7 +278,22 @@ function translateUI(){document.documentElement.lang=state.settings.language;con
 }
 try{const lock=JSON.parse(localStorage.getItem('mono-lock'));if(lock&&Array.isArray(lock.salt)&&typeof lock.hash==='string')lockRecord=lock;}catch{}
 document.body.dataset.page='home';applyTheme();refreshAccounts();renderHomeReminders();translateUI();
-queueMicrotask(()=>{if(lockRecord)lockApp();else if(!state.settings.onboarded&&!storageProblem)startTour();});
+const launch=$('.launch-intro');
+function afterLaunch(){
+ if(!launch.isConnected)return;
+ launch.remove();
+ $('.app').inert=false;$('.bottom-nav').inert=false;
+ if(lockRecord)lockApp();else if(!state.settings.onboarded&&!storageProblem)startTour();
+}
+if(lockRecord||reducedMotion())queueMicrotask(afterLaunch);
+else{
+ $('.app').inert=true;$('.bottom-nav').inert=true;
+ const timeout=setTimeout(afterLaunch,1750);
+ launch.addEventListener('animationend',event=>{
+  if(event.target!==launch)return;
+  clearTimeout(timeout);afterLaunch();
+ });
+}
 if(storageProblem)notify(storageMessage);
 window.MonoNative?.refreshReminders();
 
