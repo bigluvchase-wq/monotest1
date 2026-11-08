@@ -19,7 +19,7 @@ async function handlePaymentClick(price = 129, planTitle = 'Месяц') {
   return;
  }
  try {
-  const response = await fetch('http://monoapp.ru/api/pay', {
+const response = await fetch('http://82.148.255.200:3000/api/pay', {
    method: 'POST',
    headers: { 'Content-Type': 'application/json' },
    body: JSON.stringify({
