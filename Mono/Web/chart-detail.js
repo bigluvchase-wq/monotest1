@@ -14,17 +14,41 @@
   const a=panel.animate(frames,{duration:closing?closeDuration:duration,easing:closing?closeEasing:easing,fill:'both'});animations.push(a);const content=panel.querySelector('.chart-details-content'),origin=panel.querySelector('.chart-origin');animations.push(content.animate(closing?[{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(12px)'}]:[{opacity:0,transform:'translateY(18px)'},{opacity:1,transform:'translateY(0)'}],{duration:closing?180:370,delay:closing?0:160,fill:'both',easing:'ease-out'}));animations.push(origin.animate(closing?[{opacity:0},{opacity:1}]:[{opacity:1},{opacity:0}],{duration:closing?closeDuration*.45:160,delay:closing?closeDuration*.55:0,fill:'both'}));return a;}
  function svgLayer(){const svg=document.createElementNS(NS,'svg');svg.setAttribute('aria-hidden','true');svg.classList.add('chart-morph-layer');svg.setAttribute('viewBox',`0 0 ${innerWidth} ${innerHeight}`);dialog.append(svg);return svg;}
  function drawPath(svg,items,bar,circle,t){
-  if(!svg.childElementCount)for(let i=0;i<Math.max(1,items.length);i++){const p=document.createElementNS(NS,'path');p.setAttribute('fill','none');p.setAttribute('stroke-linejoin','round');p.setAttribute('stroke-linecap',items.length?'butt':'round');p.setAttribute('stroke',items.length?palette[i%palette.length]:'var(--bar)');svg.append(p);}
-  const total=items.reduce((sum,v)=>sum+v.n,0),parts=items.length?items:[{n:1}];let progress=0;
-  parts.forEach((v,index)=>{const amount=total?v.n/total:1,start=progress;progress+=amount;const points=[],count=Math.max(2,Math.ceil(120*amount));
-   for(let i=0;i<=count;i++){const u=start+amount*i/count,angle=-Math.PI/2+2*Math.PI*u;
-    const lineX=bar.left+bar.width*u,lineY=bar.top+bar.height/2;
-    const ringX=circle.cx+circle.r*Math.cos(angle),ringY=circle.cy+circle.r*Math.sin(angle);
-    // Interpolating points bends the original segment continuously; the colours never cross-fade.
-    points.push(`${i?'L':'M'}${lerp(lineX,ringX,t).toFixed(2)},${lerp(lineY,ringY,t).toFixed(2)}`);
+  const total=items.reduce((sum,v)=>sum+v.n,0),parts=items.length?items:[{n:1}];
+  if(!svg.childElementCount){
+   // The continuous backing follows the same curve and covers antialiasing at the joins.
+   const colours=items.length?[palette[(items.length-1)%palette.length],...items.map((_,i)=>palette[i%palette.length])]:['var(--bar)'];
+   for(const colour of colours){
+    const path=document.createElementNS(NS,'path');
+    path.setAttribute('fill','none');path.setAttribute('stroke-linejoin','round');
+    path.setAttribute('stroke',colour);svg.append(path);
    }
-   const path=svg.children[index];path.setAttribute('d',points.join(' ')+(t===1&&parts.length===1?' Z':''));path.setAttribute('stroke-width',lerp(bar.height,circle.stroke,t).toFixed(2));
+  }
+  const thickness=lerp(bar.height,circle.stroke,t),loop=(1-t)*bar.width<1;
+  const point=u=>{
+   const angle=-Math.PI/2+2*Math.PI*u;
+   const x=lerp(bar.left+bar.width*u,circle.cx+circle.r*Math.cos(angle),t);
+   const y=lerp(bar.top+bar.height/2,circle.cy+circle.r*Math.sin(angle),t);
+   return `${x.toFixed(2)},${y.toFixed(2)}`;
+  };
+  const trace=[],overlap=.85/lerp(bar.width,2*Math.PI*circle.r,t);
+  let cursor=0;
+  parts.forEach((v,i)=>{
+   const share=total?v.n/total:1,start=cursor,points=[];
+   cursor+=share;
+   const count=Math.max(2,Math.ceil(120*share));
+   for(let j=0;j<=count;j++)points.push(point(start+share*j/count));
+   trace.push(...(i?points.slice(1):points));
+   if(items.length){
+    if(i<parts.length-1)points.push(point(cursor+Math.min(overlap,parts[i+1].n/total/2)));
+    const path=svg.children[i+1];
+    path.setAttribute('d','M'+points.join(' L')+(loop&&parts.length===1?' Z':''));
+    path.setAttribute('stroke-width',thickness);
+   }
   });
+  const backing=svg.firstElementChild;
+  backing.setAttribute('d','M'+trace.join(' L')+(loop?' Z':''));
+  backing.setAttribute('stroke-width',thickness);
  }
  function circleAt(r){return {cx:r.left+r.width/2,cy:r.top+r.height/2,r:r.width*MonoChartRing.radius/MonoChartRing.size,stroke:r.width*MonoChartRing.stroke/MonoChartRing.size};}
  function animatePaths(items,bar,circle,opening,done){
