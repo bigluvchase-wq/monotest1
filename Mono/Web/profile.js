@@ -10,11 +10,44 @@ function codeBlock(){
  const hint=code?'Это твой личный код.':'Код появится, когда приложение подключится к серверу.';
  return `<section class="card profile-code"><h3>Код привязки</h3><div class="code-row"><strong class="profile-code-value">${esc(code||'··· ···')}</strong><button type="button" class="secondary" data-profile-copy ${code?'':'disabled'}>Копировать</button></div><p class="tiny muted">${hint}</p></section>`;
 }
-function premiumLink(){
- const url=new URL(CFG.premiumUrl);
- if(acc.code&&!acc.provisional)url.searchParams.set('code',acc.code);
- return `<a class="primary premium-button" href="${esc(url.href)}" ${window.MonoNative?'':'target="_blank" rel="noopener"'}>Премиум <span aria-hidden="true">↗</span></a>`;
+
+// 🛒 Функция создания платежа через твой сервер на VPS
+async function handlePaymentClick(price = 129, planTitle = 'Месяц') {
+ const deviceCode = acc.code ? acc.code.replace(/\s+/g, '') : '';
+ if (!deviceCode) {
+  alert('Код устройства еще не загружен, подождите пару секунд...');
+  return;
+ }
+ try {
+  const response = await fetch('http://monoapp.ru/api/pay', {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json' },
+   body: JSON.stringify({
+    code: deviceCode,
+    price: price,
+    planTitle: planTitle
+   })
+  });
+  const data = await response.json();
+  if (data.url) {
+   window.location.href = data.url;
+  } else {
+   alert('Не удалось создать ссылку на оплату');
+  }
+ } catch (err) {
+  console.error('Ошибка оплаты:', err);
+  alert('Ошибка соединения с сервером оплаты');
+ }
 }
+
+function premiumLink(){
+ const isPrem = MonoAccess.isPremium();
+ if (isPrem) {
+  return `<span class="primary premium-button" style="background: #27ae60; text-align: center; display: block; cursor: default;">Премиум активен ✓</span>`;
+ }
+ return `<button type="button" class="primary premium-button" id="payButton">Премиум <span aria-hidden="true">↗</span></button>`;
+}
+
 function renderProfile(){
  const days=MonoAccess.trialDays();
  const status=MonoAccess.isPremium()?'Премиум активен':days?'Пробный доступ':'Пробный доступ завершён';
@@ -27,7 +60,14 @@ function renderProfile(){
  </div>`;
 }
 async function invite(){if(window.MonoNative){MonoNative.invite();return;}const url=location.origin;try{if(navigator.share){await navigator.share({title:'моно',text:'Просто скажи, сколько. Учёт денег голосом.',url});return;}if(navigator.clipboard){await navigator.clipboard.writeText(url);notify('Ссылка на моно скопирована');return;}}catch(e){if(e.name==='AbortError')return;}actionDialog('Пригласить друга',`<p class="muted">Поделитесь ссылкой на моно:</p><label class="field">Ссылка<input readonly value="${esc(url)}"></label>`);}
-document.addEventListener('click',e=>{if(e.target.closest('[data-profile-edit]'))editProfile();if(e.target.closest('[data-profile-copy]'))MonoAccess.copyCode();if(e.target.closest('[data-profile-invite]'))invite();});
+
+document.addEventListener('click',e=>{
+ if(e.target.closest('[data-profile-edit]'))editProfile();
+ if(e.target.closest('[data-profile-copy]'))MonoAccess.copyCode();
+ if(e.target.closest('[data-profile-invite]'))invite();
+ if(e.target.closest('#payButton')) handlePaymentClick(129, 'Месяц');
+});
+
 const person='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3"/><path d="M5 20a7 6 0 0 1 14 0"/></svg>';
 function profileName(){return typeof state.settings.profileName==='string'?Array.from(state.settings.profileName).slice(0,20).join(''):'Ваш профиль';}
 function safeAvatar(value){return typeof value==='string'&&value.length<180000&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value)?value:'';}
@@ -39,7 +79,7 @@ function editProfile(){let image=safeAvatar(state.settings.profileAvatar);action
  form.querySelector('[name=avatar]').onchange=async event=>{const ticket=++revision;button.disabled=true;error.hidden=true;try{const result=await resizeAvatar(event.target.files[0]);if(ticket!==revision)return;image=result;form.querySelector('.profile-avatar-preview').innerHTML=`<img src="${result}" alt="Аватарка">`;}catch(e){if(ticket===revision){error.textContent=e.message;error.hidden=false;}}finally{if(ticket===revision)button.disabled=false;}};
  form.querySelector('[data-avatar-reset]').onclick=()=>{revision++;image='';button.disabled=false;error.hidden=true;form.querySelector('[name=avatar]').value='';form.querySelector('.profile-avatar-preview').innerHTML=person;};
 }
-// No billing or Telegram verification service is configured yet. Never trust local flags as paid access.
+
 // ---------- Доступ: пробный период, Премиум, код, синхронизация ----------
 const CFG=root.MONO_CONFIG||{},AK='mono-access',SK='mono-sync',hex=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
 let acc={},premium=false,syncTimer=null,syncing=false;
@@ -66,7 +106,20 @@ async function refresh(force=false){
  if(CFG.apiBase&&(force||!acc.checkedAt||Date.now()-acc.checkedAt>12*3600e3)){
   try{const r=await call('/v1/entitlement');if(r.ok){const j=await r.json();if(j.code&&(!acc.code||acc.provisional)){acc.code=String(j.code);acc.provisional=false;}acc.token=j.token||null;acc.checkedAt=Date.now();save();}}catch{}
  }
- const was=premium;premium=(await verifyToken(acc.token))||!!(CFG.devMode&&acc.devUntil>Date.now());
+ const was=premium;
+ premium=(await verifyToken(acc.token))||!!(CFG.devMode&&acc.devUntil>Date.now());
+ 
+ // Проверяем статус в Firestore напрямую через наш бэкенд, если сервер доступен
+ if (!premium && acc.code) {
+  try {
+   const checkRes = await fetch(`http://82.148.255.200:3000/api/check?code=${acc.code}`);
+   if (checkRes.ok) {
+    const checkData = await checkRes.json();
+    if (checkData.premium) premium = true;
+   }
+  } catch(e) {}
+ }
+
  if(premium&&!was)reconcile();if(was!==premium||page==='profile'||page==='settings')render?.();
 }
 const meta=()=>{try{return JSON.parse(localStorage.getItem(SK))||{};}catch{return {};}};
