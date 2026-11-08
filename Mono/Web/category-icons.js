@@ -29,10 +29,11 @@ const icons={
  utilities:['Коммунальные услуги','<path d="M12 2C9 7 5 11 5 15a7 7 0 0 0 14 0c0-4-4-8-7-13zM9 16a3 3 0 0 0 3 3"/>'],
  phone:['Связь','<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4m-3 14h2"/>'],
  insurance:['Страховка','<path d="m12 2 9 4v6c0 5-4 8-9 10-5-2-9-5-9-10V6zM8 12l3 3 5-6"/>'],
- debt:['Долги и кредиты','<path d="M4 8h14m-3-3 3 3-3 3M20 16H6m3-3-3 3 3 3"/><path d="M3 3v3m18 12v3"/>'],
+ debt:['Долги и кредиты','<path d="M5 7h14m-4-4 4 4-4 4M19 17H5m4-4-4 4 4 4"/>'],
+ auto:['Авто','<path d="M3 16v-4l2-5h10l3 4 3 1v4h-2M3 16h2m4 0h6M9 7v4m-4 0h13"/><circle cx="7" cy="16.5" r="2"/><circle cx="17" cy="16.5" r="2"/>'],
  charity:['Благотворительность','<path d="M12 20 4 12C0 6 7 2 12 7c5-5 12-1 8 5z"/>']
 };
-const defaults={expense:{'Кафе':'cafe','Продукты':'groceries','Транспорт':'transport','Покупки':'shopping','Дом':'home','Здоровье':'health','Развлечения':'fun','Работа':'work','Красота':'beauty','Маркетплейсы':'market','Одежда и обувь':'clothes','Подписки':'subscriptions','Ставки':'bets','Спорт':'fitness','Связь':'phone','Путешествия':'travel','Питомцы':'pet','Образование':'education','Другое':'other'},income:{'Зарплата':'salary','Работа':'work','Подарки':'gift','Проценты':'interest','Продажи':'sales','Кешбэк':'wallet','Возврат долга':'debt','Аренда':'home','Возвраты':'debt','Другое':'wallet'}};
+const defaults={expense:{'Кафе':'cafe','Продукты':'groceries','Транспорт':'transport','Авто':'auto','Покупки':'shopping','Дом':'home','Здоровье':'health','Развлечения':'fun','Работа':'work','Красота':'beauty','Маркетплейсы':'market','Одежда и обувь':'clothes','Подписки':'subscriptions','Ставки':'bets','Спорт':'fitness','Связь':'phone','Путешествия':'travel','Питомцы':'pet','Образование':'education','Другое':'other'},income:{'Зарплата':'salary','Работа':'work','Подарки':'gift','Проценты':'interest','Продажи':'sales','Кешбэк':'wallet','Возврат долга':'debt','Аренда':'home','Возвраты':'debt','Другое':'wallet'}};
 function key(name,type='expense'){const saved=typeof state==='object'?state.settings.categoryIcons?.[type]:null,value=saved&&Object.hasOwn(saved,name)?saved[name]:null;return Object.hasOwn(icons,value)?value:(defaults[type]?.[name]||'other');}
 function paths(id){return (icons[id]||icons.other)[1];}
 function svg(id,cls='category-symbol'){return `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${paths(id)}</svg>`;}
