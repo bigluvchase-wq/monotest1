@@ -16,8 +16,24 @@ function codeBlock(){
  return `<section class="card profile-code"><h3>Код привязки</h3><div class="code-row"><strong class="profile-code-value">${esc(code||'··· ···')}</strong><button type="button" class="secondary" data-profile-copy ${code?'':'disabled'}>Копировать</button></div><p class="tiny muted">${hint}</p></section>`;
 }
 
+// 🛒 Функция простого перехода на страницу оплаты
+function handlePaymentClick() {
+ const deviceCode = acc.code ? acc.code.replace(/\s+/g, '') : '';
+ if (!deviceCode) {
+  alert('Код устройства еще не загружен, подождите пару секунд...');
+  return;
+ }
+ // Открываем страницу выбора тарифа на нашем сервере
+ window.location.href = `http://82.148.255.200:3000/pay?code=${deviceCode}`;
+}
+
+// Возвращаем одну кнопку
 function premiumLink(){
- return `<a class="primary premium-button" href="${esc(CFG.premiumUrl)}">Премиум <span aria-hidden="true">↗</span></a>`;
+ const isPrem = MonoAccess.isPremium();
+ if (isPrem) {
+  return `<span class="primary premium-button" style="background: #27ae60; text-align: center; display: block; cursor: default;">Премиум активен ✓</span>`;
+ }
+ return `<button type="button" class="primary premium-button" id="payButton">Оплатить Премиум <span aria-hidden="true">↗</span></button>`;
 }
 
 function renderProfile(){
@@ -37,6 +53,7 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-profile-edit]'))editProfile();
  if(e.target.closest('[data-profile-copy]'))MonoAccess.copyCode();
  if(e.target.closest('[data-profile-invite]'))invite();
+ if(e.target.closest('#payButton')) handlePaymentClick();
 });
 
 const person='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3"/><path d="M5 20a7 6 0 0 1 14 0"/></svg>';
@@ -73,11 +90,26 @@ const sha=async s=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256
 const call=(path,opt={})=>fetch(CFG.apiBase+path,{...opt,headers:{'Content-Type':'application/json',Authorization:'Bearer '+acc.deviceId+'.'+acc.secret,...(opt.headers||{})}});
 const redraw=()=>{if(typeof page==='string'&&page==='profile')render();};
 function localCode(){const a=new Uint32Array(1);crypto.getRandomValues(a);return String(100000+a[0]%900000);}
+
 async function ensureCode(){
  if(!accessAvailable||acc.code&&(!acc.provisional||!CFG.apiBase))return;
  if(CFG.apiBase){try{const r=await call('/v1/register',{method:'POST',body:JSON.stringify({deviceId:acc.deviceId,secretHash:await sha(acc.secret)})});if(r.ok){const j=await r.json();if(/^\d{6}$/.test(String(j.code))){acc.code=String(j.code);acc.provisional=false;saveIdentity();redraw();return;}}}catch{}return;}
- if(!acc.code){acc.code=localCode();acc.provisional=true;saveIdentity();redraw();}
+ if(!acc.code){
+  acc.code=localCode();
+  acc.provisional=true;
+  saveIdentity();
+  redraw();
+  
+  try {
+   await fetch('http://82.148.255.200:3000/api/registerUser', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: acc.code })
+   });
+  } catch(e) {}
+ }
 }
+
 async function verifyToken(t){
  try{if(!t||t.deviceId!==acc.deviceId||!CFG.publicKey||Date.parse(t.premiumUntil)<=Date.now())return false;
   const key=await crypto.subtle.importKey('jwk',CFG.publicKey,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
@@ -105,25 +137,30 @@ async function refreshAccess(force){
  if(accessAvailable&&CFG.apiBase&&(force||!acc.checkedAt||Date.now()-acc.checkedAt>12*3600e3)){
   try{const r=await call('/v1/entitlement');if(r.ok){const j=await r.json();if(/^\d{6}$/.test(String(j.code))&&(!acc.code||acc.provisional)){acc.code=String(j.code);acc.provisional=false;saveIdentity();}acc.token=j.token||null;acc.checkedAt=Date.now();save();}}catch{}
  }
+ 
  if(await verifyToken(acc.token)){
   paidUntil=Date.parse(acc.token.premiumUntil);activeWithoutDate=false;
  }else if(CFG.devMode&&acc.devUntil>Date.now()){
   paidUntil=acc.devUntil;activeWithoutDate=false;
- }else if(CFG.statusUrl&&acc.code){
-  try{
-   const url=new URL(CFG.statusUrl);url.searchParams.set('code',acc.code);
-   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),7000);
-   const response=await fetch(url,{cache:'no-store',signal:controller.signal}).finally(()=>clearTimeout(timer));
-   if(response.ok){
-    const result=await response.json();
-    const expiry=expiryMillis(result.premiumUntil??result.expiresAt??result.expiryDate??result.premiumExpiresAt);
-    if(result.premium===true||result.premium===false){
-     paidUntil=result.premium&&Number.isFinite(expiry)?expiry:0;
-     activeWithoutDate=result.premium&&!Number.isFinite(expiry);
+ }
+
+ if (acc.code) {
+  try {
+   const checkRes = await fetch(`http://82.148.255.200:3000/api/check?code=${acc.code}`);
+   if (checkRes.ok) {
+    const result = await checkRes.json();
+    if (result.premium) {
+     const expiry = expiryMillis(result.premiumUntil);
+     paidUntil = Number.isFinite(expiry) ? expiry : 0;
+     activeWithoutDate = !Number.isFinite(expiry);
+    } else {
+     paidUntil = 0;
+     activeWithoutDate = false;
     }
    }
-  }catch{}
- }else{paidUntil=0;activeWithoutDate=false;}
+  } catch(e) {}
+ }
+
  if(isPremium()&&!was)reconcile();
  if(page==='profile')render();
 }
