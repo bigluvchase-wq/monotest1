@@ -16,24 +16,17 @@ function codeBlock(){
  return `<section class="card profile-code"><h3>Код привязки</h3><div class="code-row"><strong class="profile-code-value">${esc(code||'··· ···')}</strong><button type="button" class="secondary" data-profile-copy ${code?'':'disabled'}>Копировать</button></div><p class="tiny muted">${hint}</p></section>`;
 }
 
-// 🛒 Функция простого перехода на страницу оплаты
-function handlePaymentClick() {
- const deviceCode = acc.code ? acc.code.replace(/\s+/g, '') : '';
- if (!deviceCode) {
-  alert('Код устройства еще не загружен, подождите пару секунд...');
-  return;
- }
- // Открываем страницу выбора тарифа на нашем сервере
- window.location.href = `http://82.148.255.200:3000/pay?code=${deviceCode}`;
-}
-
-// Возвращаем одну кнопку
+// Надежная нативная ссылка, как в оригинале (название "Премиум")
 function premiumLink(){
  const isPrem = MonoAccess.isPremium();
  if (isPrem) {
   return `<span class="primary premium-button" style="background: #27ae60; text-align: center; display: block; cursor: default;">Премиум активен ✓</span>`;
  }
- return `<button type="button" class="primary premium-button" id="payButton">Оплатить Премиум <span aria-hidden="true">↗</span></button>`;
+ 
+ const deviceCode = acc.code ? acc.code.replace(/\s+/g, '') : '';
+ const payUrl = deviceCode ? `http://82.148.255.200:3000/pay?code=${deviceCode}` : '#';
+ 
+ return `<a class="primary premium-button" href="${payUrl}">Премиум <span aria-hidden="true">↗</span></a>`;
 }
 
 function renderProfile(){
@@ -53,7 +46,6 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-profile-edit]'))editProfile();
  if(e.target.closest('[data-profile-copy]'))MonoAccess.copyCode();
  if(e.target.closest('[data-profile-invite]'))invite();
- if(e.target.closest('#payButton')) handlePaymentClick();
 });
 
 const person='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3"/><path d="M5 20a7 6 0 0 1 14 0"/></svg>';
