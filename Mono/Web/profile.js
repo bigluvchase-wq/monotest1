@@ -16,7 +16,7 @@ function codeBlock(){
  return `<section class="card profile-code"><h3>Код привязки</h3><div class="code-row"><strong class="profile-code-value">${esc(code||'··· ···')}</strong><button type="button" class="secondary" data-profile-copy ${code?'':'disabled'}>Копировать</button></div><p class="tiny muted">${hint}</p></section>`;
 }
 
-// Надежная нативная ссылка, как в оригинале (название "Премиум")
+// Надежная нативная ссылка на твой новый сайт
 function premiumLink(){
  const isPrem = MonoAccess.isPremium();
  if (isPrem) {
@@ -24,7 +24,8 @@ function premiumLink(){
  }
  
  const deviceCode = acc.code ? acc.code.replace(/\s+/g, '') : '';
- const payUrl = deviceCode ? `http://82.148.255.200:3000/pay?code=${deviceCode}` : '#';
+ // Подставляем твой сайт и прикрепляем код пользователя
+ const payUrl = deviceCode ? `http://monoapp.ru/?code=${deviceCode}` : 'http://monoapp.ru/';
  
  return `<a class="primary premium-button" href="${payUrl}">Премиум <span aria-hidden="true">↗</span></a>`;
 }
@@ -159,24 +160,59 @@ async function refreshAccess(force){
 const meta=()=>{try{return JSON.parse(localStorage.getItem(SK))||{};}catch{return {};}};
 const setMeta=m=>{try{localStorage.setItem(SK,JSON.stringify(m));}catch{}};
 function queueSync(){const m=meta();m.updatedAt=new Date().toISOString();setMeta(m);if(!isPremium()||!CFG.apiBase)return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1500);}
+
+// Синхронизация: отправка на сервер
 async function push(){
- if(syncing){queueSync();return;}syncing=true;
- try{const m=meta(),r=await call('/v1/state',{method:'PUT',body:JSON.stringify({updatedAt:m.updatedAt||new Date().toISOString(),state})});if(r.ok){const j=await r.json();m.revision=j.revision;m.syncedAt=new Date().toISOString();setMeta(m);}}catch{}finally{syncing=false;}
+ if(syncing){queueSync();return;}
+ syncing=true;
+ try{
+  const m=meta();
+  const response = await fetch('http://82.148.255.200:3000/api/sync', {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json' },
+   body: JSON.stringify({ code: acc.code, state: state }) 
+  });
+  if(response.ok){
+   m.syncedAt = new Date().toISOString();
+   setMeta(m);
+  }
+ }catch(e){
+  console.error("Ошибка выгрузки в облако", e);
+ }finally{syncing=false;}
 }
+
+// Синхронизация: загрузка с сервера
 async function reconcile(){
- if(!isPremium()||!CFG.apiBase)return;
- try{const r=await call('/v1/state');if(r.status===404){push();return;}if(!r.ok)return;
-  const j=await r.json(),m=meta();
-  if(!m.updatedAt||Date.parse(j.updatedAt)>Date.parse(m.updatedAt)){
+ if(!isPremium())return; 
+ try{
+  const r=await fetch(`http://82.148.255.200:3000/api/sync?code=${acc.code}`);
+  if(!r.ok)return;
+  
+  const j=await r.json();
+  const m=meta();
+  
+  if(j.state){
    if(!E.validateState(j.state))return;
    try{localStorage.setItem('mono-backup-before-sync',JSON.stringify(state));}catch{}
+   
    const wasProblem=storageProblem;storageProblem=false;
    if(!persist(E.migrate(j.state),{remote:true})){storageProblem=wasProblem;return;}
-   m.updatedAt=j.updatedAt;m.revision=j.revision;m.syncedAt=new Date().toISOString();setMeta(m);
-   refreshAccounts();applyTheme();renderHomeReminders();if(page!=='home')render();notify('Данные загружены с сервера');
-  }else if(Date.parse(m.updatedAt)>Date.parse(j.updatedAt))push();
- }catch{}
+   
+   m.updatedAt=j.updatedAt || new Date().toISOString();
+   m.syncedAt=new Date().toISOString();
+   setMeta(m);
+   
+   refreshAccounts();
+   applyTheme();
+   renderHomeReminders();
+   if(page!=='home')render();
+   notify('Данные загружены с сервера Моно');
+  }
+ }catch(e){
+  console.error("Ошибка загрузки из облака", e);
+ }
 }
+
 async function copyCode(){
  const c=acc.code;if(!c)return;
  try{await navigator.clipboard.writeText(c);}catch{const t=document.createElement('textarea');t.value=c;t.setAttribute('readonly','');t.style.cssText='position:fixed;opacity:0;top:0';document.body.append(t);t.select();try{document.execCommand('copy');}catch{}t.remove();}
