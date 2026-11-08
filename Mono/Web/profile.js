@@ -5,10 +5,10 @@ function trial(start,now=Date.now()){const time=Date.parse(start);return Number.
 function startTrial(){if(trial(state.settings.profileTrialStartedAt).started||storageProblem)return;const next=structuredClone(state);next.settings.profileTrialStartedAt=new Date().toISOString();persist(next);}
 const socialPaths={telegram:'<path d="m3 10 18-7-5 18-5-7-8-4zm8 4 10-11M11 14v5l4-3"/>',vk:'<path d="M3 6h4c0 5 2 8 4 9V6h4v5c2-1 3-3 4-5h3c-1 4-3 6-5 7 2 1 4 3 5 6h-4c-1-2-2-4-3-4v4h-2C6 19 3 13 3 6z"/>',instagram:'<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6"/>'};
 function socials(){return `<div class="support-socials">${Object.entries(socialPaths).map(([key,path])=>`<button type="button" disabled aria-label="${{telegram:'Telegram',vk:'VK',instagram:'Instagram'}[key]} — ссылка пока не добавлена" title="Ссылка пока не добавлена"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg></button>`).join('')}</div><p class="tiny muted">Ссылки на соцсети скоро появятся.</p>`;}
-function renderProfile(){const t=trial(state.settings.profileTrialStartedAt);return `<div class="profile-intro"><button type="button" class="profile-avatar" data-profile-edit aria-label="Изменить аватарку">${avatar()}</button><div><div class="profile-name-row"><h2>${esc(profileName())}</h2><button type="button" class="profile-edit" data-profile-edit aria-label="Изменить имя и аватарку"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16 11-11 4 4L8 20H4zm9-9 4 4m-1-7 2-2 4 4-2 2"/></svg></button></div><span class="profile-plan">Подписка Free</span></div></div><section class="card profile-trial"><h2>${t.remaining?'7 дней бесплатно':'Пробный период завершён'}</h2><p class="muted">${t.remaining?'Полный функционал на 7 дней. Осталось '+t.remaining+' дн.':'Подключение оплаты готовится. Ваши записи остаются доступны.'}</p><div class="profile-prices"><div><span>Месяц</span><strong>299 ₽</strong></div><div><span>Год</span><strong>2 599 ₽</strong><small>Выгода 989 ₽</small></div></div><button type="button" class="primary" data-profile-plans>Подключить подписку</button><p class="tiny muted">Тестовая версия. Оплата пока не подключена.</p></section><div class="profile-actions"><button type="button" class="secondary" data-profile-invite>Пригласить друга <span>↗</span></button><button type="button" class="secondary" disabled title="Ссылка на Telegram пока не добавлена">Личный кабинет · Telegram <small>Скоро</small></button></div>`;}
-function plans(){actionDialog('Подписка моно',`<div class="subscription-options"><div class="card"><h3>На месяц</h3><strong>299 ₽</strong></div><div class="card"><h3>На год</h3><strong>2 599 ₽</strong><p class="muted">Экономия 989 ₽ по сравнению с 12 месяцами.</p></div></div><p class="muted">Оплата ещё не подключена. Сейчас деньги не списываются.</p><button type="button" class="primary" disabled>Оплата скоро появится</button>`);}
+function codeBlock(){const code=MonoAccess.codeText();return `<section class="card profile-code"><span class="tiny muted">Ваш код</span><div class="code-row"><strong class="profile-code-value">${esc(code||'······')}</strong><button type="button" class="secondary" data-profile-copy ${code?'':'disabled'}>Копировать</button></div><p class="tiny muted">${code?'Вставьте код на сайте при оплате Премиума.':'Код появится, как только приложение выйдет в сеть.'}</p></section>`;}
+function renderProfile(){return `<div class="profile-intro"><button type="button" class="profile-avatar" data-profile-edit aria-label="Изменить аватарку">${avatar()}</button><div><div class="profile-name-row"><h2>${esc(profileName())}</h2><button type="button" class="profile-edit" data-profile-edit aria-label="Изменить имя и аватарку"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16 11-11 4 4L8 20H4zm9-9 4 4m-1-7 2-2 4 4-2 2"/></svg></button></div></div></div>${codeBlock()}<button type="button" class="primary premium-button" data-profile-premium>Премиум</button><div class="profile-actions"><button type="button" class="secondary" data-profile-invite>Пригласить друга <span>↗</span></button><button type="button" class="secondary" disabled title="Ссылка на Telegram пока не добавлена">Личный кабинет · Telegram <small>Скоро</small></button></div>`;}
 async function invite(){if(window.MonoNative){MonoNative.invite();return;}const url=location.origin;try{if(navigator.share){await navigator.share({title:'моно',text:'Просто скажи, сколько. Учёт денег голосом.',url});return;}if(navigator.clipboard){await navigator.clipboard.writeText(url);notify('Ссылка на моно скопирована');return;}}catch(e){if(e.name==='AbortError')return;}actionDialog('Пригласить друга',`<p class="muted">Поделитесь ссылкой на моно:</p><label class="field">Ссылка<input readonly value="${esc(url)}"></label>`);}
-document.addEventListener('click',e=>{if(e.target.closest('[data-profile-edit]'))editProfile();if(e.target.closest('[data-profile-plans]'))plans();if(e.target.closest('[data-profile-invite]'))invite();});
+document.addEventListener('click',e=>{if(e.target.closest('[data-profile-edit]'))editProfile();if(e.target.closest('[data-profile-copy]'))MonoAccess.copyCode();if(e.target.closest('[data-profile-premium]'))MonoAccess.openPremium();if(e.target.closest('[data-profile-invite]'))invite();});
 const person='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3"/><path d="M5 20a7 6 0 0 1 14 0"/></svg>';
 function profileName(){return typeof state.settings.profileName==='string'?Array.from(state.settings.profileName).slice(0,20).join(''):'Ваш профиль';}
 function safeAvatar(value){return typeof value==='string'&&value.length<180000&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value)?value:'';}
@@ -21,6 +21,84 @@ function editProfile(){let image=safeAvatar(state.settings.profileAvatar);action
  form.querySelector('[data-avatar-reset]').onclick=()=>{revision++;image='';button.disabled=false;error.hidden=true;form.querySelector('[name=avatar]').value='';form.querySelector('.profile-avatar-preview').innerHTML=person;};
 }
 // No billing or Telegram verification service is configured yet. Never trust local flags as paid access.
-root.MonoAccess={canSetPIN:()=>false};
-root.MonoProfile={render:renderProfile,startTrial,socials,trial,decorate,safeAvatar,profileName};decorate();
+// ---------- Доступ: пробный период, Премиум, код, синхронизация ----------
+const CFG=root.MONO_CONFIG||{},AK='mono-access',SK='mono-sync',hex=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
+let acc={},premium=false,syncTimer=null,syncing=false;
+try{acc=JSON.parse(localStorage.getItem(AK))||{};}catch{}
+const save=()=>{try{localStorage.setItem(AK,JSON.stringify(acc));}catch{}};
+if(!acc.deviceId){acc.deviceId=hex(16);acc.secret=hex(32);save();}
+const sha=async s=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s))),b=>b.toString(16).padStart(2,'0')).join('');
+const call=(path,opt={})=>fetch(CFG.apiBase+path,{...opt,headers:{'Content-Type':'application/json',Authorization:'Bearer '+acc.deviceId+'.'+acc.secret,...(opt.headers||{})}});
+const redraw=()=>{if(typeof page==='string'&&page==='profile')render();};
+function localCode(){const a=new Uint32Array(1);crypto.getRandomValues(a);return String(100000+a[0]%900000);}
+async function ensureCode(){
+ if(acc.code&&!acc.provisional)return;
+ if(CFG.apiBase){try{const r=await call('/v1/register',{method:'POST',body:JSON.stringify({deviceId:acc.deviceId,secretHash:await sha(acc.secret)})});if(r.ok){const j=await r.json();acc.code=String(j.code);acc.provisional=false;save();redraw();return;}}catch{}return;}
+ if(!acc.code){acc.code=localCode();acc.provisional=true;save();redraw();}
+}
+async function verifyToken(t){
+ try{if(!t||t.deviceId!==acc.deviceId||!CFG.publicKey||Date.parse(t.premiumUntil)<=Date.now())return false;
+  const key=await crypto.subtle.importKey('jwk',CFG.publicKey,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
+  const sig=Uint8Array.from(atob(t.sig),c=>c.charCodeAt(0));
+  return await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},key,sig,new TextEncoder().encode(t.deviceId+'.'+t.premiumUntil));
+ }catch{return false;}
+}
+async function refresh(force=false){
+ if(CFG.apiBase&&(force||!acc.checkedAt||Date.now()-acc.checkedAt>12*3600e3)){
+  try{const r=await call('/v1/entitlement');if(r.ok){const j=await r.json();if(j.code&&(!acc.code||acc.provisional)){acc.code=String(j.code);acc.provisional=false;}acc.token=j.token||null;acc.checkedAt=Date.now();save();}}catch{}
+ }
+ const was=premium;premium=(await verifyToken(acc.token))||!!(CFG.devMode&&acc.devUntil>Date.now());
+ if(premium&&!was)reconcile();if(was!==premium||page==='profile'||page==='settings')render?.();
+}
+const meta=()=>{try{return JSON.parse(localStorage.getItem(SK))||{};}catch{return {};}};
+const setMeta=m=>{try{localStorage.setItem(SK,JSON.stringify(m));}catch{}};
+function queueSync(){const m=meta();m.updatedAt=new Date().toISOString();setMeta(m);if(!premium||!CFG.apiBase)return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1500);}
+async function push(){
+ if(syncing){queueSync();return;}syncing=true;
+ try{const m=meta(),r=await call('/v1/state',{method:'PUT',body:JSON.stringify({updatedAt:m.updatedAt||new Date().toISOString(),state})});if(r.ok){const j=await r.json();m.revision=j.revision;m.syncedAt=new Date().toISOString();setMeta(m);}}catch{}finally{syncing=false;}
+}
+async function reconcile(){
+ if(!premium||!CFG.apiBase)return;
+ try{const r=await call('/v1/state');if(r.status===404){push();return;}if(!r.ok)return;
+  const j=await r.json(),m=meta();
+  if(!m.updatedAt||Date.parse(j.updatedAt)>Date.parse(m.updatedAt)){
+   if(!E.validateState(j.state))return;
+   try{localStorage.setItem('mono-backup-before-sync',JSON.stringify(state));}catch{}
+   const wasProblem=storageProblem;storageProblem=false;
+   if(!persist(E.migrate(j.state),{remote:true})){storageProblem=wasProblem;return;}
+   m.updatedAt=j.updatedAt;m.revision=j.revision;m.syncedAt=new Date().toISOString();setMeta(m);
+   refreshAccounts();applyTheme();renderHomeReminders();if(page!=='home')render();notify('Данные загружены с сервера');
+  }else if(Date.parse(m.updatedAt)>Date.parse(j.updatedAt))push();
+ }catch{}
+}
+async function copyCode(){
+ const c=acc.code;if(!c)return;
+ try{await navigator.clipboard.writeText(c);}catch{const t=document.createElement('textarea');t.value=c;t.setAttribute('readonly','');t.style.cssText='position:fixed;opacity:0;top:0';document.body.append(t);t.select();try{document.execCommand('copy');}catch{}t.remove();}
+ notify('Код скопирован',true);
+}
+function openPremium(){
+ const url=CFG.premiumUrl;if(!url){notify('Ссылка на сайт пока не добавлена.');return;}
+ const full=url+(url.includes('?')?'&':'?')+'code='+encodeURIComponent(acc.code||'');
+ if(window.MonoNative?.openURL)MonoNative.openURL(full);else window.open(full,'_blank','noopener');
+}
+function premiumDialog(reason){
+ const text={voice:'Голосовой ввод доступен в пробной версии (7 дней) и в Премиум.',export:'Выгрузка данных доступна только в Премиум.'}[reason]||'';
+ actionDialog('Премиум',`${text?`<p class="muted">${esc(text)}</p>`:''}${codeBlock()}<button type="button" class="primary premium-button" data-profile-premium>Премиум</button>`);
+}
+const trialLeft=()=>trial(state.settings.profileTrialStartedAt);
+root.MonoAccess={
+ canSetPIN:()=>false,
+ isPremium:()=>premium,
+ canUseVoice:()=>premium||trialLeft().remaining>0,
+ canExport:()=>premium,
+ trialDays:()=>trialLeft().remaining,
+ codeText:()=>acc.code?acc.code.slice(0,3)+' '+acc.code.slice(3):'',
+ copyCode,openPremium,queueSync,refresh,
+ devGrant:days=>{if(!CFG.devMode)return false;acc.devUntil=Date.now()+days*864e5;save();refresh();return true;}
+};
+root.MonoProfile={render:renderProfile,startTrial,socials,trial,decorate,safeAvatar,profileName,premiumDialog};decorate();
+startTrial();
+ensureCode().then(()=>refresh());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureCode().then(()=>refresh(true));}});
+addEventListener('online',()=>{ensureCode().then(()=>refresh(true));});
 })(window);
