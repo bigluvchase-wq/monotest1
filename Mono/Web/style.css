@@ -592,11 +592,10 @@ a.premium-button:active{background:#5648bb}
 @media(prefers-reduced-motion:reduce){.holding .voice-ripple,.holding .mic::after{animation:none}.holding .ripple-first{opacity:.6}}
 
 /* Short launch transition over the already rendered home screen. */
-.launch-intro{position:fixed;inset:0;z-index:100;background:radial-gradient(ellipse at 60% 66%,#352061,#181426 75%);overflow:hidden;isolation:isolate;animation:launch-exit .44s 1.15s cubic-bezier(.4,0,.2,1) both}
-.launch-wallet{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;-webkit-mask-image:linear-gradient(transparent 0 12%,#000 24%);mask-image:linear-gradient(transparent 0 12%,#000 24%);animation:launch-art .62s cubic-bezier(.22,1,.36,1) both}
-.launch-name{position:absolute;left:0;right:0;top:70%;text-align:center;color:#fff;font-size:clamp(42px,12vw,66px);font-weight:850;line-height:1;letter-spacing:-.045em;text-shadow:0 2px 24px #c6adff60;animation:launch-name .55s .25s cubic-bezier(.22,1,.36,1) both}
+.launch-intro{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;justify-content:center;align-items:center;background:radial-gradient(ellipse at 60% 66%,#352061,#181426 75%);overflow:hidden;isolation:isolate;animation:launch-exit .44s 1.15s cubic-bezier(.4,0,.2,1) both}
+.launch-wallet{display:block;flex:none;width:clamp(112px,34vw,142px);height:auto;aspect-ratio:1.33;object-fit:cover;object-position:center 43%;-webkit-mask-image:radial-gradient(ellipse 50% 50%,#000 72%,transparent 100%);mask-image:radial-gradient(ellipse 50% 50%,#000 72%,transparent 100%);animation:launch-art .62s cubic-bezier(.22,1,.36,1) both}
+.launch-name{margin-top:2px;text-align:center;color:#fff;font-size:clamp(19px,5.5vw,24px);font-weight:850;line-height:1;letter-spacing:-.045em;text-shadow:0 2px 24px #c6adff60;animation:launch-name .55s .25s cubic-bezier(.22,1,.36,1) both}
 .launch-name span{margin-inline-start:.12em;color:#ae91ff}
-@media(min-aspect-ratio:4/5){.launch-wallet{object-fit:contain}.launch-name{top:70%;font-size:clamp(32px,7vh,56px)}}
 @keyframes launch-art{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes launch-name{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes launch-exit{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.045)}}
