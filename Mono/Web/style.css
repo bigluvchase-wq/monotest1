@@ -602,8 +602,7 @@ a.premium-button:active{background:#5648bb}
 @media(prefers-reduced-motion:reduce){.launch-intro{display:none}}
 
 .chart-period-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.monthly-year{display:flex;justify-content:center;align-items:center;gap:20px}
-.monthly-bars{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;margin:10px 0 16px}
+.monthly-bars{display:grid;grid-template-columns:repeat(var(--columns,7),minmax(36px,1fr));gap:4px;margin:10px 0 4px}
 .monthly-bars button{min-width:0;display:grid;justify-items:center;gap:6px;padding:4px 0;font-size:clamp(8px,2.5vw,11px);color:var(--muted);border-radius:5px}
 .monthly-track{position:relative;display:block;width:100%;height:clamp(78px,18vh,135px);border-bottom:1px solid var(--line)}
 .monthly-track span{position:absolute;inset:auto 12% 0;height:var(--height);border-radius:4px 4px 0 0;background:var(--bar-colour)}
@@ -620,5 +619,9 @@ a.premium-button:active{background:#5648bb}
 .show-monthly .chart-totals>.chart-details-total:not(.monthly-total){opacity:0}
 .show-monthly :is(.chart-colour-legend,.chart-category-list,.chart-category-filter,.chart-transaction-list){display:none}
 .monthly-month{text-align:center;text-transform:capitalize;margin:2px 0 0}
-.monthly-bars{margin-bottom:4px;gap:clamp(1px,1vw,6px)}
+.monthly-scroll{overflow-x:auto;overscroll-behavior-inline:contain;padding:0 3px 5px}
+.monthly-category{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
+.monthly-category select{max-width:72%;padding:5px 8px;border:1px solid var(--line);border-radius:10px;background:var(--input);color:var(--ink)}
+.chart-legend-button .chart-legend-icon{display:grid;place-items:center;width:16px;height:16px;flex:none}
+.chart-legend-icon svg{width:14px;height:14px}
 .monthly-bars button[aria-pressed=true]{background:var(--soft);color:var(--ink)}
