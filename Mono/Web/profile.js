@@ -7,7 +7,7 @@ const socialPaths={telegram:'<path d="m3 10 18-7-5 18-5-7-8-4zm8 4 10-11M11 14v5
 function socials(){return `<div class="support-socials">${Object.entries(socialPaths).map(([key,path])=>`<button type="button" disabled aria-label="${{telegram:'Telegram',vk:'VK',instagram:'Instagram'}[key]} — ссылка пока не добавлена" title="Ссылка пока не добавлена"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg></button>`).join('')}</div><p class="tiny muted">Ссылки на соцсети скоро появятся.</p>`;}
 function codeBlock(){
  const code=MonoAccess.codeText();
- const hint=acc.provisional?'Это предварительный код. Код для оплаты появится после подключения сервера.':code?'Используйте этот код при оплате на сайте.':'Код появится, когда приложение подключится к серверу.';
+ const hint=code?'Это твой личный код.':'Код появится, когда приложение подключится к серверу.';
  return `<section class="card profile-code"><h3>Код привязки</h3><div class="code-row"><strong class="profile-code-value">${esc(code||'··· ···')}</strong><button type="button" class="secondary" data-profile-copy ${code?'':'disabled'}>Копировать</button></div><p class="tiny muted">${hint}</p></section>`;
 }
 function premiumLink(){
