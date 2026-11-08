@@ -48,6 +48,7 @@ root.MonoNative={
  Recognition:NativeRecognition,speechEvent,refreshReminders,
  share:(name,text)=>post('share',{name,text}),
  invite:()=>post('invite'),
+ openURL:url=>post('openURL',{url}),
  openSettings:()=>post('settings'),
  enableReminders:()=>post('enableReminders'),
  reminderPermission(granted){
