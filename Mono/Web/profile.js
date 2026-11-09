@@ -32,7 +32,12 @@ function renderProfile(){
  const details=days?`Осталось дней: ${days}`:paid?'Срок действия не указан сервером.':'';
  return `<div class="profile-layout">
   <section class="card profile-intro"><button type="button" class="profile-avatar" data-profile-edit aria-label="Изменить аватарку">${avatar()}</button><div class="profile-identity"><h2>${esc(profileName())}</h2></div><button type="button" class="profile-edit" data-profile-edit aria-label="Изменить имя и аватарку"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16 11-11 4 4L8 20H4zm9-9 4 4m-1-7 2-2 4 4-2 2"/></svg></button></section>
-  <section class="card profile-subscription"><h3>Доступ</h3><p class="profile-access-status">${status}</p>${details?`<p class="tiny muted">${details}</p>`:''}${premiumLink()}</section>
+  <section class="card profile-subscription">
+    <h3>Доступ</h3><p class="profile-access-status">${status}</p>
+    ${details?`<p class="tiny muted">${details}</p>`:''}
+    ${premiumLink()}
+    <button type="button" class="secondary" id="forceSyncBtn" style="margin-top: 16px; width: 100%; border: 1px solid #5e5ce6; color: #5e5ce6;">Сохранить данные в облако</button>
+  </section>
   ${codeBlock()}
   <button type="button" class="secondary profile-invite" data-profile-invite>Пригласить друга <span aria-hidden="true">↗</span></button>
  </div>`;
@@ -43,6 +48,12 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-profile-edit]'))editProfile();
  if(e.target.closest('[data-profile-copy]'))MonoAccess.copyCode();
  if(e.target.closest('[data-profile-invite]'))invite();
+ 
+ // Запуск принудительной синхронизации по кнопке
+ if(e.target.closest('#forceSyncBtn')) {
+  alert('⏳ Начинаем выгрузку данных...');
+  push();
+ }
 });
 
 const person='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3"/><path d="M5 20a7 6 0 0 1 14 0"/></svg>';
@@ -155,11 +166,13 @@ async function refreshAccess(force){
 }
 const meta=()=>{try{return JSON.parse(localStorage.getItem(SK))||{};}catch{return {};}};
 const setMeta=m=>{try{localStorage.setItem(SK,JSON.stringify(m));}catch{}};
-function queueSync(){const m=meta();m.updatedAt=new Date().toISOString();setMeta(m);if(!isPremium()||!CFG.apiBase)return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1500);}
+
+// Убрал защиту CFG.apiBase, чтобы отправка не глушилась
+function queueSync(){const m=meta();m.updatedAt=new Date().toISOString();setMeta(m);if(!isPremium())return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1500);}
 
 // Синхронизация: отправка на сервер с ТЕСТОВЫМИ УВЕДОМЛЕНИЯМИ
 async function push(){
- if(syncing){queueSync();return;}
+ if(syncing) return;
  syncing=true;
  try{
   const m=meta();
@@ -171,13 +184,12 @@ async function push(){
   if(response.ok){
    m.syncedAt = new Date().toISOString();
    setMeta(m);
-   alert('✅ Синхронизация успешна! Данные отправлены в базу Firebase.');
+   alert('✅ УСПЕХ! Данные отправлены в твою базу Firebase.');
   } else {
    alert('❌ Ошибка ответа сервера: ' + response.status);
   }
  }catch(e){
-  alert('❌ Ошибка сети (возможно блокируется HTTPS): ' + e.message);
-  console.error("Ошибка выгрузки в облако", e);
+  alert('❌ Ошибка сети (HTTPS/CORS): ' + e.message);
  }finally{syncing=false;}
 }
 
