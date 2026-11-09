@@ -16,17 +16,13 @@ function codeBlock(){
  return `<section class="card profile-code"><h3>Код привязки</h3><div class="code-row"><strong class="profile-code-value">${esc(code||'··· ···')}</strong><button type="button" class="secondary" data-profile-copy ${code?'':'disabled'}>Копировать</button></div><p class="tiny muted">${hint}</p></section>`;
 }
 
-// Надежная нативная ссылка на твой новый сайт
 function premiumLink(){
  const isPrem = MonoAccess.isPremium();
  if (isPrem) {
   return `<span class="primary premium-button" style="background: #27ae60; text-align: center; display: block; cursor: default;">Премиум активен ✓</span>`;
  }
- 
  const deviceCode = acc.code ? acc.code.replace(/\s+/g, '') : '';
- // Подставляем твой сайт и прикрепляем код пользователя
  const payUrl = deviceCode ? `http://monoapp.ru/?code=${deviceCode}` : 'http://monoapp.ru/';
- 
  return `<a class="primary premium-button" href="${payUrl}">Премиум <span aria-hidden="true">↗</span></a>`;
 }
 
@@ -161,7 +157,7 @@ const meta=()=>{try{return JSON.parse(localStorage.getItem(SK))||{};}catch{retur
 const setMeta=m=>{try{localStorage.setItem(SK,JSON.stringify(m));}catch{}};
 function queueSync(){const m=meta();m.updatedAt=new Date().toISOString();setMeta(m);if(!isPremium()||!CFG.apiBase)return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1500);}
 
-// Синхронизация: отправка на сервер
+// Синхронизация: отправка на сервер с ТЕСТОВЫМИ УВЕДОМЛЕНИЯМИ
 async function push(){
  if(syncing){queueSync();return;}
  syncing=true;
@@ -175,8 +171,12 @@ async function push(){
   if(response.ok){
    m.syncedAt = new Date().toISOString();
    setMeta(m);
+   alert('✅ Синхронизация успешна! Данные отправлены в базу Firebase.');
+  } else {
+   alert('❌ Ошибка ответа сервера: ' + response.status);
   }
  }catch(e){
+  alert('❌ Ошибка сети (возможно блокируется HTTPS): ' + e.message);
   console.error("Ошибка выгрузки в облако", e);
  }finally{syncing=false;}
 }
