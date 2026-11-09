@@ -4,7 +4,7 @@
  const shortDate=date=>new Date(date+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
  const fullDate=date=>new Date(date+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
  const info=document.querySelector('#paymentInfoDialog');
- function paymentButton(item){const p=item.payment;return `<button type="button" class="agenda-payment" data-payment-info="${esc(p.id)}" data-payment-due="${item.due}"><span>${esc(p.name)}<small>${item.paid?'Оплачено':esc(account(p.account)?.name||'')}</small></span><strong>${money(p.amount,account(p.account).currency)}</strong><span aria-hidden="true">›</span></button>`;}
+ function paymentButton(item){const p=item.payment;return `<button type="button" class="agenda-payment" data-payment-info="${esc(p.id)}" data-payment-due="${item.due}"><span>${esc(p.name)}${p.bank?`<em class="bank-tag">${esc(p.bank)}</em>`:''}<small>${item.paid?'Оплачено':esc(account(p.account)?.name||'')}</small></span><strong>${money(p.amount,account(p.account).currency)}</strong><span aria-hidden="true">›</span></button>`;}
  function calendar(){
   const items=MonoPaymentDates.occurrences(state,month),period=MonoPeriod.month(month),count=Number(period.end.slice(8)),offset=(new Date(period.start+'T12:00:00').getDay()+6)%7;
   const days=Array.from({length:offset},()=>'<span class="agenda-day-space"></span>');
@@ -27,12 +27,12 @@
  }
  function list(){
   const today=E.dateString(new Date()),upcoming=MonoPaymentDates.upcoming(state,today),items=allExpanded?state.payments.map(p=>{const next=MonoPaymentDates.nextUnpaid(state,p,today);return next||{payment:p,due:E.nextPayment(p),paid:true};}).sort((a,b)=>a.due.localeCompare(b.due)):upcoming.slice(0,3);
-  const html=items.map(({payment:p,due,paid})=>`<div class="card payment-summary-card" data-payment-record="${esc(p.id)}"><button type="button" class="payment-summary" data-payment-info="${esc(p.id)}" data-payment-due="${due}"><span>${esc(p.name)}</span><span>${money(p.amount,account(p.account).currency)}</span><small>${shortDate(due)}${paid?' · Оплачено':''}</small><small>${esc(account(p.account).name)}</small></button></div>`).join('')||'<p class="muted">Нет ближайших платежей</p>';
+  const html=items.map(({payment:p,due,paid})=>`<div class="card payment-summary-card" data-payment-record="${esc(p.id)}"><button type="button" class="payment-summary" data-payment-info="${esc(p.id)}" data-payment-due="${due}"><span>${esc(p.name)}${p.bank?`<em class="bank-tag">${esc(p.bank)}</em>`:''}</span><span>${money(p.amount,account(p.account).currency)}</span><small>${shortDate(due)}${paid?' · Оплачено':''}</small><small>${esc(account(p.account).name)}</small></button></div>`).join('')||'<p class="muted">Нет ближайших платежей</p>';
   return html+(state.payments.length>items.length||allExpanded?`<button class="secondary full" type="button" data-payments-all>${allExpanded?'Свернуть':'Показать все платежи'}</button>`:'');
  }
  function show(id,due,options={}){
   const p=state.payments.find(p=>p.id===id);if(!p)return;due=due||E.nextPayment(p);const paid=paymentPaid(p,due);
-  info.querySelector('#paymentInfoTitle').textContent=p.name;
+  info.querySelector('#paymentInfoTitle').textContent=p.name;if(p.bank){const t=document.createElement('em');t.className='bank-tag';t.textContent=p.bank;info.querySelector('#paymentInfoTitle').append(t);}
   info.querySelector('.payment-info-body').innerHTML=`<div class="entry-info-total">${money(p.amount,account(p.account).currency)}</div><dl><div><dt>Дата</dt><dd>${esc(fullDate(due))}</dd></div><div><dt>Счёт</dt><dd>${esc(account(p.account).name)}</dd></div><div><dt>Категория</dt><dd>${esc(p.category)}</dd></div><div><dt>Повтор</dt><dd>${MonoSchedule.label[p.repeat]}</dd></div><div><dt>Напоминание</dt><dd>${MonoSchedule.time(p)}${p.remindDays?' · за '+p.remindDays+' дн.':''}</dd></div></dl><div class="action-row"><button type="button" class="secondary ${paid?'payment-is-paid':''}" ${paid?'disabled':''} ${options.home?`data-info-paid="${esc(p.id)}"`:`data-info-pay="${esc(p.id)}"`} data-info-due="${due}">${paid?'Оплачено':options.home?'Оплатил':'Записать расход'}</button>${options.home?'':`<button type="button" class="secondary" data-info-edit="${esc(p.id)}">Изменить</button><button type="button" class="secondary" data-info-delete="${esc(p.id)}">Удалить</button>`}</div>`;
   if(!info.open)info.showModal();
  }
