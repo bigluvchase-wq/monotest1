@@ -50,7 +50,7 @@ function navigate(p,options={}){
  window.MonoGoalDrag?.cancel();
  window.MonoCategoryDrag?.cancel();
  if(holding||listening)cancelVoice();
- if(p==='profile')window.MonoProfile?.startTrial();
+ if(p==='profile'){window.MonoProfile?.startTrial();if(page!=='profile')window.profileFrom=page;}
  const previous=page,nested=!rootPages.includes(p),app=$('.app');
  const menuMotion=options.noAnimation?null:window.MonoMenuMotion?.prepare(previous,p);
  $$('.nav-ghost').forEach(el=>el.remove());app.getAnimations().forEach(animation=>animation.cancel());
@@ -71,11 +71,11 @@ function navigate(p,options={}){
  app.style.transform='';app.style.opacity='';
  if(ghost){
   const duration=options.duration||560,easing='cubic-bezier(.25,.7,.25,1)';
-  if(profileMotion){const b=$('#helpButton').getBoundingClientRect(),cx=b.left+b.width/2,cy=b.top+b.height/2,R=Math.hypot(Math.max(cx,innerWidth-cx),Math.max(cy,innerHeight-cy))+10,at=`at ${cx}px ${cy}px`,e2='cubic-bezier(.65,0,.3,1)';
+  if(profileMotion){const b0=$('#helpButton').getBoundingClientRect(),b=b0.width?b0:{left:innerWidth-42,top:16,width:28,height:28},cx=b.left+b.width/2,cy=b.top+b.height/2,R=Math.hypot(Math.max(cx,innerWidth-cx),Math.max(cy,innerHeight-cy))+10,at=`at ${cx}px ${cy}px`,e2='cubic-bezier(.65,0,.3,1)';
    app.style.position='relative';app.style.zIndex='9';
    // Фон внутри круга — точная копия плавающего фона (с теми же фазами анимации), без белой вспышки.
    const bgSrc=document.querySelector('.bg-float'),bgCopy=bgSrc?bgSrc.cloneNode(true):null;
-   if(bgCopy){bgCopy.classList.add('reveal-bg');app.prepend(bgCopy);const a=[...bgSrc.querySelectorAll('i')],b=[...bgCopy.querySelectorAll('i')];b.forEach((el,i)=>{const x=a[i]?.getAnimations?.()[0],y=el.getAnimations?.()[0];if(x&&y){try{y.currentTime=x.currentTime;}catch{}}});}
+   if(bgCopy){bgCopy.classList.add('reveal-bg');{const ar=app.getBoundingClientRect();bgCopy.style.cssText=`position:absolute;left:${(-ar.left-app.clientLeft).toFixed(1)}px;top:${(-ar.top-app.clientTop).toFixed(1)}px;width:${innerWidth}px;height:${innerHeight}px;inset:auto;z-index:-1`;bgCopy.style.left=(-ar.left-app.clientLeft)+'px';bgCopy.style.top=(-ar.top-app.clientTop)+'px';}app.prepend(bgCopy);const a=[...bgSrc.querySelectorAll('i')],b=[...bgCopy.querySelectorAll('i')];b.forEach((el,i)=>{const x=a[i]?.getAnimations?.()[0],y=el.getAnimations?.()[0];if(x&&y){try{y.currentTime=x.currentTime;}catch{}}});}
     const an=app.animate([{clipPath:`circle(0px ${at})`,transform:'scale(1.04)'},{clipPath:`circle(${R}px ${at})`,transform:'scale(1)'}],{duration:800,easing:e2});
     ghost.animate([{transform:'scale(1)',opacity:1},{transform:'scale(.95)',opacity:.4}],{duration:800,easing:e2,fill:'forwards'});
     an.finished.catch(()=>{}).finally(()=>{bgCopy?.remove();app.style.position='';app.style.zIndex='';app.style.background='';ghost.remove();});
@@ -89,7 +89,7 @@ function navigate(p,options={}){
  if(tourActive)requestAnimationFrame(positionTour);
 }
 
-$$('[data-nav]').forEach(b=>b.onclick=()=>navigate(b.dataset.nav));$('#homeLogo').onclick=e=>{e.preventDefault();navigate('home');};$('#backToMenu').onclick=()=>navigate(page==='profile'?'home':'menu');
+$$('[data-nav]').forEach(b=>b.onclick=()=>navigate(b.dataset.nav));$('#homeLogo').onclick=e=>{e.preventDefault();navigate('home');};$('#backToMenu').onclick=()=>navigate(page==='profile'?(window.profileFrom&&window.profileFrom!=='profile'?window.profileFrom:'home'):'menu');
 function currencyTabs(){const cs=[...new Set(state.accounts.map(a=>a.currency))];if(!cs.includes(selectedCurrency))selectedCurrency=cs[0];return `<div class="currency-tabs">${cs.map(c=>`<button data-currency="${c}" class="${c===selectedCurrency?'active':''}">${c}</button>`).join('')}</div>`;}
 const marks={accounts:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h3"/>',deposits:'<circle cx="12" cy="12" r="9"/><path d="m9 15 6-6"/><circle cx="9.2" cy="9.2" r="1.1"/><circle cx="14.8" cy="14.8" r="1.1"/>',reminders:'<path d="M6 17V11a6 6 0 1 1 12 0v6l1.5 2h-15z"/><path d="M10 21a2 2 0 0 0 4 0"/>',goals:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 9v6M9 12h6"/>',limits:'<path d="M4 19V9m8 10V4m8 15v-7M2 19h20"/>',payments:'<rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 11h16M8 15h2m4 0h2"/>',categories:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',achievements:'<path d="m12 3 3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 10l6-1z"/>',settings:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>',support:'<path d="M4 17v-5a8 8 0 0 1 16 0v5M4 12H2v6h4v-6zm16 0h2v6h-4v-6zM20 18c0 3-5 3-8 3"/>'};
 function icon(name){return `<span class="menu-symbol"><svg viewBox="0 0 24 24">${marks[name]||marks.accounts}</svg></span>`;}
@@ -243,7 +243,7 @@ $('#testMic').onclick=async()=>{if(window.MonoNative){MonoNative.openSettings();
 const tourSteps=[
  {page:'home',target:'.voice-zone',title:'Просто скажите',text:'Зажмите микрофон. Назовите траты — моно распределит их по категориям.'},
  {page:'history',target:'#operationCards',title:'Всё перед глазами',text:'Доходы и расходы. Нажмите на карточку, чтобы увидеть подробности.'},
- {page:'menu',target:'.menu-grid',title:'Под себя',text:'Добавляйте счета и цели. Устанавливайте лимиты.'}
+ {page:'menu',target:'.menu-grid',title:'Под себя',text:'Добавляйте счета и цели. Устанавливайте лимиты. Удаляйте свайпом.'}
 ];
 function startTour(){cancelVoice();tourActive=true;tourStep=0;chartExpanded=false;showTourStep();if(!$('#onboarding').open)$('#onboarding').showModal();requestAnimationFrame(positionTour);}
 function showTourStep(){const step=tourSteps[tourStep];navigate(step.page);$('#tourTitle').textContent=step.title;$('#tourText').textContent=step.text;$('#tourCount').textContent=`0${tourStep+1} / 03`;$('#tourBack').hidden=tourStep===0;$('#finishWelcome').textContent=tourStep===2?'Готово ✓':'Далее ↗';$$('.tour-dots i').forEach((dot,i)=>dot.classList.toggle('active',i===tourStep));$('.tour-card').getAnimations().forEach(a=>a.cancel());if(!reducedMotion())$('.tour-card').animate([{opacity:0,transform:'translateY(12px)'},{opacity:1,transform:'translateY(0)'}],{duration:300,easing:'ease-out'});positionTour();}
