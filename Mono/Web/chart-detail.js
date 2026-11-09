@@ -55,7 +55,7 @@
   const svg=svgLayer(),started=performance.now(),length=opening?duration:closeDuration;
   running=true;
   function step(time){
-   if(!current||closed)return;
+   if(!current||closed){running=false;return;}
    const t=Math.min(1,(time-started)/length);
    if(t===1){running=false;done();return;}
    drawPath(svg,items,bar,circle,opening?ease(t):1-closeEase(t));
@@ -163,5 +163,6 @@
   showTransactions();
   if(clear)panel.querySelector('.chart-category-item')?.focus({preventScroll:true});
  });
- root.MonoCharts={open,close,refresh,isBusy:()=>running||Boolean(current?.closing)};
+ function settle(){if(!current||current.closing||!dialog.open)return;if(running){cancelAnimations();panel.querySelector('.chart-origin').style.opacity='0';showRing();}if(closeQueued)closeQueued=false;}
+ root.MonoCharts={open,close,refresh,settle,isBusy:()=>running||Boolean(current?.closing)};
 })(window);
