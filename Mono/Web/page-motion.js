@@ -37,7 +37,9 @@ function invalidate(){warmEpoch++;clearTimeout(warmTimer);dropWarm();if(!stage&&
 function warmUp(delay=650){clearTimeout(warmTimer);if(reducedMotion())return;const epoch=warmEpoch;warmTimer=setTimeout(()=>{
  if(epoch!==warmEpoch||stage||busy||navGesture||document.hidden||tourActive||holding||listening||document.querySelector('dialog[open]'))return;
  if(!rootPages.includes(page)){dropWarm();return;}
- for(const t of rootPages){if(t===page||warm[t])continue;try{const l=preview(t),inner=l.firstElementChild;l.style.opacity='0.001';l.style.transform='translateX(0)';if(BLUR){inner.style.filter=`blur(${BLUR}px)`;inner.style.willChange='filter';}warm[t]=l;}catch{}}
+ const t=rootPages.find(x=>x!==page&&!warm[x]);if(!t)return;
+ try{const l=preview(t),inner=l.firstElementChild;l.style.opacity='0.001';l.style.transform='translateX(0)';if(BLUR){inner.style.filter=`blur(${BLUR}px)`;inner.style.willChange='filter';}warm[t]=l;}catch{}
+ if(rootPages.some(x=>x!==page&&!warm[x]))warmUp(350);
 },delay);}
 function takeWarm(target){const l=warm[target];if(!l)return null;delete warm[target];l.style.opacity='';return l;}
 function begin(target){if(busy||!rootPages.includes(page)||!rootPages.includes(target)||target===page)return false;if(stage?.target===target)return true;if(stage)clean();const sign=rootPages.indexOf(target)>rootPages.indexOf(page)?1:-1;stage={target,sign,layer:takeWarm(target)||preview(target),dx:0};{const L=stage.layer,inner=L.firstElementChild;L.style.transform=`translateX(${sign*innerWidth}px)`;L.style.willChange='transform';if(BLUR){inner.style.filter=`blur(${BLUR}px)`;inner.style.willChange='filter';}}document.body.classList.add('root-dragging');app.style.position='relative';app.style.zIndex='9';return true;}
@@ -66,7 +68,7 @@ async function settle(commit=true){
  s.animations=[slide(outgoing,start,commit?-edge:0),slide(incoming,edge+start,commit?0:edge)];
  if(BLUR){
   const content=commit?incoming:incoming.firstElementChild;
-  s.animations.push(content.animate([{filter:fromFilter},{filter:commit?'blur(0px)':`blur(${BLUR}px)`}],{duration,easing:ease,fill:'both'}));
+  s.animations.push(commit?content.animate([{filter:fromFilter,offset:0},{filter:'blur(0.4px)',offset:.8},{filter:'none',offset:.8001},{filter:'none',offset:1}],{duration,easing:'linear',fill:'both'}):content.animate([{filter:fromFilter},{filter:`blur(${BLUR}px)`}],{duration,easing:ease,fill:'both'}));
  }
  indicator(rootPages.indexOf(page),true);
  await Promise.allSettled(s.animations.map(animation=>animation.finished));
