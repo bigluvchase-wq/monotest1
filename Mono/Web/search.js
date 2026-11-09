@@ -8,7 +8,7 @@ document.body.append(layer);
 const input=layer.querySelector('#globalSearch'),results=layer.querySelector('#searchResults');
 let open=false,timer=0;
 const norm=s=>String(s||'').toLowerCase().replace(/ё/g,'е');
-const sections=[['accounts','Счета','Кошельки и валюты'],['goals','Цели','Копите на мечты'],['deposits','Вклады','Проценты в доход'],['limits','Лимиты','Контроль расходов'],['payments','Платежи','Даты и напоминания'],['categories','Категории','Порядок в операциях'],['settings','Настройки','Тема, язык, копии'],['support','Поддержка','Вопросы и идеи'],['profile','Профиль','Доступ и код']];
+const sections=[['accounts','Счета','Кошельки и валюты'],['goals','Цели','Копите на мечты'],['deposits','Вклады','Проценты в доход'],['reminders','Напоминания','Дата, время и текст'],['limits','Лимиты','Контроль расходов'],['payments','Платежи','Даты и напоминания'],['categories','Категории','Порядок в операциях'],['settings','Настройки','Тема, язык, копии'],['support','Поддержка','Вопросы и идеи'],['profile','Профиль','Доступ и код']];
 const chevron='<svg class="search-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
 const row=(kind,key,title,meta)=>`<button type="button" class="search-row" data-search-go="${kind}" data-search-key="${esc(key)}"><span class="search-row-text"><b>${esc(title)}</b>${meta?`<small>${esc(meta)}</small>`:''}</span>${chevron}</button>`;
 const block=(title,html)=>html?`<section class="search-block"><h3>${esc(title)}</h3>${html}</section>`:'';
@@ -26,6 +26,7 @@ function render(){
   block('Операции'+(entries.length>20?' · '+entries.length:''),entries.length?`<div class="search-entries">${entries.slice(0,20).map(e=>entryHTML(e)).join('')}</div>`:''),
   block('Разделы',sections.filter(([,t,m])=>hit(t+' '+m)).map(([k,t,m])=>row('page',k,t,m)).join('')),
   block('Цели',state.goals.filter(g=>hit(g.name)).map(g=>row('page','goals',g.name,'Цель')).join('')),
+  block('Напоминания',(state.reminders||[]).filter(r=>hit(r.title+' '+(r.text||''))).map(r=>row('page','reminders',r.title,r.date.split('-').reverse().join('.')+' · '+r.time)).join('')),
   block('Вклады',(state.deposits||[]).filter(d=>hit(d.name)).map(d=>row('page','deposits',d.name,d.rate+'% годовых')).join('')),
   block('Платежи',state.payments.filter(p=>hit(p.name+' '+(p.bank||'')+' '+p.category)).map(p=>row('page','payments',p.name,[p.bank,money(p.amount,account(p.account)?.currency)].filter(Boolean).join(' · '))).join('')),
   block('Счета',state.accounts.filter(a=>hit(a.name)).map(a=>row('page','accounts',a.name,a.currency)).join('')),
@@ -37,14 +38,14 @@ function show(){
  if(open||tourActive||document.querySelector('dialog[open]'))return;
  open=true;clearTimeout(timer);
  if(holding||listening)cancelVoice();
- layer.hidden=false;layer.setAttribute('aria-hidden','false');input.value='';render();
+ document.documentElement.classList.add('search-open');layer.hidden=false;layer.setAttribute('aria-hidden','false');input.value='';render();
  void layer.offsetWidth;layer.classList.add('on');
  input.focus({preventScroll:true});
 }
 function hide(){
  if(!open)return;open=false;
  input.blur();layer.classList.remove('on');layer.setAttribute('aria-hidden','true');
- timer=setTimeout(()=>{layer.hidden=true;},reducedMotion()?0:380);
+ timer=setTimeout(()=>{layer.hidden=true;document.documentElement.classList.remove('search-open');},reducedMotion()?0:380);
 }
 layer.addEventListener('click',e=>{
  if(e.target.closest('[data-search-close]')){hide();return;}
@@ -54,6 +55,17 @@ layer.addEventListener('click',e=>{
  if(e.target===layer||e.target===results)hide();
 });
 layer.addEventListener('click',e=>{if(e.target.closest('[data-entry-open]'))input.blur();},true);
+// Поиск не вытягивается вниз: касания вне списка результатов блокируются, у краёв списка — тоже.
+(()=>{let y0=0;
+ layer.addEventListener('touchstart',e=>{y0=e.touches[0].clientY;},{passive:true});
+ layer.addEventListener('touchmove',e=>{
+  if(!e.cancelable)return;
+  if(e.target.closest('input'))return;
+  const box=e.target.closest('.search-results');
+  if(!box){e.preventDefault();return;}
+  const dy=e.touches[0].clientY-y0,top=box.scrollTop<=0,bottom=box.scrollTop+box.clientHeight>=box.scrollHeight-1;
+  if((dy>0&&top)||(dy<0&&bottom))e.preventDefault();
+ },{passive:false});})();
 input.addEventListener('input',()=>{render();results.scrollTop=0;});
 input.addEventListener('keydown',e=>{if(e.key==='Escape')hide();if(e.key==='Enter')input.blur();});
 document.addEventListener('keydown',e=>{if(open&&e.key==='Escape')hide();});
