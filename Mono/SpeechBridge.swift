@@ -64,8 +64,23 @@ final class SpeechBridge {
             request.taskHint = .dictation
             // Prefer on-device recognition when iOS offers it for Russian.
             request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
-            input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+            var lastLevelTime = CFAbsoluteTimeGetCurrent()
+            input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self, weak session] buffer, _ in
                 request.append(buffer)
+                // Громкость голоса для анимации кнопки записи (около 25 раз в секунду).
+                let now = CFAbsoluteTimeGetCurrent()
+                guard now - lastLevelTime > 0.04, let samples = buffer.floatChannelData?[0] else { return }
+                lastLevelTime = now
+                let count = Int(buffer.frameLength)
+                var sum: Float = 0
+                for i in 0..<count { sum += samples[i] * samples[i] }
+                let rms = count > 0 ? (sum / Float(count)).squareRoot() : 0
+                let decibels = 20 * log10(max(rms, 0.00001))
+                let level = min(1, max(0, (decibels + 52) / 38))
+                DispatchQueue.main.async {
+                    guard let self, let session, self.current === session else { return }
+                    self.emit(session.id, "level", ["v": String(format: "%.3f", level)])
+                }
             }
             session.hasTap = true
             session.task = recognizer.recognitionTask(with: request) { [weak self, weak session] result, error in
