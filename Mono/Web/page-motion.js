@@ -29,7 +29,7 @@ function preview(target){
  }
  return mountPreview(target,clone);
 }
-function begin(target){if(busy||!rootPages.includes(page)||!rootPages.includes(target)||target===page)return false;if(stage?.target===target)return true;if(stage)clean();const sign=rootPages.indexOf(target)>rootPages.indexOf(page)?1:-1;stage={target,sign,layer:preview(target),dx:0};document.body.classList.add('root-dragging');app.style.background='var(--paper)';app.style.position='relative';app.style.zIndex='9';return true;}
+function begin(target){if(busy||!rootPages.includes(page)||!rootPages.includes(target)||target===page)return false;if(stage?.target===target)return true;if(stage)clean();const sign=rootPages.indexOf(target)>rootPages.indexOf(page)?1:-1;stage={target,sign,layer:preview(target),dx:0};document.body.classList.add('root-dragging');app.style.position='relative';app.style.zIndex='9';return true;}
 function drag(dx){if(!stage)return;stage.dx=dx;const p=clamp(Math.abs(dx)/innerWidth);app.style.transform=`translateX(${dx}px)`;stage.layer.style.transform=`translateX(${stage.sign*innerWidth+dx}px)`;if(BLUR){const inner=stage.layer.firstElementChild;inner.style.filter=p>=.995?'none':`blur(${(Math.pow(1-p,1.6)*BLUR).toFixed(2)}px)`;}const from=rootPages.indexOf(page),to=rootPages.indexOf(stage.target);indicator(from+(to-from)*p,false);}
 function clean(){
  stage?.layer.remove();stage=null;

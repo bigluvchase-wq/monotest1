@@ -63,7 +63,7 @@ function editProfile(){let image=safeAvatar(state.settings.profileAvatar);action
 
 // ---------- Доступ: пробный период, Премиум, код, синхронизация ----------
 const CFG=root.MONO_CONFIG||{},AK='mono-access',SK='mono-sync',hex=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
-let acc={},paidUntil=0,activeWithoutDate=false,syncTimer=null,syncing=false,refreshTask=null;
+let acc={},paidUntil=0,activeWithoutDate=false,syncTimer=null,syncing=false,readingCloud=false,cloudReady=false,refreshTask=null;
 const isPremium=()=>activeWithoutDate||paidUntil>Date.now();
 try{acc=JSON.parse(localStorage.getItem(AK))||{};}catch{}
 const stored=root.monoStoredAccess;
@@ -154,35 +154,51 @@ async function refreshAccess(force){
   } catch(e) {}
  }
 
- if(isPremium()&&!was)reconcile();
+ if(isPremium()&&(!was||!cloudReady))reconcile();
+ else if(isPremium()&&meta().pending)schedulePush();
  if(page==='profile')render();
 }
 const meta=()=>{try{return JSON.parse(localStorage.getItem(SK))||{};}catch{return {};}};
 const setMeta=m=>{try{localStorage.setItem(SK,JSON.stringify(m));}catch{}};
 
-function queueSync(){const m=meta();m.updatedAt=new Date().toISOString();setMeta(m);if(!isPremium())return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1500);}
+function schedulePush(){
+ if(!isPremium()||!cloudReady||readingCloud)return;
+ clearTimeout(syncTimer);
+ syncTimer=setTimeout(push,1500);
+}
+function queueSync(){
+ const m=meta();
+ m.updatedAt=new Date().toISOString();
+ m.pending=true;
+ setMeta(m);
+ schedulePush();
+}
 
 async function push(){
- if(syncing) return;
+ if(syncing||readingCloud||!cloudReady||!isPremium()||!acc.code)return;
+ const snapshot=state;
  syncing=true;
  try{
-  const m=meta();
   const response = await fetch('https://api.monoapp.ru/api/sync', {
    method: 'POST',
    headers: { 'Content-Type': 'application/json' },
-   body: JSON.stringify({ code: acc.code, state: state }) 
+   body: JSON.stringify({ code: acc.code, state: snapshot })
   });
-  if(response.ok){
-   m.syncedAt = new Date().toISOString();
+  if(response.ok&&state===snapshot){
+   const m=meta();
+   m.syncedAt=new Date().toISOString();
+   m.pending=false;
    setMeta(m);
   }
  }catch(e){
   console.error("Ошибка выгрузки в облако", e);
- }finally{syncing=false;}
+ }finally{syncing=false;if(state!==snapshot&&meta().pending)schedulePush();}
 }
 
 async function reconcile(){
- if(!isPremium())return; 
+ if(readingCloud||!isPremium()||!acc.code)return;
+ readingCloud=true;
+ const snapshot=state;
  try{
   const r=await fetch(`https://api.monoapp.ru/api/sync?code=${acc.code}`);
   if(!r.ok)return;
@@ -190,8 +206,12 @@ async function reconcile(){
   const j=await r.json();
   const m=meta();
   
+  if(j.state&&!E.validateState(j.state))return;
+  const changed=state!==snapshot||m.pending;
+  if(j.state&&state!==snapshot&&!m.syncedAt)return;
+  cloudReady=true;
+  if(changed&&m.syncedAt&&(!j.updatedAt||Date.parse(j.updatedAt)<=Date.parse(m.updatedAt)))return;
   if(j.state){
-   if(!E.validateState(j.state))return;
    try{localStorage.setItem('mono-backup-before-sync',JSON.stringify(state));}catch{}
    
    const wasProblem=storageProblem;storageProblem=false;
@@ -199,17 +219,19 @@ async function reconcile(){
    
    m.updatedAt=j.updatedAt || new Date().toISOString();
    m.syncedAt=new Date().toISOString();
+   m.pending=false;
    setMeta(m);
+   window.MonoFinanceUI?.catchUp();
    
    refreshAccounts();
    applyTheme();
    renderHomeReminders();
    if(page!=='home')render();
    notify('Данные загружены с сервера Моно');
-  }
+  }else if(!m.pending&&(state.entries.length||state.deposits?.length||state.reminders?.length)){queueSync();}
  }catch(e){
   console.error("Ошибка загрузки из облака", e);
- }
+ }finally{readingCloud=false;if(meta().pending)schedulePush();}
 }
 
 async function copyCode(){

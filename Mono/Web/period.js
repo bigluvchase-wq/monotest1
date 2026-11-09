@@ -29,32 +29,35 @@
   const date=new Date(value+'T12:00:00Z');
   return iso(new Date(date.getTime()+days*dayMillis));
  }
+ function daysBetween(start,end){
+  return Math.round((Date.parse(end+'T12:00:00Z')-Date.parse(start+'T12:00:00Z'))/dayMillis);
+ }
  function preset(kind,anchor){
   if(!validDate(anchor))throw Error('Выберите дату.');
-  if(kind==='week')return range(anchor,dateAfter(anchor,6));
-  if(kind!=='month'&&kind!=='year')throw Error('Неизвестный период.');
-  const target=shift(anchor.slice(0,7),kind==='month'?1:12);
-  const day=anchor.slice(8),last=month(target).end.slice(8);
-  return range(anchor,target+'-'+(day<=last?day:last));
+  if(kind==='month')return month(anchor.slice(0,7));
+  if(kind==='year')return range(anchor.slice(0,4)+'-01-01',anchor.slice(0,4)+'-12-31');
+  if(kind!=='week')throw Error('Неизвестный период.');
+  const weekday=new Date(anchor+'T12:00:00Z').getUTCDay();
+  const offset=(weekday+6)%7;
+  return range(dateAfter(anchor,-offset),dateAfter(anchor,6-offset));
  }
  function buckets(period){
-  const days=(new Date(period.end+'T12:00:00Z')-new Date(period.start+'T12:00:00Z'))/dayMillis+1;
-  if(days<=62)return Array.from({length:days},(_,i)=>{
-   const start=dateAfter(period.start,i);
-   return {start,end:start};
-  });
-  const first=period.start.slice(0,7),last=period.end.slice(0,7);
-  const months=(Number(last.slice(0,4))-Number(first.slice(0,4)))*12+Number(last.slice(5))-Number(first.slice(5))+1;
-  const size=Math.max(1,Math.ceil(months/24));
-  return Array.from({length:Math.ceil(months/size)},(_,i)=>{
-   const start=month(shift(first,i*size)).start,end=month(shift(first,Math.min(months,(i+1)*size)-1)).end;
-   return {start:start<period.start?period.start:start,end:end>period.end?period.end:end};
-  });
+  const days=daysBetween(period.start,period.end)+1, result=[];
+  let start=period.start;
+  while(start<=period.end){
+   const weekday=new Date(start+'T12:00:00Z').getUTCDay();
+   const boundary=days<=35?start:days<=90?dateAfter(start,(7-weekday)%7):month(start.slice(0,7)).end;
+   const end=boundary<period.end?boundary:period.end;
+   result.push({start,end});
+   if(end===period.end)break;
+   start=dateAfter(end,1);
+  }
+  return result;
  }
  function label(period,locale='ru-RU',short=false){
   const format=new Intl.DateTimeFormat(locale,{day:'numeric',month:'long',...(short&&period.start.slice(0,4)===period.end.slice(0,4)?{}:{year:'numeric'}),timeZone:'UTC'});
   return format.formatRange(new Date(period.start+'T12:00:00Z'),new Date(period.end+'T12:00:00Z'));
  }
- const api={validDate,range,month,shift,filter,label,preset,buckets};root.MonoPeriod=api;
+ const api={validDate,range,month,shift,filter,label,preset,buckets,dateAfter,daysBetween};root.MonoPeriod=api;
  if(typeof module==='object')module.exports=api;
 })(typeof window==='object'?window:globalThis);
