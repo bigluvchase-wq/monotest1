@@ -44,7 +44,33 @@ function refreshReminders(){
  items.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
  post('reminders',{items:items.slice(0,60)});
 }
+let widgetTimer=0;
+function pushWidget(){
+ if(typeof state!=='object')return;
+ clearTimeout(widgetTimer);
+ widgetTimer=setTimeout(()=>{try{
+  const today=E.dateString(new Date()),month=today.slice(0,7),currency=state.accounts[0]?.currency||'RUB',accounts=state.accounts.filter(a=>a.currency===currency);
+  const balance=accounts.reduce((sum,a)=>sum+E.balance(state,a.id),0);
+  const spent=test=>state.entries.filter(e=>e.type==='expense'&&accounts.some(a=>a.id===e.account)&&test(e.date)).reduce((sum,e)=>sum+e.amount,0);
+  post('widget',{data:{balance:money(balance,currency),spentToday:money(spent(d=>d===today),currency),spentMonth:money(spent(d=>d.startsWith(month)),currency),updated:Date.now()/1000}});
+ }catch{}},500);
+}
+// Быстрые действия с виджетов: mono://record и mono://text
+function deepLink(kind){
+ const run=()=>{
+  if(typeof navigate!=='function')return;
+  if(document.querySelector('dialog[open]'))document.querySelectorAll('dialog[open]').forEach(d=>d.close());
+  navigate('home',{noAnimation:true,noPageMotion:true});
+  if(kind==='text')openEntry();
+  else if(kind==='record'){
+   startHold();
+   document.addEventListener('pointerup',()=>endHold(),{once:true,capture:true});
+  }
+ };
+ if(document.querySelector('.launch-intro'))setTimeout(run,2000);else setTimeout(run,150);
+}
 root.MonoNative={
+ pushWidget,deepLink,
  Recognition:NativeRecognition,speechEvent,refreshReminders,
  storeAccess:access=>post('storeAccess',{access}),
  refreshAccess:()=>root.MonoAccess?.refresh(true),
