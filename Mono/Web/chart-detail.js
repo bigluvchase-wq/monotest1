@@ -70,8 +70,17 @@
   current.labels?.remove();current.labels=null;
   dialog.querySelector('.chart-morph-layer')?.remove();
  }
- function categoryLegend(values){
-  return values.map((v,i)=>`<li><button type="button" class="chart-legend-button" data-chart-category="${i}" aria-pressed="false"><i class="chart-legend-icon" aria-hidden="true" style="color:${palette[i%palette.length]}">${MonoCategoryIcons.category(v.name,current.type)}</i><span>${esc(v.name)}</span></button></li>`).join('');
+ function categoryLegend(values,total=values.reduce((n,v)=>n+v.n,0)){
+  const percent=n=>total?(n/total*100).toFixed(n/total<.1?1:0).replace('.',','):'0';
+  return values.map((v,i)=>{const colour=palette[i%palette.length],share=total?v.n/total*100:0;return `<li><button type="button" class="chart-legend-button" data-chart-category="${i}" aria-pressed="false" style="--c:${colour}"><i class="chart-legend-icon" aria-hidden="true" style="color:${colour}">${MonoCategoryIcons.category(v.name,current.type)}</i><span class="chart-legend-name">${esc(v.name)}</span><strong class="chart-legend-sum">${money(v.n,selectedCurrency)}</strong><span class="chart-legend-share"><b>${percent(v.n)}%</b><em><i style="--share:${share.toFixed(1)}%"></i></em></span></button></li>`;}).join('')||'<li><p class="muted chart-no-data">Пока нет операций</p></li>';
+ }
+ function ringLabel(){
+  const selected=current.values.find(v=>v.name===current.category),label=panel.querySelector('.chart-ring-label');
+  if(!label)return;
+  const text=money(selected?.n??current.total,selectedCurrency);
+  const strong=label.querySelector('strong'),span=label.querySelector('span');
+  strong.textContent=text;strong.style.fontSize=text.length>13?'15px':text.length>10?'18px':'';
+  span.textContent=selected?selected.name:'Всего';
  }
  function categoryList(values,total){
   return values.map((v,i)=>`<button type="button" class="chart-category-item" data-chart-category="${i}" aria-pressed="false"><i class="category-report-icon" style="color:${palette[i%palette.length]}">${MonoCategoryIcons.category(v.name,current.type)}</i><span>${esc(v.name)}<small>${(v.n/total*100).toFixed(1).replace('.',',')}%</small></span><strong>${money(v.n,selectedCurrency)}</strong></button>`).join('')||'<p class="muted chart-no-data">Пока нет операций</p>';
@@ -82,7 +91,7 @@
   const filter=panel.querySelector('.chart-category-filter');
   filter.hidden=!selected;
   filter.querySelector('strong').textContent=selected?.name||'';
-  panel.querySelector('.chart-details-total').textContent=money(selected?.n??current.total,selectedCurrency);
+  panel.querySelector('.chart-details-total').textContent=money(selected?.n??current.total,selectedCurrency);ringLabel();
   panel.querySelectorAll('[data-chart-category]').forEach(button=>button.setAttribute('aria-pressed',String(current.values[Number(button.dataset.chartCategory)]===selected)));
   list.innerHTML=groupedEntriesHTML(rows);
   root.MonoSwipe?.decorate(list);
@@ -93,7 +102,7 @@
   const items=selectedEntries().filter(inChart),values=categoryValues(items,type),total=sum(items,type),source=rect(button),bar=rect(button.querySelector('.mini-chart'));
   const rows=items.filter(e=>e.type===type).slice().sort((a,b)=>b.date.localeCompare(a.date));
   current={type,values,rows,total,category:null,closing:false};closed=false;closeQueued=false;
-  panel.innerHTML=`<div class="chart-origin summary-pair" aria-hidden="true" style="left:${source.left}px;top:${source.top}px;width:${source.width}px;height:${source.height}px"><div class="operation-card">${button.innerHTML}</div></div>`+`<div class="chart-details-content chart-static-view chart-animated-view"><div class="chart-details-head"><h1 id="chartDetailsTitle">${current.type==='income'?'Доходы':'Расходы'}</h1><button class="chart-close icon-btn" aria-label="Закрыть подробности">×</button></div><div class="chart-summary"><div class="chart-totals"><div class="chart-details-total ${current.type==='income'?'positive':''}">${money(total,selectedCurrency)}</div><div class="monthly-total chart-details-total ${current.type==='income'?'positive':''}" aria-live="polite" inert></div></div><div class="chart-period-actions"><button class="chart-period-button" aria-label="Выбрать период: ${esc(periodLabel())}" aria-haspopup="dialog">${esc(periodLabel(true))}<span aria-hidden="true">⌄</span></button><button type="button" class="chart-period-button" data-monthly-chart="${type}" aria-pressed="false" aria-controls="monthlyChart">График</button></div></div><div class="chart-visual"><div class="chart-ring-stage"><button class="chart-side-arrow" data-chart-month="-1" aria-label="Предыдущий месяц">‹</button><div class="chart-morph-space">${MonoChartRing.render(values,palette,current.type)}<div class="chart-ring-label"><strong>${values.length}</strong><span>${categoryWord(values.length)}</span></div></div><button class="chart-side-arrow" data-chart-month="1" aria-label="Следующий месяц">›</button></div><section class="monthly-chart" id="monthlyChart" aria-label="График за выбранный период" inert><label class="monthly-category">Категория<select data-graph-category aria-label="Категория графика"></select></label><p class="monthly-month muted" aria-live="polite"></p><div class="monthly-scroll"><div class="monthly-bars" aria-label="Столбики графика"></div></div></section></div><ul class="chart-colour-legend" aria-label="Цвета категорий">${categoryLegend(values)}</ul><div class="chart-category-list">${categoryList(values,total)}</div><div class="chart-category-filter" hidden><strong></strong><button type="button" class="secondary" data-chart-all>Все категории</button></div><div class="chart-transaction-list"></div></div>`;
+  panel.innerHTML=`<div class="chart-origin summary-pair" aria-hidden="true" style="left:${source.left}px;top:${source.top}px;width:${source.width}px;height:${source.height}px"><div class="operation-card">${button.innerHTML}</div></div>`+`<div class="chart-details-content chart-static-view chart-animated-view"><div class="chart-details-head"><h1 id="chartDetailsTitle">${current.type==='income'?'Доходы':'Расходы'}</h1><button class="chart-close icon-btn" aria-label="Закрыть подробности">×</button></div><div class="chart-summary"><div class="chart-totals"><div class="chart-details-total ${current.type==='income'?'positive':''}">${money(total,selectedCurrency)}</div><div class="monthly-total chart-details-total ${current.type==='income'?'positive':''}" aria-live="polite" inert></div></div><div class="chart-period-actions"><button class="chart-period-button" aria-label="Выбрать период: ${esc(periodLabel())}" aria-haspopup="dialog">${esc(periodLabel(true))}<span aria-hidden="true">⌄</span></button><div class="chart-seg" role="group" aria-label="Вид графика"><button type="button" data-chart-view="ring" aria-pressed="true">Круг</button><button type="button" data-monthly-chart="${type}" aria-pressed="false" aria-controls="monthlyChart">Линейный</button></div></div></div><div class="chart-visual"><div class="chart-ring-stage"><button class="chart-side-arrow" data-chart-month="-1" aria-label="Предыдущий месяц">‹</button><div class="chart-morph-space">${MonoChartRing.render(values,palette,current.type)}<div class="chart-ring-label"><strong>${money(total,selectedCurrency)}</strong><span>Всего</span></div></div><button class="chart-side-arrow" data-chart-month="1" aria-label="Следующий месяц">›</button></div><section class="monthly-chart" id="monthlyChart" aria-label="График за выбранный период" inert><label class="monthly-category">Категория<select data-graph-category aria-label="Категория графика"></select></label><p class="monthly-month muted" aria-live="polite"></p><div class="monthly-scroll"><div class="monthly-bars" aria-label="Столбики графика"></div></div></section></div><ul class="chart-colour-legend" aria-label="Категории">${categoryLegend(values,total)}</ul><div class="chart-category-list">${categoryList(values,total)}</div><div class="chart-category-filter" hidden><strong></strong><button type="button" class="secondary" data-chart-all>Все категории</button></div><div class="chart-ops-head"><h2>Операции</h2></div><div class="chart-transaction-list"></div></div>`;
   panel.style.cssText='';panel.scrollTop=0;dialog.showModal();document.body.classList.add('chart-detail-open');button.setAttribute('aria-expanded','true');
   panel.querySelector('.chart-close').onclick=close;
   // Removing an operation is handled by the existing guarded deletion flow after closing.
@@ -137,8 +146,7 @@
   const originButton=document.querySelector(`[data-operation="${current.type}"]`);if(originButton)panel.querySelector('.chart-origin .operation-card').innerHTML=originButton.innerHTML;
   panel.querySelector('.chart-period-button').innerHTML=esc(periodLabel(true))+'<span aria-hidden="true">⌄</span>';
   panel.querySelector('.chart-period-button').setAttribute('aria-label','Выбрать период: '+periodLabel());
-  panel.querySelector('.chart-colour-legend').innerHTML=categoryLegend(values);
-  panel.querySelector('.chart-ring-label strong').textContent=values.length;panel.querySelector('.chart-ring-label span').textContent=categoryWord(values.length);
+  panel.querySelector('.chart-colour-legend').innerHTML=categoryLegend(values,total);
   panel.querySelector('.chart-category-list').innerHTML=categoryList(values,total);
   panel.querySelector('.chart-static-ring').outerHTML=MonoChartRing.render(values,palette,current.type);
   showRing();showTransactions();root.MonoChartPeriod?.refreshMonthly();
