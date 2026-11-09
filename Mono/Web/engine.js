@@ -1,7 +1,6 @@
 (function(root){
 'use strict';
 const Schedule=typeof module==='object'?require('./schedule.js'):root.MonoSchedule,SpeechDates=typeof module==='object'?require('./speech-dates.js'):root.MonoSpeechDates;
-const Finance=typeof module==='object'?require('./finance-tools.js'):root.MonoFinanceTools;
 const Speech=typeof module==='object'?require('./speech-categories.js'):root.MonoSpeechCategories;
 const categories=['Кафе','Продукты','Транспорт','Авто','Покупки','Дом','Здоровье','Развлечения','Работа','Красота',...Speech.extraExpenses,...Speech.voiceExpenses,'Другое'];
 const dictionary=[['Кафе',/кофе|кафе|ресторан|обед|ужин|завтрак|доставк.*ед|пицц|бургер/],['Продукты',/(?<!\p{L})(?:продукт|магазин|пят[её]роч|перекр[её]ст|магнит|вкусвилл|ашан|дикси|лента(?!\p{L})|самокат|куппер|хлеб|молок|булоч|булк|кола(?!\p{L})|колу(?!\p{L})|колы(?!\p{L})|кока[- ]?кол|coca[- ]?cola|pepsi|пепси|газиров|напит|сок(?!\p{L})|сока(?!\p{L})|соки(?!\p{L})|вод[ауы](?!\p{L})|сыр|яйц|яиц|мяс|куриц|рыб|овощ|фрукт|яблок|банан|карто|помидор|огур|макарон|круп|рис(?!\p{L})|греч|сахар|соль(?!\p{L})|масл|кефир|йогурт|творог|сметан|сливк|печень|конфет|шоколад|морожен|выпечк|батон|сосиск|колбас|чипс|сухар|чай(?!\p{L}))/u],['Авто',/автомойк|мойк[аиуе]|детейлинг|полировк[аиуе]|керамик[аиуе]|химчистк[аиуе] салон|шиномонтаж|балансировк|развал.?схождени|замен[аыуе] масла|заправк|заправил|заправился|азс|бензин|дизел|топлив|автосервис|техобслуживани|техосмотр|тонировк|эвакуатор|автозапчаст|запчаст[иь]|шин[аыу](?!\p{L})|резин[аыу](?!\p{L})|осаго|каско|парковк|стоянк|гибдд|платн[а-я]* дорог|автомобил|машин[аыу](?!\p{L})|лукойл|роснефть|газпром(?!\p{L}*\s*банк)/u],['Транспорт',/такси|метро|автобус|проезд|транспорт|электричк|поезд|самолет|самолёт|каршеринг/],['Здоровье',/аптек|лекарств|врач|здоров|анализ|массаж|стоматолог|клиник|психолог|терапевт/],['Дом',/квартир|аренд|коммун|интернет|ремонт/],['Развлечения',/кино|театр|игр|концерт|подписк|нетфликс|netflix|spotify|спотифай|музе|парк аттракцион/],['Красота',/красот|стриж|парикмахер|барбер|салон|маникюр|педикюр|косметик|бров|ресниц|эпиляц/],['Работа',/стриж|зарплат|аванс|гонорар|клиент|заказ|работ|песн|аранжировк/],['Покупки',/одежд|обув|футбол|подар|покупк|озон|ozon|wildberries|вайлдберриз|ламода|парикмахер|салон|маникюр|косметик/]];
@@ -52,14 +51,14 @@ entries.push({title:title?title[0].toUpperCase()+title.slice(1):type==='income'?
 }}
 return {entries,errors};}
 
-const currencies=['RUB','USD','EUR','GBP','KZT','BYN','CNY','AED','TRY','GEL','AMD'];
+const currencies=['RUB','USD','EUR','GBP','KZT','CNY','AED','TRY','GEL','AMD'];
 const incomeCategories=['Зарплата','Работа','Подарки','Проценты','Продажи',...Speech.extraIncome,...Speech.voiceIncome,'Другое'];
 const uid=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
 const isMoney=n=>Number.isSafeInteger(n)&&Math.abs(n)<=1e12;
 const validDate=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&dateString(new Date(d+'T12:00:00'))===d;
-const initialState=()=>({version:2,accounts:[{id:'main',name:'Основной счёт',initial:0,currency:'RUB'}],entries:[],categories:[...categories],incomeCategories:[...incomeCategories],limits:{},goals:[],payments:[],deposits:[],reminders:[],settings:{theme:'system',language:'ru',onboarded:false,beautyCategoryAdded:true,speechCategoriesAdded:true,autoCategoryAdded:true,voiceCategoriesAdded:true,voiceFlowsAdded:true},tickets:[]});
+const initialState=()=>({version:2,accounts:[{id:'main',name:'Основной счёт',initial:0,currency:'RUB'}],entries:[],categories:[...categories],incomeCategories:[...incomeCategories],limits:{},goals:[],payments:[],settings:{theme:'system',language:'ru',onboarded:false,beautyCategoryAdded:true,speechCategoriesAdded:true,autoCategoryAdded:true,voiceCategoriesAdded:true,voiceFlowsAdded:true},tickets:[]});
 function migrate(s){
-if(s?.version===2){const next=structuredClone(s);next.deposits??=[];next.reminders??=[];if(!next.settings.beautyCategoryAdded){if(!next.categories.includes('Красота'))next.categories.splice(Math.max(0,next.categories.indexOf('Другое')),0,'Красота');next.settings.beautyCategoryAdded=true;}
+if(s?.version===2){const next=structuredClone(s);if(!next.settings.beautyCategoryAdded){if(!next.categories.includes('Красота'))next.categories.splice(Math.max(0,next.categories.indexOf('Другое')),0,'Красота');next.settings.beautyCategoryAdded=true;}
 if(!next.settings.speechCategoriesAdded){
  for(const [list,additions] of [[next.categories,Speech.extraExpenses],[next.incomeCategories,Speech.extraIncome]]){
   for(const name of additions)if(!list.includes(name))list.splice(list.indexOf('Другое'),0,name);
@@ -101,10 +100,10 @@ if(e.type==='saving')return s.goals.some(g=>g.id===e.goalId&&g.currency===a.curr
 if(e.type==='transfer'){const to=s.accounts.find(a=>a.id===e.toAccount);return !!to&&to.id!==a.id&&isMoney(e.toAmount)&&e.toAmount>0&&(to.currency!==a.currency||e.toAmount===e.amount);}
 return [...s.categories,...s.incomeCategories].includes(e.category)&&(e.categoryChosen===undefined||typeof e.categoryChosen==='boolean');}))return false;
 if(!s.limits||Object.entries(s.limits).some(([c,ls])=>!currencies.includes(c)||!ls||typeof ls!=='object'||Object.entries(ls).some(([k,v])=>!s.categories.includes(k)||!isMoney(v)||v<0)))return false;
-if(!Array.isArray(s.payments)||new Set(s.payments.map(p=>p?.id)).size!==s.payments.length||!s.payments.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&p.name.trim()&&p.name.length<=100&&isMoney(p.amount)&&p.amount>0&&s.accounts.some(a=>a.id===p.account)&&s.categories.includes(p.category)&&validDate(p.date)&&['once','monthly','daily','weekly','fortnightly'].includes(p.repeat)&&(p.reminderTime===undefined||typeof p.reminderTime==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(p.reminderTime))&&(p.endDate===undefined||validDate(p.endDate)&&p.endDate>=p.date)&&(p.remindersDisabled===undefined||typeof p.remindersDisabled==='boolean')&&(p.bank===undefined||typeof p.bank==='string'&&p.bank.length<=80)&&Number.isInteger(p.remindDays)&&p.remindDays>=0&&p.remindDays<=30))return false;
+if(!Array.isArray(s.payments)||new Set(s.payments.map(p=>p?.id)).size!==s.payments.length||!s.payments.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&p.name.trim()&&p.name.length<=100&&isMoney(p.amount)&&p.amount>0&&s.accounts.some(a=>a.id===p.account)&&s.categories.includes(p.category)&&validDate(p.date)&&['once','monthly','daily','weekly','fortnightly'].includes(p.repeat)&&(p.reminderTime===undefined||typeof p.reminderTime==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(p.reminderTime))&&Number.isInteger(p.remindDays)&&p.remindDays>=0&&p.remindDays<=30))return false;
 if(!s.settings||!['system','light','dark'].includes(s.settings.theme)||!['ru','en'].includes(s.settings.language))return false;
 if(!Array.isArray(s.tickets)||!s.tickets.every(t=>t&&typeof t.id==='string'&&typeof t.text==='string'&&t.text.length<=5000&&typeof t.date==='string'))return false;
-return Finance.valid(s);
+return true;
 }catch{return false;}}
 function slang(text){const hundreds=['','сто','двести','триста','четыреста','пятьсот','шестьсот','семьсот','восемьсот','девятьсот'];return text.toLowerCase().replace(/(?<!\p{L})пятихатк[ауи]?(?!\p{L})/gu,'пятьсот').replace(/(?<!\p{L})(?:питик|пятик)(?!\p{L})/gu,'пять тысяч').replace(/(?<!\p{L})косар[ьяей]+(?!\p{L})|(?<!\p{L})касар[ьяей]+(?!\p{L})/gu,'тысячи').replace(/(?<!\p{L})касарь(?!\p{L})|(?<!\p{L})косарь(?!\p{L})/gu,'тысяча').replace(/(?<!\p{L})тыщ[а-яё]*(?!\p{L})/gu,'тысячи').replace(/(?<!\p{L})сотк[ауи](?!\p{L})/gu,'__HUNDRED__').replace(/(одна|одну|две|два|три|четыре|пять|шесть|семь|восемь|девять|\d+)\s+__HUNDRED__/g,(_,n)=>String((nums[n]||Number(n))*100)).replace(/__HUNDRED__/g,'сто').replace(/(?<!\p{L})(один|одна|одну|два|две|три|четыре|пять|шесть|семь|восемь|девять)\s+(?=сто(?:\s|$)|двести|триста|четыреста|пятьсот|шестьсот|семьсот|восемьсот|девятьсот)/gu,'$1 тысячи ').replace(/(тысяч[аиу]?)\s+([1-9]00)(?!\d)/gu,(_,th,n)=>th+' '+hundreds[Number(n)/100]);}
 function matchGoal(clause,goals){
@@ -192,9 +191,9 @@ if(/^(?:я )?(?:вернул[аи]?|получил[аи]?|пришло|запл�
 }
 const named=[...state.accounts].sort((a,b)=>b.name.length-a.name.length).find(a=>(' '+normalizeTitle(clause)+' ').includes(' '+normalizeTitle(a.name)+' '));
 if(named&&!internal){account=named;clause=clause.replace(new RegExp(named.name.replace(/[.*+?^\${}()|[\]\\]/g,'\\$&'),'i'),'');}
-const currencyToken=/(?<!\p{L})(?:белорусск[а-я]* рубл[а-я]*|byn|доллар[а-я]*|usd|евро|eur|тенге|kzt|юан[а-яь]*|cny|рубл[а-я]*|руб|rub)(?!\p{L})|[$€₽]/u;
+const currencyToken=/(?<!\p{L})(?:доллар[а-я]*|usd|евро|eur|тенге|kzt|юан[а-яь]*|cny|рубл[а-я]*|руб|rub)(?!\p{L})|[$€₽]/u;
 const currencyWord=clause.match(currencyToken)?.[0]||'';
-const currency=/белорусск|byn/u.test(currencyWord)?'BYN':/доллар|usd|\$/u.test(currencyWord)?'USD':/евро|eur|€/u.test(currencyWord)?'EUR':/тенге|kzt/u.test(currencyWord)?'KZT':/юан|cny/u.test(currencyWord)?'CNY':currencyWord?'RUB':null;
+const currency=/доллар|usd|\$/u.test(currencyWord)?'USD':/евро|eur|€/u.test(currencyWord)?'EUR':/тенге|kzt/u.test(currencyWord)?'KZT':/юан|cny/u.test(currencyWord)?'CNY':currencyWord?'RUB':null;
 if(internal){
  const accounts=state.accounts.filter(a=>!currency||a.currency===currency);
  const amountMatches=[...clause.matchAll(amountRe)];
@@ -293,11 +292,5 @@ function saveDrafts(state,drafts,createdAt=new Date().toISOString()){
 
 function nextPayment(payment,now=new Date()){return Schedule.next(payment,dateString(now));}
 function addEntry(state,entry){const next=structuredClone(state);next.entries.push({...entry,id:entry.id||uid(),createdAt:entry.createdAt??new Date().toISOString()});if(!validateState(next))throw Error('Проверьте операцию');return next;}
-function spokenAmount(text){
- const matches=[...text.matchAll(amountRe)];
- if(matches.length!==1)return null;
- const m=matches[0],amount=amountValue(m[0]);
- return isMoney(amount)&&amount>0?{index:m.index,text:m[0],amount}:null;
-}
-const api={spokenAmount,categories,incomeCategories,currencies,parse,balance,goalBalance,totals,validateState,dateString,initialState,migrate,slang,nextPayment,addEntry,normalizeTitle,installmentPlan,saveDrafts};if(typeof module!=='undefined')module.exports=api;root.MonoEngine=api;
+const api={categories,incomeCategories,currencies,parse,balance,goalBalance,totals,validateState,dateString,initialState,migrate,slang,nextPayment,addEntry,normalizeTitle,installmentPlan,saveDrafts};if(typeof module!=='undefined')module.exports=api;root.MonoEngine=api;
 })(typeof window!=='undefined'?window:globalThis);

@@ -22,12 +22,8 @@ function speechEvent(id,event,info){
 function refreshReminders(){
  if(typeof state!=='object')return;
  const now=new Date(),today=E.dateString(now),minute=now.toTimeString().slice(0,5),items=[];
- for(const r of state.reminders||[]){
-  if(r.date>today||r.date===today&&r.time>minute)items.push({id:'personal:'+r.id,date:r.date,time:r.time,text:r.name});
- }
  const recorded=new Set(state.entries.filter(e=>e.paymentId).map(e=>e.paymentId+'|'+e.paymentDate));
  for(const p of state.payments){
-  if(p.remindersDisabled)continue;
   const time=MonoSchedule.time(p);
   let due=MonoSchedule.next(p,today);
   let count=0;
@@ -51,9 +47,7 @@ function refreshReminders(){
 root.MonoNative={
  Recognition:NativeRecognition,speechEvent,refreshReminders,
  storeAccess:access=>post('storeAccess',{access}),
- refreshAccess:()=>{root.MonoFinanceUI?.catchUp();return root.MonoAccess?.refresh(true);},
- appReady:()=>post('appReady'),
- openShortcut:kind=>root.MonoShortcut?.(kind),
+ refreshAccess:()=>root.MonoAccess?.refresh(true),
  share:(name,text)=>post('share',{name,text}),
  invite:()=>post('invite'),
  openURL:url=>post('openURL',{url}),

@@ -9,8 +9,6 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         self?.send("speechEvent", [id, event, info])
     }
     private let reminders = MonoReminders()
-    private var webReady = false
-    private var pendingShortcut: String?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -48,32 +46,12 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
     @objc private func refreshReminders() {
         send("refreshReminders", [])
         send("refreshAccess", [])
-        deliverShortcut()
-    }
-
-
-    func openShortcut(_ url: URL) -> Bool {
-        guard url.scheme == "monomoney", url.host == "record",
-              url.path == "/voice" || url.path == "/text" else { return false }
-        pendingShortcut = String(url.path.dropFirst())
-        deliverShortcut()
-        return true
-    }
-
-    private func deliverShortcut() {
-        guard webReady, UIApplication.shared.applicationState == .active,
-              let shortcut = pendingShortcut else { return }
-        pendingShortcut = nil
-        send("openShortcut", [shortcut])
     }
 
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.frameInfo.isMainFrame, message.frameInfo.request.url?.isFileURL == true,
               let body = message.body as? [String: Any], let action = body["action"] as? String else { return }
         switch action {
-        case "appReady":
-            webReady = true
-            deliverShortcut()
         case "speechStart", "speechStop", "speechAbort":
             guard let id = body["id"] as? String else { return }
             switch action {
@@ -101,11 +79,6 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
             }
         default: break
         }
-    }
-
-    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-        webReady = false
-        webView.reload()
     }
 
     private var accessKey: [String: Any] {

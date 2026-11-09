@@ -3,26 +3,22 @@ const {test} = require('node:test');
 const Period = require('../Mono/Web/period.js');
 const Engine = require('../Mono/Web/engine.js');
 
-test('calendar presets and exact custom ranges use the requested bucket boundaries', () => {
-  const october = Period.preset('month', '2026-10-06');
-  assert.deepEqual(october, {start: '2026-10-01', end: '2026-10-31'});
-  const custom = Period.range('2026-10-06', '2026-11-06');
-  assert.equal(Period.buckets(custom).length, 32);
+test('presets start on the selected date and chart buckets stay inside the period', () => {
+  const month = Period.preset('month', '2026-10-06');
+  assert.deepEqual(month, {start: '2026-10-06', end: '2026-11-06'});
+  assert.equal(Period.buckets(month).length, 32);
   assert.equal(Period.buckets(Period.month('2026-11')).length, 30);
-  assert.deepEqual(Period.preset('week', '2026-10-06'), {start:'2026-10-05',end:'2026-10-11'});
   assert.equal(Period.buckets(Period.preset('week', '2026-10-06')).length, 7);
-  assert.equal(Period.preset('month', '2026-02-15').end, '2026-02-28');
+  assert.equal(Period.preset('month', '2026-01-31').end, '2026-02-28');
+  assert.equal(Period.preset('year', '2024-02-29').end, '2025-02-28');
   const year = Period.buckets(Period.preset('year', '2026-10-06'));
-  assert.equal(year.length,12);
-  assert.deepEqual(year[0], {start:'2026-01-01',end:'2026-01-31'});
-  assert.deepEqual(year.at(-1), {start:'2026-12-01',end:'2026-12-31'});
-  for(const days of [35,36,90,91]){
-    const end=Period.dateAfter(custom.start,days-1),bins=Period.buckets(Period.range(custom.start,end));
-    assert.equal(bins[0].start,custom.start);
-    assert.equal(bins.at(-1).end,end);
-    assert.equal(bins.reduce((n,b)=>n+Period.daysBetween(b.start,b.end)+1,0),days);
-    assert.equal(bins[0].end,days===35?custom.start:days<=90?'2026-10-11':'2026-10-31');
-  }
+  assert.deepEqual(year[0], {start: '2026-10-06', end: '2026-10-31'});
+  assert.deepEqual(year.at(-1), {start: '2027-10-01', end: '2027-10-06'});
+  const custom = Period.range('2026-11-05', '2026-11-06');
+  assert.deepEqual(Period.buckets(custom), [
+    {start: '2026-11-05', end: '2026-11-05'},
+    {start: '2026-11-06', end: '2026-11-06'}
+  ]);
 });
 
 const cases = [

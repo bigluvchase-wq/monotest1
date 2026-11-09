@@ -9,7 +9,6 @@
  <key>CFBundlePackageType</key><string>APPL</string>
  <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
  <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
- <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>com.monomoney.ios.record</string><key>CFBundleURLSchemes</key><array><string>monomoney</string></array></dict></array>
  <key>LSRequiresIPhoneOS</key><true/>
  <key>NSMicrophoneUsageDescription</key><string>Моно использует микрофон, чтобы записывать доходы и расходы голосом.</string>
  <key>NSSpeechRecognitionUsageDescription</key><string>Моно преобразует вашу речь в текст для заполнения операций.</string>
