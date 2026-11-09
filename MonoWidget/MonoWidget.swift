@@ -55,23 +55,32 @@ private struct ShortcutView: View {
     }
 }
 
-private struct MonoShortcutWidget: Widget {
-    let shortcut: Shortcut
+@MainActor
+private func shortcutConfiguration(_ shortcut: Shortcut) -> some WidgetConfiguration {
+    StaticConfiguration(kind: "MonoShortcut." + shortcut.rawValue, provider: ShortcutProvider()) { _ in
+        ShortcutView(shortcut: shortcut)
+    }
+    .configurationDisplayName(Text(shortcut.title))
+    .description("Открывает запись операции в Моно.")
+    .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular])
+}
 
+private struct MonoVoiceWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "MonoShortcut." + shortcut.rawValue, provider: ShortcutProvider()) { _ in
-            ShortcutView(shortcut: shortcut)
-        }
-        .configurationDisplayName(Text(shortcut.title))
-        .description("Открывает запись операции в Моно.")
-        .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular])
+        shortcutConfiguration(.voice)
+    }
+}
+
+private struct MonoTextWidget: Widget {
+    var body: some WidgetConfiguration {
+        shortcutConfiguration(.text)
     }
 }
 
 @main
 struct MonoWidgetBundle: WidgetBundle {
     var body: some Widget {
-        MonoShortcutWidget(shortcut: .voice)
-        MonoShortcutWidget(shortcut: .text)
+        MonoVoiceWidget()
+        MonoTextWidget()
     }
 }
