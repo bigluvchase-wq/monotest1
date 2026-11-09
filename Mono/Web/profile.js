@@ -1,29 +1,24 @@
 (function(root){
 'use strict';
 
-// --- ФИКС КВАДРАТНОГО АРТЕФАКТА ПРИ ЗАГРУЗКЕ (Safari/Webkit GPU Fix) ---
-if (!document.getElementById('mono-ios-blur-fix')) {
+// --- ЖЕСТКИЙ ФИКС БЕЛОГО/КВАДРАТНОГО ФОНА В iOS SAFARI ---
+if (!document.getElementById('mono-ios-bg-fix')) {
     const style = document.createElement('style');
-    style.id = 'mono-ios-blur-fix';
+    style.id = 'mono-ios-bg-fix';
     style.textContent = `
+        html, body {
+            background: linear-gradient(145deg, #e3cbf5 0%, #dbe2fb 50%, #f4e8fa 100%) !important;
+            background-attachment: fixed !important;
+        }
         body::before, body::after, .bg-decor {
             -webkit-transform: translate3d(0,0,0) !important;
             transform: translate3d(0,0,0) !important;
-            will-change: filter, background-color;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
         }
         .profile-layout {
-            -webkit-animation: profileFadeIn 0.25s ease-out;
-            animation: profileFadeIn 0.25s ease-out;
             -webkit-transform: translateZ(0);
             transform: translateZ(0);
-        }
-        @-webkit-keyframes profileFadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes profileFadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
         }
     `;
     document.head.appendChild(style);
@@ -237,7 +232,9 @@ async function reconcile(){
   
   if(j.state){
    if(!E.validateState(j.state))return;
-   try{localStorage.setItem('mono-backup-before-sync',JSON.stringify(state));}catch{}
+   
+   // УБИРАЕМ ХВОСТЫ СТАРОГО БЭКАПА И ОЧИЩАЕМ ПАМЯТЬ
+   try{localStorage.removeItem('mono-backup-before-sync');}catch{}
 
    if (state.settings) {
     if (!j.state.settings) j.state.settings = {};
@@ -292,24 +289,11 @@ root.MonoAccess={
 };
 root.MonoProfile={render:renderProfile,startTrial,socials,decorate,safeAvatar,profileName,premiumDialog};decorate();
 
-setTimeout(() => {
-    const backupStr = localStorage.getItem('mono-backup-before-sync');
-    if (backupStr) {
-        try {
-            const backupData = JSON.parse(backupStr);
-            persist(E.migrate(backupData), {remote: false}); 
-            localStorage.removeItem('mono-backup-before-sync'); 
-            queueSync(); 
-            alert('Ура! Данные успешно восстановлены из резервной копии и отправлены на сервер.');
-            location.reload(); 
-        } catch(err) {}
-    }
-}, 1500);
-
 if(acc.trialUntil)saveIdentity();else startTrial();
 
-// --- ПРИМЕНЯЕМ ТЕМУ МГНОВЕННО ---
-// Чтобы фон не моргал, пока мы ждем ответа от сервера
+// Очищаем старый ключ на всякий случай при старте приложения
+try{localStorage.removeItem('mono-backup-before-sync');}catch{}
+
 if (typeof applyTheme === 'function') applyTheme();
 
 ensureCode().then(()=>refresh());
