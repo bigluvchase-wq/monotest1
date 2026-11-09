@@ -54,7 +54,7 @@ function profileName(){return typeof state.settings.profileName==='string'?Array
 function safeAvatar(value){return typeof value==='string'&&value.length<180000&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value)?value:'';}
 function avatar(){const src=safeAvatar(state.settings.profileAvatar);return src?`<img src="${src}" alt="Аватарка">`:person;}
 function decorate(){const button=document.querySelector('#helpButton');if(button)button.innerHTML=avatar();}
-function resizeAvatar(file){return new Promise((resolve,reject)=>{if(!file||!file.type.startsWith('image/')||file.size>8*1024*1024){reject(Error('Выберите изображение размером до 8 МБ.'));return;}const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{try{const size=Math.min(img.naturalWidth,img.naturalHeight);if(!size)throw Error();const canvas=document.createElement('canvas');canvas.width=canvas.height=256;canvas.getContext('2d').drawImage(img,(img.naturalWidth-size)/2,(img.naturalHeight-size)/2,size,size,0,0,256,256);const value=canvas.toDataURL('image/jpeg',.85);if(!safeAvatar(value))throw Error();resolve(value);}catch{reject(Error('Не удалось прочитать фото. Попробуйте JPG মাতৃчасть или PNG.'));}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);reject(Error('Не удалось открыть фото. Попробуйте JPG или PNG.'));};img.src=url;});}
+function resizeAvatar(file){return new Promise((resolve,reject)=>{if(!file||!file.type.startsWith('image/')||file.size>8*1024*1024){reject(Error('Выберите изображение размером до 8 МБ.'));return;}const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{try{const size=Math.min(img.naturalWidth,img.naturalHeight);if(!size)throw Error();const canvas=document.createElement('canvas');canvas.width=canvas.height=256;canvas.getContext('2d').drawImage(img,(img.naturalWidth-size)/2,(img.naturalHeight-size)/2,size,size,0,0,256,256);const value=canvas.toDataURL('image/jpeg',.85);if(!safeAvatar(value))throw Error();resolve(value);}catch{reject(Error('Не удалось прочитать фото. Попробуйте JPG или PNG.'));}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);reject(Error('Не удалось открыть фото. Попробуйте JPG или PNG.'));};img.src=url;});}
 function editProfile(){let image=safeAvatar(state.settings.profileAvatar);actionDialog('Ваш профиль',`<form class="profile-edit-form"><div class="profile-avatar profile-avatar-preview">${avatar()}</div><label class="secondary avatar-upload">Выбрать фото<input type="file" accept="image/*" class="sr-only" name="avatar"></label><button type="button" class="secondary" data-avatar-reset>Убрать фото</button><label class="field">Имя · до 20 символов<input name="name" maxlength="20" required value="${esc(profileName())}" autocomplete="nickname"></label><p class="form-error" role="alert" hidden></p><button type="submit" class="primary">Сохранить</button></form>`,(f,form)=>{const name=f.get('name').trim();if(!name||Array.from(name).length>20)throw Error('Введите имя — до 20 символов.');if(commit(s=>{s.settings.profileName=name;s.settings.profileAvatar=image;},'Профиль сохранён')){decorate();document.querySelector('#actionDialog').close();}});
  const form=document.querySelector('.profile-edit-form'),button=form.querySelector('[type=submit]'),error=form.querySelector('.form-error');let revision=0;
  form.querySelector('[name=avatar]').onchange=async event=>{const ticket=++revision;button.disabled=true;error.hidden=true;try{const result=await resizeAvatar(event.target.files[0]);if(ticket!==revision)return;image=result;form.querySelector('.profile-avatar-preview').innerHTML=`<img src="${result}" alt="Аватарка">`;}catch(e){if(ticket===revision){error.textContent=e.message;error.hidden=false;}}finally{if(ticket===revision)button.disabled=false;}};
@@ -188,11 +188,29 @@ async function reconcile(){
   if(!r.ok)return;
   
   const j=await r.json();
+
+  // ИСПРАВЛЕНИЕ: Если сервер пуст — выгружаем локальные данные и выходим
+  if(j.empty) {
+   push();
+   return;
+  }
+
   const m=meta();
   
   if(j.state){
    if(!E.validateState(j.state))return;
    try{localStorage.setItem('mono-backup-before-sync',JSON.stringify(state));}catch{}
+
+   // ЗАЩИТА АВАТАРКИ И ИМЕНИ
+   if (state.settings) {
+    if (!j.state.settings) j.state.settings = {};
+    if (!j.state.settings.profileName && state.settings.profileName) {
+     j.state.settings.profileName = state.settings.profileName;
+    }
+    if (!j.state.settings.profileAvatar && state.settings.profileAvatar) {
+     j.state.settings.profileAvatar = state.settings.profileAvatar;
+    }
+   }
    
    const wasProblem=storageProblem;storageProblem=false;
    if(!persist(E.migrate(j.state),{remote:true})){storageProblem=wasProblem;return;}
@@ -205,6 +223,7 @@ async function reconcile(){
    applyTheme();
    renderHomeReminders();
    if(page!=='home')render();
+   decorate(); // Обновляем аватарку в UI после синхронизации
    
   }
  }catch(e){

@@ -68,7 +68,7 @@ async function settle(commit=true){
  s.animations=[slide(outgoing,start,commit?-edge:0),slide(incoming,edge+start,commit?0:edge)];
  if(BLUR){
   const content=commit?incoming:incoming.firstElementChild;
-  s.animations.push(commit?content.animate([{filter:fromFilter,offset:0},{filter:'blur(0.4px)',offset:.8},{filter:'none',offset:.8001},{filter:'none',offset:1}],{duration,easing:'linear',fill:'both'}):content.animate([{filter:fromFilter},{filter:`blur(${BLUR}px)`}],{duration,easing:ease,fill:'both'}));
+  s.animations.push(commit?content.animate([{filter:fromFilter,offset:0},{filter:'blur(0.4px)',offset:.42},{filter:'none',offset:.4201},{filter:'none',offset:1}],{duration,easing:'linear',fill:'both'}):content.animate([{filter:fromFilter},{filter:`blur(${BLUR}px)`}],{duration,easing:ease,fill:'both'}));
  }
  indicator(rootPages.indexOf(page),true);
  await Promise.allSettled(s.animations.map(animation=>animation.finished));
