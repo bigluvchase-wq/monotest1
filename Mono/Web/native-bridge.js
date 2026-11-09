@@ -41,6 +41,10 @@ function refreshReminders(){
    due=MonoSchedule.next(p,MonoSchedule.addDays(due,1));
   }
  }
+ for(const r of state.reminders||[]){
+  if(r.done||r.date<today||r.date===today&&r.time<=minute)continue;
+  items.push({id:'note|'+r.id+'|'+r.date+'|'+r.time,date:r.date,time:r.time,text:r.title+(r.text?': '+r.text:'')});
+ }
  items.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
  post('reminders',{items:items.slice(0,60)});
 }
