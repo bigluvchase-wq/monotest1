@@ -10,3 +10,27 @@ for(const dialog of document.querySelectorAll('dialog:not(#onboarding):not(#char
  dialog.addEventListener('pointercancel',()=>start=null);
 }
 })();
+
+// Главный экран: микрофон встаёт на уровень логотипа заставки; заголовок остаётся по центру.
+(function(){
+ const root=document.documentElement;let queued=false;
+ function alignHome(){
+  queued=false;
+  if(document.body.dataset.page!=='home')return;
+  const mic=document.querySelector('#mic'),key=document.querySelector('#textEntry');
+  if(!mic||!key)return;
+  root.style.setProperty('--home-shift','0px');
+  const m=mic.getBoundingClientRect(),k=key.getBoundingClientRect(),foot=document.querySelector('.app footer')?.getBoundingClientRect();
+  const reminder=document.querySelector('#homeReminders')?.firstElementChild?.getBoundingClientRect();
+  const target=(window.__launchRatio||.47)*innerHeight,wanted=target-(m.top+m.height/2);
+  const floor=Math.min(foot?foot.top:innerHeight-110,reminder?reminder.top:Infinity),room=floor-k.bottom-8;
+  root.style.setProperty('--home-shift',Math.round(Math.max(0,Math.min(wanted,room)))+'px');
+ }
+ const queue=()=>{if(queued)return;queued=true;requestAnimationFrame(alignHome);};
+ window.MonoAlignHome=alignHome;
+ addEventListener('load',queue);addEventListener('resize',queue);addEventListener('orientationchange',queue);
+ document.fonts?.ready.then(queue);
+ new MutationObserver(queue).observe(document.body,{attributes:true,attributeFilter:['data-page']});
+ const reminders=document.querySelector('#homeReminders');if(reminders)new MutationObserver(queue).observe(reminders,{childList:true});
+ queue();
+})();
