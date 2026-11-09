@@ -14,6 +14,7 @@ class NativeRecognition {
 function speechEvent(id,event,info){
  const session=sessions.get(id);
  if(!session)return;
+ if(event==='level'){window.MonoMicWave?.level(Number(info.v)||0);return;}
  if(event==='start')session.onstart?.();
  if(event==='result')session.onresult?.({results:[{0:{transcript:info.text},isFinal:false}]});
  if(event==='error')session.onerror?.({error:info.code,message:info.detail});
