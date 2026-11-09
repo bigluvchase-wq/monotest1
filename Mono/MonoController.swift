@@ -2,6 +2,7 @@ import UIKit
 import Security
 import UserNotifications
 import WebKit
+import WidgetKit
 
 final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
     private var web: WKWebView!
@@ -73,6 +74,11 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
             storeAccess(access)
         case "reminders":
             reminders.replace(body["items"] as? [[String: String]] ?? [])
+        case "widget":
+            if let data = body["data"] as? [String: Any], let defaults = UserDefaults(suiteName: MonoShared.group) {
+                for (key, value) in data { defaults.set(value, forKey: key) }
+                WidgetCenter.shared.reloadAllTimelines()
+            }
         case "enableReminders":
             reminders.requestAuthorization { [weak self] granted in
                 self?.send("reminderPermission", [granted])
@@ -185,4 +191,29 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         alert.addAction(UIAlertAction(title: "ОК", style: .default) { _ in completionHandler() })
         present(alert, animated: true)
     }
+
+    // Быстрые действия с виджетов (mono://record, mono://text).
+    private var pageReady = false
+    private var pendingLink: String?
+
+    func openLink(_ kind: String) {
+        pendingLink = kind
+        flushLink()
+    }
+
+    private func flushLink() {
+        guard pageReady, let kind = pendingLink else { return }
+        pendingLink = nil
+        send("deepLink", [kind])
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        pageReady = true
+        flushLink()
+    }
+}
+
+enum MonoShared {
+    // Должна совпадать с App Group, включённой у приложения и у виджета.
+    static let group = "group.ru.mono.app"
 }
