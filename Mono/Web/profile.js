@@ -54,7 +54,7 @@ function profileName(){return typeof state.settings.profileName==='string'?Array
 function safeAvatar(value){return typeof value==='string'&&value.length<180000&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value)?value:'';}
 function avatar(){const src=safeAvatar(state.settings.profileAvatar);return src?`<img src="${src}" alt="Аватарка">`:person;}
 function decorate(){const button=document.querySelector('#helpButton');if(button)button.innerHTML=avatar();}
-function resizeAvatar(file){return new Promise((resolve,reject)=>{if(!file||!file.type.startsWith('image/')||file.size>8*1024*1024){reject(Error('Выберите изображение размером до 8 МБ.'));return;}const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{try{const size=Math.min(img.naturalWidth,img.naturalHeight);if(!size)throw Error();const canvas=document.createElement('canvas');canvas.width=canvas.height=256;canvas.getContext('2d').drawImage(img,(img.naturalWidth-size)/2,(img.naturalHeight-size)/2,size,size,0,0,256,256);const value=canvas.toDataURL('image/jpeg',.85);if(!safeAvatar(value))throw Error();resolve(value);}catch{reject(Error('Не удалось прочитать фото. Попробуйте JPG মাতৃчасть или PNG.'));}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);reject(Error('Не удалось открыть фото. Попробуйте JPG или PNG.'));};img.src=url;});}
+function resizeAvatar(file){return new Promise((resolve,reject)=>{if(!file||!file.type.startsWith('image/')||file.size>8*1024*1024){reject(Error('Выберите изображение размером до 8 МБ.'));return;}const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{try{const size=Math.min(img.naturalWidth,img.naturalHeight);if(!size)throw Error();const canvas=document.createElement('canvas');canvas.width=canvas.height=256;canvas.getContext('2d').drawImage(img,(img.naturalWidth-size)/2,(img.naturalHeight-size)/2,size,size,0,0,256,256);const value=canvas.toDataURL('image/jpeg',.85);if(!safeAvatar(value))throw Error();resolve(value);}catch{reject(Error('Не удалось прочитать фото. Попробуйте JPG или PNG.'));}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);reject(Error('Не удалось открыть фото. Попробуйте JPG или PNG.'));};img.src=url;});}
 function editProfile(){let image=safeAvatar(state.settings.profileAvatar);actionDialog('Ваш профиль',`<form class="profile-edit-form"><div class="profile-avatar profile-avatar-preview">${avatar()}</div><label class="secondary avatar-upload">Выбрать фото<input type="file" accept="image/*" class="sr-only" name="avatar"></label><button type="button" class="secondary" data-avatar-reset>Убрать фото</button><label class="field">Имя · до 20 символов<input name="name" maxlength="20" required value="${esc(profileName())}" autocomplete="nickname"></label><p class="form-error" role="alert" hidden></p><button type="submit" class="primary">Сохранить</button></form>`,(f,form)=>{const name=f.get('name').trim();if(!name||Array.from(name).length>20)throw Error('Введите имя — до 20 символов.');if(commit(s=>{s.settings.profileName=name;s.settings.profileAvatar=image;},'Профиль сохранён')){decorate();document.querySelector('#actionDialog').close();}});
  const form=document.querySelector('.profile-edit-form'),button=form.querySelector('[type=submit]'),error=form.querySelector('.form-error');let revision=0;
  form.querySelector('[name=avatar]').onchange=async event=>{const ticket=++revision;button.disabled=true;error.hidden=true;try{const result=await resizeAvatar(event.target.files[0]);if(ticket!==revision)return;image=result;form.querySelector('.profile-avatar-preview').innerHTML=`<img src="${result}" alt="Аватарка">`;}catch(e){if(ticket===revision){error.textContent=e.message;error.hidden=false;}}finally{if(ticket===revision)button.disabled=false;}};
@@ -63,7 +63,7 @@ function editProfile(){let image=safeAvatar(state.settings.profileAvatar);action
 
 // ---------- Доступ: пробный период, Премиум, код, синхронизация ----------
 const CFG=root.MONO_CONFIG||{},AK='mono-access',SK='mono-sync',hex=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
-let acc={},paidUntil=0,activeWithoutDate=false,syncTimer=null,syncing=false,readingCloud=false,cloudReady=false,refreshTask=null;
+let acc={},paidUntil=0,activeWithoutDate=false,syncTimer=null,syncing=false,refreshTask=null;
 const isPremium=()=>activeWithoutDate||paidUntil>Date.now();
 try{acc=JSON.parse(localStorage.getItem(AK))||{};}catch{}
 const stored=root.monoStoredAccess;
@@ -154,51 +154,35 @@ async function refreshAccess(force){
   } catch(e) {}
  }
 
- if(isPremium()&&(!was||!cloudReady))reconcile();
- else if(isPremium()&&meta().pending)schedulePush();
+ if(isPremium()&&!was)reconcile();
  if(page==='profile')render();
 }
 const meta=()=>{try{return JSON.parse(localStorage.getItem(SK))||{};}catch{return {};}};
 const setMeta=m=>{try{localStorage.setItem(SK,JSON.stringify(m));}catch{}};
 
-function schedulePush(){
- if(!isPremium()||!cloudReady||readingCloud)return;
- clearTimeout(syncTimer);
- syncTimer=setTimeout(push,1500);
-}
-function queueSync(){
- const m=meta();
- m.updatedAt=new Date().toISOString();
- m.pending=true;
- setMeta(m);
- schedulePush();
-}
+function queueSync(){const m=meta();m.updatedAt=new Date().toISOString();setMeta(m);if(!isPremium())return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1500);}
 
 async function push(){
- if(syncing||readingCloud||!cloudReady||!isPremium()||!acc.code)return;
- const snapshot=state;
+ if(syncing) return;
  syncing=true;
  try{
+  const m=meta();
   const response = await fetch('https://api.monoapp.ru/api/sync', {
    method: 'POST',
    headers: { 'Content-Type': 'application/json' },
-   body: JSON.stringify({ code: acc.code, state: snapshot })
+   body: JSON.stringify({ code: acc.code, state: state }) 
   });
-  if(response.ok&&state===snapshot){
-   const m=meta();
-   m.syncedAt=new Date().toISOString();
-   m.pending=false;
+  if(response.ok){
+   m.syncedAt = new Date().toISOString();
    setMeta(m);
   }
  }catch(e){
   console.error("Ошибка выгрузки в облако", e);
- }finally{syncing=false;if(state!==snapshot&&meta().pending)schedulePush();}
+ }finally{syncing=false;}
 }
 
 async function reconcile(){
- if(readingCloud||!isPremium()||!acc.code)return;
- readingCloud=true;
- const snapshot=state;
+ if(!isPremium())return; 
  try{
   const r=await fetch(`https://api.monoapp.ru/api/sync?code=${acc.code}`);
   if(!r.ok)return;
@@ -206,12 +190,8 @@ async function reconcile(){
   const j=await r.json();
   const m=meta();
   
-  if(j.state&&!E.validateState(j.state))return;
-  const changed=state!==snapshot||m.pending;
-  if(j.state&&state!==snapshot&&!m.syncedAt)return;
-  cloudReady=true;
-  if(changed&&m.syncedAt&&(!j.updatedAt||Date.parse(j.updatedAt)<=Date.parse(m.updatedAt)))return;
   if(j.state){
+   if(!E.validateState(j.state))return;
    try{localStorage.setItem('mono-backup-before-sync',JSON.stringify(state));}catch{}
    
    const wasProblem=storageProblem;storageProblem=false;
@@ -219,19 +199,17 @@ async function reconcile(){
    
    m.updatedAt=j.updatedAt || new Date().toISOString();
    m.syncedAt=new Date().toISOString();
-   m.pending=false;
    setMeta(m);
-   window.MonoFinanceUI?.catchUp();
    
    refreshAccounts();
    applyTheme();
    renderHomeReminders();
    if(page!=='home')render();
-   notify('Данные загружены с сервера Моно');
-  }else if(!m.pending&&(state.entries.length||state.deposits?.length||state.reminders?.length)){queueSync();}
+   // Уведомление убрано отсюда!
+  }
  }catch(e){
   console.error("Ошибка загрузки из облака", e);
- }finally{readingCloud=false;if(meta().pending)schedulePush();}
+ }
 }
 
 async function copyCode(){
