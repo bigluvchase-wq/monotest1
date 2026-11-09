@@ -94,7 +94,7 @@ async function ensureCode(){
   redraw();
   
   try {
-   await fetch('http://82.148.255.200:3000/api/registerUser', {
+   await fetch('https://api.monoapp.ru/api/registerUser', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code: acc.code })
@@ -139,7 +139,7 @@ async function refreshAccess(force){
 
  if (acc.code) {
   try {
-   const checkRes = await fetch(`http://82.148.255.200:3000/api/check?code=${acc.code}`);
+   const checkRes = await fetch(`https://api.monoapp.ru/api/check?code=${acc.code}`);
    if (checkRes.ok) {
     const result = await checkRes.json();
     if (result.premium) {
@@ -167,7 +167,7 @@ async function push(){
  syncing=true;
  try{
   const m=meta();
-  const response = await fetch('http://82.148.255.200:3000/api/sync', {
+  const response = await fetch('https://api.monoapp.ru/api/sync', {
    method: 'POST',
    headers: { 'Content-Type': 'application/json' },
    body: JSON.stringify({ code: acc.code, state: state }) 
@@ -185,7 +185,7 @@ async function push(){
 async function reconcile(){
  if(!isPremium())return; 
  try{
-  const r=await fetch(`http://82.148.255.200:3000/api/sync?code=${acc.code}`);
+  const r=await fetch(`https://api.monoapp.ru/api/sync?code=${acc.code}`);
   if(!r.ok)return;
   
   const j=await r.json();
