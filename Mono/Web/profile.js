@@ -205,7 +205,7 @@ async function reconcile(){
    applyTheme();
    renderHomeReminders();
    if(page!=='home')render();
-   notify('Данные загружены с сервера Моно');
+   
   }
  }catch(e){
   console.error("Ошибка загрузки из облака", e);
