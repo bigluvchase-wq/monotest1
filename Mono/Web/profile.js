@@ -18,11 +18,11 @@ function codeBlock(){
 
 function premiumLink(){
  const isPrem = MonoAccess.isPremium();
- if (isPrem) {
-  return `<span class="primary premium-button" style="background: #27ae60; text-align: center; display: block; cursor: default;">Премиум активен ✓</span>`;
- }
  const deviceCode = acc.code ? acc.code.replace(/\s+/g, '') : '';
  const payUrl = deviceCode ? `http://monoapp.ru/?code=${deviceCode}` : 'http://monoapp.ru/';
+ if (isPrem) {
+  return `<a class="primary premium-button premium-active" href="${payUrl}" style="background: #27ae60; text-align: center; display: block;" aria-label="Премиум активен. Продлить подписку">Премиум активен ✓</a>`;
+ }
  return `<a class="primary premium-button" href="${payUrl}">Премиум <span aria-hidden="true">↗</span></a>`;
 }
 
