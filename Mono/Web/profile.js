@@ -1,5 +1,35 @@
 (function(root){
 'use strict';
+
+// --- ФИКС КВАДРАТНОГО АРТЕФАКТА ПРИ ЗАГРУЗКЕ (Safari/Webkit GPU Fix) ---
+if (!document.getElementById('mono-ios-blur-fix')) {
+    const style = document.createElement('style');
+    style.id = 'mono-ios-blur-fix';
+    style.textContent = `
+        body::before, body::after, .bg-decor {
+            -webkit-transform: translate3d(0,0,0) !important;
+            transform: translate3d(0,0,0) !important;
+            will-change: filter, background-color;
+        }
+        .profile-layout {
+            -webkit-animation: profileFadeIn 0.25s ease-out;
+            animation: profileFadeIn 0.25s ease-out;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+        }
+        @-webkit-keyframes profileFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes profileFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+// -----------------------------------------------------------------------
+
 const DAY=86400000;
 function startTrial(){
  if(acc.trialUntil||!accessAvailable)return;
@@ -189,19 +219,26 @@ async function reconcile(){
   
   const j=await r.json();
 
-  // ИСПРАВЛЕНИЕ: Если сервер пуст — выгружаем локальные данные и выходим
   if(j.empty) {
    push();
    return;
   }
 
   const m=meta();
+
+  if (j.state && m.updatedAt) {
+      const serverTime = j.updatedAt ? new Date(j.updatedAt).getTime() : 0;
+      const localTime = new Date(m.updatedAt).getTime();
+      if (localTime > serverTime) {
+          push(); 
+          return;
+      }
+  }
   
   if(j.state){
    if(!E.validateState(j.state))return;
    try{localStorage.setItem('mono-backup-before-sync',JSON.stringify(state));}catch{}
 
-   // ЗАЩИТА АВАТАРКИ И ИМЕНИ
    if (state.settings) {
     if (!j.state.settings) j.state.settings = {};
     if (!j.state.settings.profileName && state.settings.profileName) {
@@ -223,8 +260,7 @@ async function reconcile(){
    applyTheme();
    renderHomeReminders();
    if(page!=='home')render();
-   decorate(); // Обновляем аватарку в UI после синхронизации
-   
+   decorate(); 
   }
  }catch(e){
   console.error("Ошибка загрузки из облака", e);
@@ -255,7 +291,27 @@ root.MonoAccess={
  devGrant:days=>{if(!CFG.devMode)return false;acc.devUntil=Date.now()+days*864e5;save();refresh();return true;}
 };
 root.MonoProfile={render:renderProfile,startTrial,socials,decorate,safeAvatar,profileName,premiumDialog};decorate();
+
+setTimeout(() => {
+    const backupStr = localStorage.getItem('mono-backup-before-sync');
+    if (backupStr) {
+        try {
+            const backupData = JSON.parse(backupStr);
+            persist(E.migrate(backupData), {remote: false}); 
+            localStorage.removeItem('mono-backup-before-sync'); 
+            queueSync(); 
+            alert('Ура! Данные успешно восстановлены из резервной копии и отправлены на сервер.');
+            location.reload(); 
+        } catch(err) {}
+    }
+}, 1500);
+
 if(acc.trialUntil)saveIdentity();else startTrial();
+
+// --- ПРИМЕНЯЕМ ТЕМУ МГНОВЕННО ---
+// Чтобы фон не моргал, пока мы ждем ответа от сервера
+if (typeof applyTheme === 'function') applyTheme();
+
 ensureCode().then(()=>refresh());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureCode().then(()=>refresh(true));}});
 addEventListener('online',()=>{ensureCode().then(()=>refresh(true));});
