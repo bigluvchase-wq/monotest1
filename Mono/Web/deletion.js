@@ -31,6 +31,10 @@ function plan(state,{kind,id,type='expense',currency='RUB'}){
    next.entries.forEach(e=>{if(e.account===id)e.account=target.id;if(e.toAccount===id)e.toAccount=target.id;});next.entries=next.entries.filter(e=>!(e.type==='transfer'&&e.account===e.toAccount));next.payments.forEach(p=>{if(p.account===id)p.account=target.id;});
   }else warning=`Удалить пустой счёт «${a.name}» вместе с его начальным остатком?`;
   next.accounts=next.accounts.filter(a=>a.id!==id);label='Счёт удалён';
+ }else if(kind==='reminder'){
+  const r=(next.reminders||[]).find(r=>r.id===id);if(!r)throw Error('Напоминание уже удалено.');warning=`Удалить напоминание «${r.title}»?`;next.reminders=next.reminders.filter(r=>r.id!==id);label='Напоминание удалено';
+ }else if(kind==='deposit'){
+  const d=(next.deposits||[]).find(d=>d.id===id);if(!d)throw Error('Вклад уже удалён.');warning=`Удалить вклад «${d.name}»? Уже начисленные проценты в доходах останутся.`;next.deposits=next.deposits.filter(d=>d.id!==id);label='Вклад удалён';
  }else if(kind==='ticket'){
   const t=next.tickets.find(t=>t.id===id);if(!t)throw Error('Черновик уже удалён.');warning='Удалить черновик обращения с этого устройства?';next.tickets=next.tickets.filter(t=>t.id!==id);label='Черновик удалён';
  }else throw Error('Неизвестный тип записи.');

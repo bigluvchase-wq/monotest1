@@ -11,6 +11,13 @@ final class MonoReminders {
         }
     }
 
+    func isAuthorized(_ completion: @escaping (Bool) -> Void) {
+        center.getNotificationSettings { settings in
+            let granted = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
+            DispatchQueue.main.async { completion(granted) }
+        }
+    }
+
     func replace(_ items: [[String: String]]) {
         revision += 1
         let requestRevision = revision

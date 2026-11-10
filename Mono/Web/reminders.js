@@ -17,17 +17,44 @@ function card(r){
  const g=group(r);
  return `<div class="card goal-card reminder-card ${g==='late'?'is-late':''} ${r.done?'is-done':''}" data-reminder-id="${esc(r.id)}"><button type="button" class="reminder-check" data-toggle-reminder="${esc(r.id)}" aria-label="${r.done?'Вернуть в список':'Отметить выполненным'}" aria-pressed="${r.done?'true':'false'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></button><button type="button" class="reminder-main" data-edit-reminder="${esc(r.id)}"><strong>${esc(r.title)}</strong>${r.text?`<span class="reminder-text">${esc(r.text)}</span>`:''}<small>${bell}${esc(dayWord(r.date))} · ${esc(r.time)}${g==='late'?' · просрочено':''}</small></button></div>`;
 }
+// Календарь напоминаний — как у платежей: раскрывается по нажатию на значок календаря
+const CAL='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M8 3v4m8-4v4M3.5 10h17M8 14h2m4 0h2M8 17.2h2"/></svg>';
+let calMonth=E.dateString(new Date()).slice(0,7),calDay=E.dateString(new Date()),calOpen=false;
+const longDate=d=>new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+function dayRow(r){return `<button type="button" class="agenda-payment" data-open-reminder="${esc(r.id)}"><span>${esc(r.title)}${r.done||r.text?`<small>${r.done?'Выполнено':esc(r.text)}</small>`:''}</span><strong>${esc(r.time)}</strong><span aria-hidden="true">›</span></button>`;}
+function calendar(){
+ const period=MonoPeriod.month(calMonth),count=Number(period.end.slice(8)),offset=(new Date(period.start+'T12:00:00').getDay()+6)%7,today=E.dateString(new Date());
+ const days=Array.from({length:offset},()=>'<span class="agenda-day-space"></span>');
+ for(let n=1;n<=count;n++){const date=calMonth+'-'+String(n).padStart(2,'0'),items=list().filter(r=>r.date===date);
+  days.push(`<button type="button" class="agenda-day ${date===calDay?'selected':''} ${date===today?'today':''}" data-rem-day="${date}" aria-pressed="${date===calDay}" aria-label="${esc(longDate(date))}${items.length?', напоминаний: '+items.length:''}"><span>${n}</span><i class="agenda-dots">${items.slice(0,3).map(r=>`<b class="${r.done?'paid':''}"></b>`).join('')}</i></button>`);}
+ const dayItems=calDay?.startsWith(calMonth)?list().filter(r=>r.date===calDay).sort((a,b)=>a.time.localeCompare(b.time)):[];
+ return `<div class="agenda-calendar-head"><button class="icon-btn" type="button" data-rem-month="-1" aria-label="Предыдущий месяц">‹</button><strong>${esc(new Date(period.start+'T12:00:00').toLocaleDateString('ru-RU',{month:'long',year:'numeric'}))}</strong><button class="icon-btn" type="button" data-rem-month="1" aria-label="Следующий месяц">›</button></div><div class="agenda-weekdays">${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d=>`<span>${d}</span>`).join('')}</div><div class="agenda-grid">${days.join('')}</div><div class="agenda-day-details">${calDay?.startsWith(calMonth)?`<p class="agenda-selected-date">${esc(longDate(calDay))}</p>${dayItems.map(dayRow).join('')||'<p class="muted tiny">Нет напоминаний</p>'}`:''}</div>`;
+}
+function agenda(){
+ const today=E.dateString(new Date()),items=list().filter(r=>r.date===today),pending=items.filter(r=>!r.done).length;
+ const status=!items.length?'Нет напоминаний':!pending?'Все напоминания выполнены':pending===1?'Есть напоминание на сегодня':'Есть напоминания на сегодня';
+ return `<section class="card payments-agenda reminders-agenda ${calOpen?'is-open':''}"><button type="button" class="agenda-toggle" aria-expanded="${calOpen}" aria-controls="reminderCalendar"><span><strong>${esc(longDate(today))}</strong><small>${status}</small></span><span class="agenda-chevron agenda-cal-icon" aria-hidden="true">${CAL}</span></button><div class="agenda-calendar-reveal" id="reminderCalendar" ${calOpen?'':'inert'} aria-hidden="${!calOpen}"><div class="agenda-calendar-inner">${calendar()}</div></div></section>`;
+}
+function refreshCalendar(){const inner=document.querySelector('.reminders-agenda .agenda-calendar-inner');if(inner)inner.innerHTML=calendar();}
+document.addEventListener('click',e=>{
+ if(page!=='reminders')return;const t=e.target;
+ const open=t.closest('[data-open-reminder]');if(open){form(open.dataset.openReminder);return;}
+ const day=t.closest('[data-rem-day]');if(day){calDay=day.dataset.remDay;refreshCalendar();return;}
+ const nav=t.closest('[data-rem-month]');if(nav){try{calMonth=MonoPeriod.shift(calMonth,Number(nav.dataset.remMonth));calDay=null;refreshCalendar();}catch(error){notify(error.message);}return;}
+ const card=t.closest('.reminders-agenda');
+ if(card&&(t.closest('.agenda-toggle')||!t.closest('button,.agenda-calendar-reveal'))){calOpen=!calOpen;const reveal=card.querySelector('.agenda-calendar-reveal');card.classList.toggle('is-open',calOpen);card.querySelector('.agenda-toggle').setAttribute('aria-expanded',String(calOpen));reveal.inert=!calOpen;reveal.setAttribute('aria-hidden',String(!calOpen));}
+});
 function render(){
  const items=list().slice().sort((a,b)=>stamp(a).localeCompare(stamp(b)));
  const groups={late:[],today:[],tomorrow:[],later:[],done:[]};
  for(const r of items)groups[group(r)].push(r);
  groups.done.reverse();groups.done=groups.done.slice(0,20);
  const body=['late','today','tomorrow','later','done'].filter(k=>groups[k].length).map(k=>`<section class="reminder-group"><h2 class="reminder-group-title">${titles[k]}</h2><div class="goal-list reminder-list">${groups[k].map(card).join('')}</div></section>`).join('');
- return `<div class="section-row"><button class="secondary" data-action="reminder">+ Добавить</button></div><p class="muted">Скажите: «напомни накормить кота сегодня в 6 вечера» — моно создаст напоминание.</p>${body||empty('Пока нет напоминаний','Потяните вниз, чтобы добавить.',false)}`;
+ return `<div class="section-row"><button class="secondary" data-action="reminder">+ Добавить</button></div><p class="muted">Скажите: «напомни накормить кота сегодня в 6 вечера» — моно создаст напоминание.</p>${agenda()}${body||empty('Пока нет напоминаний','Потяните вниз, чтобы добавить.',false)}`;
 }
 function form(id,pre={}){
  const r=list().find(x=>x.id===id),def=defaults();
- const date=r?.date||pre.date||def.date,time=r?.time||pre.time||def.time;
+ const date=r?.date||pre.date||(calOpen&&calDay&&calDay>=E.dateString(new Date())?calDay:def.date),time=r?.time||pre.time||def.time;
  actionDialog(r?'Изменить напоминание':'Новое напоминание',`<form class="reminder-form"><label class="field">Название<input name="title" maxlength="120" required value="${esc(r?.title??pre.title??'')}" placeholder="Накормить кота"></label><label class="field">Текст<textarea name="text" rows="3" maxlength="1000" placeholder="Что именно напомнить">${esc(r?.text??pre.text??'')}</textarea></label><div class="form-grid">${pickerField('Когда напомнить','date','date',date)}${pickerField('Во сколько','time','time',time)}</div><p class="tiny muted">Напоминание придёт уведомлением iPhone. Включите уведомления в настройках Моно, чтобы оно приходило и при закрытом приложении.</p><button class="primary">Сохранить напоминание</button>${r?'<button type="button" class="secondary danger" id="deleteReminder">Удалить напоминание</button>':''}</form>`,f=>{
   const title=f.get('title').trim(),text=(f.get('text')||'').trim(),date=f.get('date'),time=f.get('time');
   if(!title)throw Error('Введите название.');
@@ -55,7 +82,7 @@ function nativeItems(){
 let seen={};try{seen=JSON.parse(localStorage.getItem('mono-notes-seen'))||{};}catch{}
 function saveSeen(){seen=Object.fromEntries(Object.entries(seen).sort((a,b)=>b[1]-a[1]).slice(0,300));try{localStorage.setItem('mono-notes-seen',JSON.stringify(seen));}catch{}}
 function check(){
- if(typeof state!=='object'||document.hidden||holding||listening||tourActive||document.querySelector('dialog[open]'))return;
+ if(typeof state!=='object'||state.settings.notifications?.reminders===false||document.hidden||holding||listening||tourActive||document.querySelector('dialog[open]'))return;
  const now=Date.now(),due=list().filter(r=>{if(r.done||seen[r.id])return false;const t=new Date(r.date+'T'+r.time+':00').getTime();return t<=now&&now-t<36*3600e3;});
  if(!due.length)return;
  due.forEach(r=>seen[r.id]=Date.now());saveSeen();

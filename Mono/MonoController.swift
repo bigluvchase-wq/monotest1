@@ -22,6 +22,11 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         config.userContentController.addUserScript(WKUserScript(
             source: "window.monoStoredAccess = \(access)",
             injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        // Системная тема известна сразу: страница не мигает светлой при запуске из уведомления
+        let systemDark = UIScreen.main.traitCollection.userInterfaceStyle == .dark
+        config.userContentController.addUserScript(WKUserScript(
+            source: "window.monoSystemDark = \(systemDark ? "true" : "false")",
+            injectionTime: .atDocumentStart, forMainFrameOnly: true))
         web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = self
         web.uiDelegate = self
@@ -29,6 +34,9 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         web.scrollView.bounces = false
         web.isOpaque = false
         view.backgroundColor = UIColor(named: "LaunchBackground")
+        if UserDefaults.standard.object(forKey: Self.darkKey) != nil {
+            applyThemeBackground(dark: UserDefaults.standard.bool(forKey: Self.darkKey))
+        }
         web.backgroundColor = .clear
         web.scrollView.backgroundColor = .clear
         web.frame = view.bounds
@@ -41,6 +49,15 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
                                                name: UIApplication.didEnterBackgroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(refreshReminders),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
+    }
+
+    private static let darkKey = "monoDarkTheme"
+
+    // Фон под веб-страницей в цвет темы: без чёрной полосы над клавиатурой в светлой теме
+    private func applyThemeBackground(dark: Bool) {
+        view.backgroundColor = dark
+            ? UIColor(red: 0.110, green: 0.110, blue: 0.129, alpha: 1)
+            : UIColor(red: 0.925, green: 0.902, blue: 1.0, alpha: 1)
     }
 
     @objc private func interruptSpeech() { speech.cancel() }
@@ -83,6 +100,14 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
             reminders.requestAuthorization { [weak self] granted in
                 self?.send("reminderPermission", [granted])
             }
+        case "notificationStatus":
+            reminders.isAuthorized { [weak self] granted in
+                self?.send("notificationStatus", [granted])
+            }
+        case "theme":
+            guard let dark = body["dark"] as? Bool else { return }
+            UserDefaults.standard.set(dark, forKey: Self.darkKey)
+            applyThemeBackground(dark: dark)
         default: break
         }
     }

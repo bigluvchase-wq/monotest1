@@ -15,14 +15,14 @@ function attach(element,info,existingButton){
  element.replaceWith(shell);content.append(element);shell.append(action,content);
  let x=existingButton;
  if(!x){x=document.createElement('button');x.type='button';x.textContent='×';x.className='entity-x';element.classList.add('entity-has-x');element.append(x);}
- x.dataset.entityDelete='true';setMeta(x,info);x.setAttribute('aria-label',x.getAttribute('aria-label')||'Удалить '+({entry:'операцию',payment:'платёж',goal:'цель',account:'счёт',category:'категорию',limit:'лимит',ticket:'черновик'}[info.kind]||'запись'));x.title=x.getAttribute('aria-label');
+ x.dataset.entityDelete='true';setMeta(x,info);x.setAttribute('aria-label',x.getAttribute('aria-label')||'Удалить '+({entry:'операцию',payment:'платёж',goal:'цель',reminder:'напоминание',deposit:'вклад',account:'счёт',category:'категорию',limit:'лимит',ticket:'черновик'}[info.kind]||'запись'));x.title=x.getAttribute('aria-label');
  if(info.kind==='payment'){x.textContent='×';x.className='entity-x';element.classList.add('entity-has-x');}
 }
 function decorate(container=document.querySelector('#pageBody')){
  if(!container)return;
  container.querySelectorAll('.payment-summary-card[data-payment-record]').forEach(el=>attach(el,{kind:'payment',id:el.dataset.paymentRecord}));
  container.querySelectorAll('.entry').forEach(el=>{const b=el.querySelector('[data-delete]');if(b)attach(el,{kind:'entry',id:b.dataset.delete},b);});
- for(const [selector,kind,key] of [['[data-edit-account]','account','editAccount'],['[data-edit-goal]','goal','editGoal'],['[data-delete-payment]','payment','deletePayment'],['[data-ticket]','ticket','ticket']])container.querySelectorAll(selector).forEach(b=>attach(b.closest('.card'),{kind,id:b.dataset[key]},kind==='payment'?b:null));
+ for(const [selector,kind,key] of [['[data-edit-account]','account','editAccount'],['[data-edit-goal]','goal','editGoal'],['[data-edit-reminder]','reminder','editReminder'],['[data-edit-deposit]','deposit','editDeposit'],['[data-delete-payment]','payment','deletePayment'],['[data-ticket]','ticket','ticket']])container.querySelectorAll(selector).forEach(b=>attach(b.closest('.card'),{kind,id:b.dataset[key]},kind==='payment'?b:null));
  container.querySelectorAll('[data-entity-kind]').forEach(el=>{if(el.classList.contains('category-item')||el.classList.contains('limit-item'))attach(el,metadata(el));});
  if(openShell&&!openShell.isConnected)openShell=null;
 }
