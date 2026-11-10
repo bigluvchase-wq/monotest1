@@ -1149,3 +1149,46 @@ a.premium-button.premium-active small{font-size:12.5px;font-weight:600;opacity:.
 .field-muted{opacity:.45}
 /* Главная: место под напоминания освобождается плавно */
 @media(prefers-reduced-motion:no-preference){#home .intro,#home .recording-block{transition:transform .7s cubic-bezier(.22,1,.36,1)}}
+
+/* ===== Поиск: плавное открытие и закрытие ===== */
+html header>*{transition:opacity .32s ease .06s}
+html.search-open header>*{opacity:0!important;transition:opacity .18s ease!important;pointer-events:none}
+#searchLayer .search-backdrop{opacity:0;transition:opacity .4s cubic-bezier(.4,0,.2,1)!important}
+#searchLayer.on .search-backdrop{opacity:1}
+#searchLayer .search-top{opacity:0;transform:translateY(-22px)!important;transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .32s ease!important}
+#searchLayer.on .search-top{opacity:1;transform:none!important}
+#searchLayer .search-results{opacity:0;transform:translateY(18px) scale(.985)!important;transform-origin:50% 0;transition:transform .55s cubic-bezier(.22,1,.36,1) .04s,opacity .36s ease .04s!important}
+#searchLayer.on .search-results{opacity:1;transform:none!important}
+#searchLayer:not(.on) .search-top,#searchLayer:not(.on) .search-results{transition-delay:0s!important;transition-duration:.3s!important}
+
+/* ===================================================================
+   Нейтральный серебристый фон (вместо лавандового). Акцент — прежний фиолетовый.
+   =================================================================== */
+:root{
+ --paper:#eceef2;--ink:#1b1c26;--muted:#6e7285;--line:rgba(80,86,112,.14);
+ --soft:#e7e6f0;--bar:#dcdee5;--card-solid:#f7f8fa;--shadow:rgba(40,46,72,.12);
+ --bg1:#f5f6f8;--bg2:#e8eaef;--bg3:#dcdfe6;
+ --blob-a:rgba(168,174,196,.42);--blob-b:rgba(206,202,218,.34);--blob-c:rgba(160,182,208,.3);--wave:rgba(255,255,255,.62)}
+:root[data-theme=dark]{
+ --paper:#16171b;--ink:#eff0f5;--muted:#a3a6b6;--line:rgba(205,210,230,.12);
+ --soft:#2a2b35;--bar:#353742;--card-solid:#22242b;--card-edge:rgba(220,225,240,.14);--glass:rgba(34,36,44,.78);
+ --bg1:#1f2127;--bg2:#16171b;--bg3:#0f1013;
+ --blob-a:rgba(126,134,158,.24);--blob-b:rgba(150,142,172,.16);--blob-c:rgba(96,116,148,.2);--wave:rgba(205,210,225,.1)}
+:root[data-theme=dark] .nav-slider,:root[data-theme=dark] body[data-page=menu] .menu-symbol,:root[data-theme=dark] .entry-icon,:root[data-theme=dark] .category-report-icon,:root[data-theme=dark] .limit-items .limit-row>span>svg{background:linear-gradient(145deg,#353844,#272930)!important}
+
+/* ===== Профиль: код привязки друга ===== */
+.profile-friend h3{margin:0 0 10px}
+.friend-row{display:flex;gap:10px;align-items:center}
+.friend-row input{flex:1;min-width:0;height:48px;padding:0 14px;border-radius:14px;border:1px solid var(--card-edge);background:var(--input);color:var(--ink);font-size:20px;font-weight:650;letter-spacing:.12em;text-align:center;font-variant-numeric:tabular-nums}
+.friend-row input::placeholder{color:var(--muted);opacity:.55;letter-spacing:.12em}
+.friend-row input:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.friend-check{flex:none;display:grid;place-items:center;width:48px;height:48px;min-height:48px;padding:0;border-radius:14px;border:1px solid var(--card-edge)!important;background:var(--surface);color:var(--accent);transition:background .3s ease,color .3s ease,transform .2s ease}
+.friend-check svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.friend-check:active{transform:scale(.93)}
+.friend-check.is-ok{background:#2fae6a!important;color:#fff!important;border-color:transparent!important}
+.friend-check.is-bad{background:var(--red)!important;color:#fff!important;border-color:transparent!important}
+.friend-check:disabled{opacity:1}
+.friend-hint{margin:10px 0 0}
+.profile-layout{grid-template-columns:minmax(0,1fr)}
+.friend-row input{width:0;flex:1 1 0}
+a.premium-button.premium-active small{color:#fff!important;opacity:.95}

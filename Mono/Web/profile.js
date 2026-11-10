@@ -12,9 +12,42 @@ const socialPaths={telegram:'<path d="m3 10 18-7-5 18-5-7-8-4zm8 4 10-11M11 14v5
 function socials(){return `<div class="support-socials">${Object.entries(socialPaths).map(([key,path])=>`<button type="button" disabled aria-label="${{telegram:'Telegram',vk:'VK',instagram:'Instagram'}[key]} — ссылка пока не добавлена" title="Ссылка пока не добавлена"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg></button>`).join('')}</div><p class="tiny muted">Ссылки на соцсети скоро появятся.</p>`;}
 function codeBlock(){
  const code=MonoAccess.codeText();
- const hint=code?'Это твой личный код.':accessAvailable?'Код появится, когда приложение подключится к серверу.':'Откройте Моно снова, чтобы загрузить ваш код.';
+ const hint=code?'Это твой личный код. А также код приглашения.':accessAvailable?'Код появится, когда приложение подключится к серверу.':'Откройте Моно снова, чтобы загрузить ваш код.';
  return `<section class="card profile-code"><h3>Код привязки</h3><div class="code-row"><strong class="profile-code-value">${esc(code||'··· ···')}</strong><button type="button" class="secondary" data-profile-copy ${code?'':'disabled'}>Копировать</button></div><p class="tiny muted">${hint}</p></section>`;
 }
+
+// ---------- Код привязки друга: +7 дней Премиума обоим ----------
+// Проверку выполняет сервер: код существует, это не свой код, аккаунт ещё не получал бонус,
+// и друг не получал бонус по вашему коду (чтобы нельзя было обменяться кодами дважды).
+const REFERRAL_URL='https://api.monoapp.ru/api/referral';
+const referralErrors={not_found:'Такого кода нет. Проверьте цифры.',self:'Это ваш собственный код.',already_used:'Бонус за код друга уже получен на этом аккаунте.',mutual:'Этот друг уже получил бонус по вашему коду.',no_code:'Ваш код ещё не готов. Попробуйте чуть позже.'};
+let friendStatus=null,friendDraft='';
+function friendBlock(){
+ const used=acc.referralUsed;
+ const status=used?'ok':friendStatus?.kind||'';
+ return `<section class="card profile-friend"><h3>Код привязки друга</h3><form class="friend-row" data-friend-form novalidate><input name="friend" inputmode="numeric" maxlength="7" size="7" autocomplete="off" placeholder="000 000" aria-label="Код друга, 6 цифр" value="${esc(used?used.slice(0,3)+' '+used.slice(3):friendDraft)}" ${used?'disabled':''}><button type="submit" class="friend-check ${status==='ok'?'is-ok':status==='bad'?'is-bad':''}" aria-label="Проверить код друга" ${used?'disabled':''}>${status==='bad'?'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>':'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>'}</button></form><p class="tiny muted friend-hint">${used?'Код друга применён — вам обоим начислено 7 дней Премиума.':friendStatus?.text?esc(friendStatus.text):'Введите 6 цифр кода друга — вы оба получите 7 дней Премиума.'}</p></section>`;
+}
+async function applyFriendCode(raw){
+ const friendCode=String(raw||'').replace(/\D/g,'');
+ if(acc.referralUsed)return;
+ if(friendCode.length!==6){friendStatus={kind:'bad',text:'Код друга — 6 цифр.'};redraw();return;}
+ if(!acc.code){friendStatus={kind:'bad',text:referralErrors.no_code};redraw();return;}
+ if(friendCode===acc.code){friendStatus={kind:'bad',text:referralErrors.self};redraw();return;}
+ friendStatus={kind:'wait',text:'Проверяем код…'};redraw();
+ try{
+  const r=await fetch(REFERRAL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:acc.code,friendCode})});
+  let j={};try{j=await r.json();}catch{}
+  if(r.ok&&j.ok){
+   acc.referralUsed=friendCode;save();friendStatus={kind:'ok',text:''};
+   const until=expiryMillis(j.premiumUntil);if(Number.isFinite(until)&&until>Date.now()){paidUntil=until;activeWithoutDate=false;}
+   redraw();notify('Код друга принят: +7 дней Премиума вам обоим',true);refresh(true);
+  }else{
+   friendStatus={kind:'bad',text:referralErrors[j.error]||'Не удалось проверить код. Попробуйте ещё раз.'};redraw();
+  }
+ }catch{friendStatus={kind:'bad',text:'Нет связи с сервером. Попробуйте ещё раз.'};redraw();}
+}
+document.addEventListener('submit',e=>{const f=e.target.closest('[data-friend-form]');if(!f)return;e.preventDefault();f.querySelector('input').blur();applyFriendCode(f.elements.friend.value);});
+document.addEventListener('input',e=>{const i=e.target.closest('[data-friend-form] input');if(!i)return;const d=i.value.replace(/\D/g,'').slice(0,6);i.value=d.length>3?d.slice(0,3)+' '+d.slice(3):d;friendDraft=i.value;if(friendStatus?.kind==='bad'){friendStatus=null;const b=i.form.querySelector('.friend-check');b.classList.remove('is-bad');b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';i.form.parentElement.querySelector('.friend-hint').textContent='Введите 6 цифр кода друга — вы оба получите 7 дней Премиума.';}});
 
 function premiumLink(){
  const isPrem = MonoAccess.isPremium();
@@ -39,10 +72,12 @@ function renderProfile(){
     ${premiumLink()}
   </section>
   ${codeBlock()}
-  <section class="card profile-invite-card"><h3>Пригласите друга</h3><p class="muted">Друг установит Моно — а вы получите <b>7 дней Премиума в подарок</b>.</p><button type="button" class="secondary profile-invite" data-profile-invite>Пригласить друга <span aria-hidden="true">↗</span></button></section>
+  ${friendBlock()}
+  <section class="card profile-invite-card"><h3>Пригласите друга</h3><p class="muted">Отправьте другу свой код приглашения. Когда он введёт его в профиле, <b>вам обоим дадут по 7 дней Премиума бесплатно</b>.</p><button type="button" class="secondary profile-invite" data-profile-invite>Пригласить друга <span aria-hidden="true">↗</span></button></section>
  </div>`;
 }
-async function invite(){if(window.MonoNative){MonoNative.invite();return;}const url=location.origin;try{if(navigator.share){await navigator.share({title:'моно',text:'Просто скажи, сколько. Учёт денег голосом. Попробуй моно!',url});return;}if(navigator.clipboard){await navigator.clipboard.writeText(url);notify('Ссылка на моно скопирована');return;}}catch(e){if(e.name==='AbortError')return;}actionDialog('Пригласить друга',`<p class="muted">Поделитесь ссылкой на моно:</p><label class="field">Ссылка<input readonly value="${esc(url)}"></label>`);}
+function inviteText(){return 'Попробуй моно — учёт денег голосом.'+(acc.code?` Мой код приглашения: ${acc.code}. Введи его в профиле Моно — и мы оба получим 7 дней Премиума.`:'');}
+async function invite(){if(window.MonoNative){MonoNative.invite(inviteText());return;}const url=location.origin;try{if(navigator.share){await navigator.share({title:'моно',text:inviteText(),url});return;}if(navigator.clipboard){await navigator.clipboard.writeText(url);notify('Ссылка на моно скопирована');return;}}catch(e){if(e.name==='AbortError')return;}actionDialog('Пригласить друга',`<p class="muted">Поделитесь ссылкой на моно:</p><label class="field">Ссылка<input readonly value="${esc(url)}"></label>`);}
 
 document.addEventListener('click',e=>{
  if(e.target.closest('[data-profile-edit]'))editProfile();
@@ -182,59 +217,63 @@ function nativeItems(){
 const meta=()=>{try{return JSON.parse(localStorage.getItem(SK))||{};}catch{return {};}};
 const setMeta=m=>{try{localStorage.setItem(SK,JSON.stringify(m));}catch{}};
 
-function queueSync(){const m=meta();m.updatedAt=new Date().toISOString();setMeta(m);if(!isPremium())return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1500);}
-
-async function push(){
- if(syncing) return;
- syncing=true;
- try{
-  const m=meta();
-  const response = await fetch('https://api.monoapp.ru/api/sync', {
-   method: 'POST',
-   headers: { 'Content-Type': 'application/json' },
-   body: JSON.stringify({ code: acc.code, state: state }) 
-  });
-  if(response.ok){
-   m.syncedAt = new Date().toISOString();
-   setMeta(m);
-  }else pendingPush=true;
- }catch(e){
-  pendingPush=true;
- }finally{syncing=false;}
-}
-
-// Синхронизация с сервером для Премиума — тихо, без уведомлений.
-// Сервер пуст → выгружаем; локальные данные новее → выгружаем; иначе берём данные с сервера.
-async function reconcile(){
+// ---------- Синхронизация Премиума: тихо, без уведомлений ----------
+// rev — счётчик локальных изменений, pushedRev — до какого изменения сервер подтвердил сохранение.
+// Пока есть неотправленные изменения (rev > pushedRev), данные с сервера их не перезаписывают —
+// поэтому удалённые операции и напоминания не возвращаются.
+const SYNC_URL='https://api.monoapp.ru/api/sync';
+const toMs=v=>{const n=expiryMillis(v);return Number.isFinite(n)?n:0;};
+function syncMeta(){const m=meta();if(typeof m.rev!=='number'){m.rev=m.updatedAt&&(!m.syncedAt||m.updatedAt>m.syncedAt)?1:0;m.pushedRev=0;setMeta(m);}return m;}
+let pushAgain=false;
+function queueSync(){const m=syncMeta();m.rev+=1;m.updatedAt=new Date().toISOString();setMeta(m);if(!isPremium())return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1200);}
+async function push(options={}){
  if(!isPremium()||!acc.code)return;
+ if(syncing){pushAgain=true;return;}
+ syncing=true;pushAgain=false;
+ const m=syncMeta(),rev=m.rev;
  try{
-  const r=await fetch(`https://api.monoapp.ru/api/sync?code=${acc.code}`);
+  const response=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'application/json'},keepalive:!!options.keepalive,body:JSON.stringify({code:acc.code,state,updatedAt:m.updatedAt,rev})});
+  if(!response.ok){pendingPush=true;return;}
+  let serverMs=0;try{const j=await response.json();serverMs=toMs(j?.updatedAt);}catch{}
+  if(!serverMs){try{const r=await fetch(`${SYNC_URL}?code=${acc.code}`);if(r.ok)serverMs=toMs((await r.json())?.updatedAt);}catch{}}
+  const now=syncMeta();now.pushedRev=Math.max(now.pushedRev||0,rev);now.syncedAt=new Date().toISOString();if(serverMs)now.serverMs=serverMs;setMeta(now);
+ }catch(e){pendingPush=true;}
+ // изменения, сделанные во время отправки, уходят следующей отправкой; ошибки сети — при появлении связи
+ finally{syncing=false;if(pushAgain&&!pendingPush){pushAgain=false;clearTimeout(syncTimer);syncTimer=setTimeout(push,800);}}
+}
+const unsynced=()=>{const m=syncMeta();return m.rev>(m.pushedRev||0);};
+async function reconcile(){
+ if(!isPremium()||!acc.code||syncing)return;
+ try{
+  const r=await fetch(`${SYNC_URL}?code=${acc.code}`);
   if(!r.ok)return;
   const j=await r.json();
   if(j.empty||!j.state){push();return;}
-  const m=meta();
-  // новое устройство без операций всегда берёт данные с сервера, а не затирает их
+  const m=syncMeta(),serverMs=toMs(j.updatedAt);
+  // новое устройство без операций берёт данные с сервера, а не затирает их
   const freshDevice=!m.syncedAt&&!state.entries.length;
-  if(m.updatedAt&&!freshDevice){
-   const serverTime=j.updatedAt?new Date(j.updatedAt).getTime():0,localTime=new Date(m.updatedAt).getTime();
-   if(localTime>serverTime){push();return;}
-  }
+  if(!freshDevice&&unsynced()){push();return;}
+  // сервер не менялся с прошлой синхронизации — ничего не делаем
+  if(!freshDevice&&m.serverMs&&serverMs&&serverMs<=m.serverMs)return;
   if(!E.validateState(j.state))return;
   try{localStorage.removeItem('mono-backup-before-sync');}catch{}
-  // имя и аватар профиля не теряются, если на сервере их ещё нет
   if(state.settings){
    j.state.settings=j.state.settings||{};
    if(!j.state.settings.profileName&&state.settings.profileName)j.state.settings.profileName=state.settings.profileName;
    if(!j.state.settings.profileAvatar&&state.settings.profileAvatar)j.state.settings.profileAvatar=state.settings.profileAvatar;
-   // настройки уведомлений этого устройства
    for(const k of ['notifyAsked','notifyGranted'])if(state.settings[k]!==undefined)j.state.settings[k]=state.settings[k];
+   j.state.settings.language='ru';
   }
+  // пока шёл запрос, пользователь мог что-то изменить — тогда оставляем его изменения
+  if(unsynced()){push();return;}
   const wasProblem=storageProblem;storageProblem=false;
   if(!persist(E.migrate(j.state),{remote:true})){storageProblem=wasProblem;return;}
-  m.updatedAt=j.updatedAt||new Date().toISOString();m.syncedAt=new Date().toISOString();setMeta(m);
+  const after=syncMeta();after.syncedAt=new Date().toISOString();after.serverMs=serverMs||Date.now();after.pushedRev=after.rev;setMeta(after);
   refreshAccounts();applyTheme();renderHomeReminders();if(page!=='home')render();decorate();
  }catch(e){console.error('Ошибка синхронизации',e);}
 }
+// Перед уходом приложения в фон отправляем несохранённые изменения
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&unsynced()&&isPremium()){clearTimeout(syncTimer);push({keepalive:true});}else if(!document.hidden&&isPremium())setTimeout(reconcile,1200);});
 
 async function copyCode(){
  const c=acc.code;if(!c)return;

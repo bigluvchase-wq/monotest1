@@ -91,7 +91,7 @@ root.MonoNative={
  storeAccess:access=>post('storeAccess',{access}),
  refreshAccess:()=>root.MonoAccess?.refresh(true),
  share:(name,text)=>post('share',{name,text}),
- invite:()=>post('invite'),
+ invite:text=>post('invite',{text:text||''}),
  openURL:url=>post('openURL',{url}),
  openSettings:()=>post('settings'),
  enableReminders(silent=false){quiet=silent;post('enableReminders');},

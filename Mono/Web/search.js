@@ -45,7 +45,9 @@ function show(){
 function hide(){
  if(!open)return;open=false;
  input.blur();layer.classList.remove('on');layer.setAttribute('aria-hidden','true');
- timer=setTimeout(()=>{layer.hidden=true;document.documentElement.classList.remove('search-open');},reducedMotion()?0:300);
+ // шапка (логотип, поиск, профиль) возвращается сразу, вместе с закрытием поиска
+ document.documentElement.classList.remove('search-open');
+ timer=setTimeout(()=>{layer.hidden=true;},reducedMotion()?0:420);
 }
 layer.addEventListener('click',e=>{
  if(e.target.closest('[data-search-close]')){hide();return;}

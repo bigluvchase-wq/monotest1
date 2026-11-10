@@ -33,10 +33,8 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         web.scrollView.contentInsetAdjustmentBehavior = .never
         web.scrollView.bounces = false
         web.isOpaque = false
+        // До и во время заставки фон всегда тёмный, как у заставки, — без белой вспышки при запуске
         view.backgroundColor = UIColor(named: "LaunchBackground")
-        if UserDefaults.standard.object(forKey: Self.darkKey) != nil {
-            applyThemeBackground(dark: UserDefaults.standard.bool(forKey: Self.darkKey))
-        }
         web.backgroundColor = .clear
         web.scrollView.backgroundColor = .clear
         web.frame = view.bounds
@@ -52,12 +50,13 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
     }
 
     private static let darkKey = "monoDarkTheme"
+    private let launchedAt = Date()
 
     // Фон под веб-страницей в цвет темы: без чёрной полосы над клавиатурой в светлой теме
     private func applyThemeBackground(dark: Bool) {
         view.backgroundColor = dark
-            ? UIColor(red: 0.110, green: 0.110, blue: 0.129, alpha: 1)
-            : UIColor(red: 0.925, green: 0.902, blue: 1.0, alpha: 1)
+            ? UIColor(red: 0.086, green: 0.090, blue: 0.106, alpha: 1)
+            : UIColor(red: 0.925, green: 0.933, blue: 0.949, alpha: 1)
     }
 
     @objc private func interruptSpeech() { speech.cancel() }
@@ -81,9 +80,11 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
             guard let name = body["name"] as? String, let text = body["text"] as? String else { return }
             share(name, text: text)
         case "invite":
-            if let url = URL(string: "https://monovo-nikita.zava-keith.chatgpt.site") {
-                presentActivity([url])
-            }
+            // Текст с кодом приглашения и ссылка
+            var items: [Any] = []
+            if let text = body["text"] as? String, !text.isEmpty { items.append(text) }
+            if let url = URL(string: "https://monovo-nikita.zava-keith.chatgpt.site") { items.append(url) }
+            presentActivity(items)
         case "settings":
             if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
         case "storeAccess":
@@ -107,7 +108,12 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         case "theme":
             guard let dark = body["dark"] as? Bool else { return }
             UserDefaults.standard.set(dark, forKey: Self.darkKey)
-            applyThemeBackground(dark: dark)
+            // Цвет темы — только после заставки (около 2 секунд)
+            let wait = max(0, 2.2 - Date().timeIntervalSince(launchedAt))
+            DispatchQueue.main.asyncAfter(deadline: .now() + wait) { [weak self] in
+                guard UserDefaults.standard.bool(forKey: Self.darkKey) == dark else { return }
+                self?.applyThemeBackground(dark: dark)
+            }
         default: break
         }
     }
