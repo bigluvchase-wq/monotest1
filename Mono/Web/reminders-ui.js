@@ -20,7 +20,7 @@ function render(){
  for(const r of items)groups[group(r)].push(r);
  groups.done.reverse();groups.done=groups.done.slice(0,15);
  const body=['late','today','tomorrow','later','done'].filter(k=>groups[k].length).map(k=>`<section class="reminder-group"><h2 class="reminder-group-title">${titles[k]}</h2><div class="reminder-list">${groups[k].map(card).join('')}</div></section>`).join('');
- return `<div class="section-row"><button class="secondary" data-action="reminder">+ Добавить</button></div><p class="muted">Скажите: «напомни завтра в девять утра позвонить врачу» — Моно создаст напоминание.</p>${body||empty('Напоминаний пока нет','Добавьте напоминание кнопкой или скажите его голосом.',false)}`;
+ return `<div class="section-row"><button class="secondary" data-action="reminder">+ Добавить</button></div><p class="muted">Скажите: «напомни завтра в девять утра позвонить врачу» — Моно создаст напоминание.</p>${body||empty('Напоминаний пока нет','Потяните вниз для добавления или скажите голосом.',false)}`;
 }
 function form(id,pre={}){
  const r=list().find(x=>x.id===id),def=defaults();
@@ -50,7 +50,7 @@ function check(){
  due.forEach(r=>seen[r.id]=Date.now());
  seen=Object.fromEntries(Object.entries(seen).sort((a,b)=>b[1]-a[1]).slice(0,300));
  try{localStorage.setItem('mono-notes-seen',JSON.stringify(seen));}catch{}
- notify(due.map(r=>'Напоминание: '+r.title+(r.text?' — '+r.text:'')).join('. '),false,{duration:9000});
+ notify(due.length===1?'Напоминание: '+due[0].title+(due[0].text?' — '+due[0].text:''):'Напоминание: '+due[0].title+' и ещё '+(due.length-1),false,{duration:9000});
  if(page==='reminders')window.render?.();renderHomeReminders();
 }
 setInterval(check,15000);document.addEventListener('visibilitychange',check);setTimeout(check,1200);

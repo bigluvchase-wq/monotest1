@@ -4,5 +4,6 @@ window.MONO_CONFIG={
  premiumUrl:'http://monoapp.ru/', // страница покупки Премиума
  statusUrl:'http://82.148.255.200:3000/api/check', // сервер проверки оплаты по коду
  publicKey:null,  // публичный ключ сервера (ECDSA P-256, формат JWK) — им приложение проверяет, что Премиум выдан сервером
+ supportEmail:'monofinapp@gmail.com', // почта поддержки, например 'help@monoapp.ru'. Пусто = обращения сохраняются черновиками
  devMode:false    // true только для тестов: включает MonoAccess.devGrant(дней) в консоли
 };

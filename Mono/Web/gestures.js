@@ -2,7 +2,7 @@
 (function(){
 let gesture=null,suppressUntil=0;
 const app=document.querySelector('.app');
-function blocked(target){return window.MonoPageMotion?.isBusy()||(typeof MonoMenuMotion!=='undefined'&&MonoMenuMotion.isBusy())||tourActive||holding||listening||!!document.querySelector('dialog[open]')||target.closest('input,select,textarea,label,.mic,.bottom-nav,.operations-tools,.category-items,.swipe-shell,.goal-card,.limit-items,.rem-track');}
+function blocked(target){return window.MonoPageMotion?.isBusy()||(typeof MonoMenuMotion!=='undefined'&&MonoMenuMotion.isBusy())||tourActive||holding||listening||!!document.querySelector('dialog[open]')||target.closest('input,select,textarea,label,.mic,.bottom-nav,.operations-tools,.category-items,.swipe-shell,.goal-card,.limit-items,.rem-stage');}
 function destination(dx){if(page==='profile')return dx?(window.profileFrom&&window.profileFrom!=='profile'?window.profileFrom:'home'):null;if(!rootPages.includes(page))return dx>0?'menu':null;return rootPages[rootPages.indexOf(page)+(dx<0?1:-1)]||null;}
 function reset(){app.style.transform='';app.style.opacity='';document.body.classList.remove('dragging-pages');}
 document.addEventListener('pointerdown',e=>{if(!e.isPrimary||e.button!==0||blocked(e.target))return;gesture={id:e.pointerId,x:e.clientX,y:e.clientY,start:performance.now(),dx:0,horizontal:false,cancelled:false,target:null};},{passive:true});

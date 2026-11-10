@@ -16,13 +16,14 @@ function frame(now){
  raf=requestAnimationFrame(frame);
  if(analyser)readAnalyser();
  let tg=target;
- if(now-last>400){tg=.22+.16*Math.sin(now/330)+.08*Math.sin(now/131);}
- lv+=(tg-lv)*(tg>lv?.38:.1);
- lv2+=(lv-lv2)*.09;
+ if(now-last>400){tg=.2+.14*Math.sin(now/520)+.05*Math.sin(now/210);}
+ lv+=(tg-lv)*(tg>lv?.05+.07*Math.min(1,(now-t0)/1600):.045);
+ lv2+=(lv-lv2)*.04;
  const p=(now-t0)/1000,still=reduce();
- const s1=1.1+.32*lv,s2=1.2+.62*lv2;
+ const r0=Math.min(1,(now-t0)/1100),ramp=r0*r0*(3-2*r0);
+ const s1=1.1+.26*lv*ramp,s2=1.2+.46*lv2*ramp;
  g1.style.transform=`scale(${s1.toFixed(3)})`;g2.style.transform=`scale(${s2.toFixed(3)})`;
- if(!still){g1.style.borderRadius=blob(p,4+lv*9);g2.style.borderRadius=blob(p+2.4,5+lv2*12);}
+ if(!still){g1.style.borderRadius=blob(p*.6,2+lv*3);g2.style.borderRadius=blob(p*.6+2.4,2.5+lv2*4);}
  zone.style.setProperty('--lv',lv.toFixed(3));
 }
 async function openAudio(){
@@ -39,5 +40,6 @@ function start(){if(on)return;on=true;zone.style.setProperty('--mic-size',mic.of
 function stop(){if(!on)return;on=false;cancelAnimationFrame(raf);zone.classList.remove('wave-on');closeAudio();g1.style.transform=g2.style.transform='';zone.style.removeProperty('--lv');}
 const sync=()=>{const b=document.body.classList;(b.contains('holding')||b.contains('listening'))?start():stop();};
 new MutationObserver(sync).observe(document.body,{attributes:true,attributeFilter:['class']});sync();
+const size=()=>zone.style.setProperty('--mic-size',mic.offsetWidth+'px');size();addEventListener('resize',size);if(window.ResizeObserver)new ResizeObserver(size).observe(mic);
 root.MonoMicWave={level,start,stop};
 })(window);

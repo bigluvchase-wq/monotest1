@@ -3,7 +3,7 @@
 const app=document.querySelector('.app'),nav=document.querySelector('.bottom-nav'),buttons=[...nav.querySelectorAll('[data-nav]')],slider=document.createElement('span');
 slider.className='nav-slider';slider.setAttribute('aria-hidden','true');nav.prepend(slider);
 let stage=null,busy=false,navGesture=null,suppressUntil=0;
-const BLUR=window.MONO_PAGE_BLUR===false?0:16,ease='cubic-bezier(.22,1,.36,1)',clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
+const BLUR=window.MONO_PAGE_BLUR===false?0:16,ease='cubic-bezier(.28,.8,.3,1)',clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
 function indicator(index,animate=true){const first=buttons[0].getBoundingClientRect(),last=buttons[1].getBoundingClientRect(),r=nav.getBoundingClientRect();slider.style.width=first.width+'px';slider.style.left=(first.left-r.left)+'px';slider.style.transition=animate&&!reducedMotion()?'transform 420ms '+ease:'none';slider.style.transform=`translateX(${(last.left-first.left)*index}px)`;buttons.forEach((button,i)=>{button.classList.toggle('nav-highlight',i===Math.round(index));button.style.transition=animate&&!reducedMotion()?'color 420ms '+ease:'none';});}
 function sync(){if(!stage&&!navGesture)indicator(Math.max(0,rootPages.indexOf(page)),true);if(!stage&&!busy)warmUp();}
 // Preview nodes are inert and contain no live form handlers or duplicate IDs.
@@ -45,7 +45,7 @@ function takeWarm(target){const l=warm[target];if(!l)return null;delete warm[tar
 function begin(target){if(busy||!rootPages.includes(page)||!rootPages.includes(target)||target===page)return false;if(stage?.target===target)return true;if(stage)clean();const sign=rootPages.indexOf(target)>rootPages.indexOf(page)?1:-1;stage={target,sign,layer:takeWarm(target)||preview(target),dx:0};{const L=stage.layer,inner=L.firstElementChild;L.style.transform=`translateX(${sign*innerWidth}px)`;L.style.willChange='transform';if(BLUR){inner.style.filter=`blur(${BLUR}px)`;inner.style.willChange='filter';}}document.body.classList.add('root-dragging');app.style.position='relative';app.style.zIndex='9';return true;}
 function drag(dx){if(!stage)return;stage.dx=dx;const p=clamp(Math.abs(dx)/innerWidth);app.style.transform=`translateX(${dx}px)`;stage.layer.style.transform=`translateX(${stage.sign*innerWidth+dx}px)`;if(BLUR){const inner=stage.layer.firstElementChild;inner.style.filter=p>=.995?'none':`blur(${(Math.pow(1-p,1.6)*BLUR).toFixed(2)}px)`;}const from=rootPages.indexOf(page),to=rootPages.indexOf(stage.target);indicator(from+(to-from)*p,false);}
 function clean(){
- stage?.layer.remove();stage=null;dropWarm();
+ stage?.layer.remove();stage?.extra?.remove();stage=null;dropWarm();app.style.visibility='';
  app.style.transform='';app.style.opacity='';app.style.position='';app.style.zIndex='';app.style.background='';app.style.filter='';app.inert=false;
  document.body.classList.remove('root-dragging');busy=false;
 }
@@ -55,30 +55,36 @@ async function settle(commit=true){
  const start=s.dx,edge=s.sign*innerWidth,fromFilter=s.layer.firstElementChild.style.filter||'none';
  let outgoing=app,incoming=s.layer;
  if(commit){
+  // Живая страница не анимируется: её закрывает уже готовое превью, а выезжающая старая страница — снимок.
   const clone=app.cloneNode(true);
   clone.style.cssText=`margin-top:${-window.scrollY}px`;
   outgoing=mountPreview(page,clone);
+  s.extra=outgoing;
   navigate(s.target,{noPageMotion:true,noAnimation:true});
-  s.layer.remove();s.layer=outgoing;
-  incoming=app;
+  app.style.visibility='hidden';
+  incoming=s.layer;
  }
  app.inert=true;
- const duration=reducedMotion()?0:commit?Math.round(325+145*(1-clamp(Math.abs(start)/innerWidth))):330;
+ const duration=reducedMotion()?0:commit?Math.round(360+150*(1-clamp(Math.abs(start)/innerWidth))):340;
  const slide=(el,from,to)=>el.animate([{transform:`translateX(${from}px)`},{transform:`translateX(${to}px)`}],{duration,easing:ease,fill:'both'});
  s.animations=[slide(outgoing,start,commit?-edge:0),slide(incoming,edge+start,commit?0:edge)];
  if(BLUR){
-  const content=commit?incoming:incoming.firstElementChild;
-  s.animations.push(commit?content.animate([{filter:fromFilter,offset:0},{filter:'blur(0.4px)',offset:.42},{filter:'none',offset:.4201},{filter:'none',offset:1}],{duration,easing:'linear',fill:'both'}):content.animate([{filter:fromFilter},{filter:`blur(${BLUR}px)`}],{duration,easing:ease,fill:'both'}));
+  const content=incoming.firstElementChild;
+  s.animations.push(commit?content.animate([{filter:fromFilter,offset:0},{filter:'blur(0.5px)',offset:.38},{filter:'none',offset:.3801},{filter:'none',offset:1}],{duration,easing:'linear',fill:'both'}):content.animate([{filter:fromFilter},{filter:`blur(${BLUR}px)`}],{duration,easing:ease,fill:'both'}));
  }
  indicator(rootPages.indexOf(page),true);
- await Promise.allSettled(s.animations.map(animation=>animation.finished));
+ const finished=Promise.allSettled(s.animations.map(animation=>animation.finished));
+ // Страница становится нажимаемой, когда сдвиг почти закончился (≈72% времени, остаток — доли пикселя), а не в самом конце.
+ await (commit&&duration?Promise.race([finished,new Promise(r=>setTimeout(r,Math.round(duration*.72)))]):finished);
  if(stage!==s)return;
  clean();
  s.animations.forEach(animation=>animation.cancel());
  sync();
+ if(pendingNav&&pendingNav!==page){const t=pendingNav;pendingNav=null;go(t);}else pendingNav=null;
 }
 function cancel(){if(stage){stage.animations?.forEach(a=>a.cancel());clean();}navGesture=null;sync();}
-function go(target){if(busy)return;if(reducedMotion()){navigate(target,{noPageMotion:true,noAnimation:true});sync();return;}if(begin(target)){drag(0);settle(true);}}
+let pendingNav=null;
+function go(target){if(busy){pendingNav=target;return;}if(reducedMotion()){navigate(target,{noPageMotion:true,noAnimation:true});sync();return;}if(begin(target)){drag(0);settle(true);}}
 nav.style.touchAction='none';
 nav.addEventListener('pointerdown',e=>{if(!e.isPrimary||e.button!==0||busy||tourActive||holding||listening||document.querySelector('dialog[open]'))return;navGesture={id:e.pointerId,x:e.clientX,startIndex:rootPages.indexOf(page),index:rootPages.indexOf(page),dragged:false};},{passive:true});
 nav.addEventListener('pointermove',e=>{const g=navGesture;if(!g||g.id!==e.pointerId)return;if(!g.dragged&&Math.abs(e.clientX-g.x)<7)return;g.dragged=true;nav.setPointerCapture?.(e.pointerId);const r=nav.getBoundingClientRect(),fraction=clamp((e.clientX-r.left-r.width/6)/(r.width/3),0,2);g.index=Math.round(fraction);indicator(fraction,false);if(e.cancelable)e.preventDefault();},{passive:false});
