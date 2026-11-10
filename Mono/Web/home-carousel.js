@@ -87,9 +87,10 @@ function mount(box){
 }
 // Появление блока последним после заставки
 function reveal(box){
- if(!box||reducedMotion()||!box.children.length){box?.classList.remove('rem-waiting');return;}
+ if(!box||!box.classList.contains('rem-waiting'))return;
  box.classList.remove('rem-waiting');
- box.animate([{opacity:0,transform:'translateY(28px) scale(.96)'},{opacity:1,transform:'none'}],{duration:720,delay:260,easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'});
+ if(reducedMotion()||!box.children.length)return;
+ box.animate([{opacity:0,transform:'translateY(22px) scale(.97)'},{opacity:1,transform:'none'}],{duration:560,easing:'cubic-bezier(.22,1,.36,1)'});
 }
 root.MonoHomeCarousel={mount,reveal};
 // Модули напоминаний подключаются после app.js — перерисовываем главную, когда всё готово

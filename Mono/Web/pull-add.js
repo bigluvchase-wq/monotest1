@@ -21,7 +21,7 @@ function show(pull,progress){
  app.style.transition='none';app.style.transform=pull?`translateY(${pull.toFixed(1)}px)`:'';
  hint.style.opacity=String(Math.min(1,progress*1.4));
  hint.style.transform=`translate(-50%,${(-18+Math.min(26,pull*.55)).toFixed(1)}px) scale(${(.9+.1*Math.min(1,progress)).toFixed(3)})`;
- arrow.style.transform=`rotate(${progress>=1?180:0}deg)`;
+ arrow.style.transform=`translateY(${(Math.min(1,progress)*3).toFixed(1)}px)`;
  const ready=progress>=1;
  if(ready!==hint.classList.contains('ready')){hint.classList.toggle('ready',ready);text.textContent=ready?'Отпустите, чтобы добавить':'Потяните вниз, чтобы добавить';if(ready)navigator.vibrate?.(8);}
 }

@@ -18,11 +18,12 @@ function codeBlock(){
 
 function premiumLink(){
  const isPrem = MonoAccess.isPremium();
- if (isPrem) {
-  return `<span class="primary premium-button" style="background: #27ae60; text-align: center; display: block; cursor: default;">Премиум активен ✓</span>`;
- }
  const deviceCode = acc.code ? acc.code.replace(/\s+/g, '') : '';
  const payUrl = deviceCode ? `http://monoapp.ru/?code=${deviceCode}` : 'http://monoapp.ru/';
+ if (isPrem) {
+  // Активный Премиум тоже ведёт на страницу оплаты — там подписку можно продлить
+  return `<a class="primary premium-button premium-active" href="${payUrl}"><span>Премиум активен ✓</span><small>Продлить <span aria-hidden="true">↗</span></small></a>`;
+ }
  return `<a class="primary premium-button" href="${payUrl}">Премиум <span aria-hidden="true">↗</span></a>`;
 }
 
@@ -156,6 +157,26 @@ async function refreshAccess(force){
 
  if(isPremium()&&!was)reconcile();
  if(page==='profile')render();
+ root.MonoNative?.refreshReminders?.();
+ subscriptionNotice();
+}
+// ---------- Напоминание о конце подписки: за 3 дня и за 1 день ----------
+const dayKey=ms=>{const d=new Date(ms);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+function daysUntilEnd(){if(!isPremium()||!paidUntil)return null;const a=new Date();a.setHours(12,0,0,0);const b=new Date(paidUntil);b.setHours(12,0,0,0);return Math.round((b-a)/DAY);}
+const endText=left=>left===1?'Завтра закончится подписка Премиум. Продлите её в профиле, чтобы не потерять доступ.':'Подписка Премиум закончится через 3 дня. Продлить можно в профиле.';
+function subscriptionNotice(){
+ const left=daysUntilEnd();if(left!==3&&left!==1)return;
+ if(document.hidden||document.querySelector('dialog[open]'))return;
+ const key=dayKey(paidUntil)+'|'+left;let seen={};try{seen=JSON.parse(localStorage.getItem('mono-sub-notice'))||{};}catch{}
+ if(seen[key])return;seen={[key]:Date.now()};try{localStorage.setItem('mono-sub-notice',JSON.stringify(seen));}catch{}
+ notify(endText(left),false,{duration:6000});
+}
+// Для уведомлений iPhone: за 3 дня и за 1 день до конца, в 10:00
+function nativeItems(){
+ if(!isPremium()||!paidUntil)return [];
+ const end=new Date(paidUntil),items=[];
+ for(const left of [3,1]){const d=new Date(end);d.setDate(d.getDate()-left);d.setHours(10,0,0,0);if(d.getTime()>Date.now())items.push({id:'sub|'+dayKey(paidUntil)+'|'+left,date:dayKey(d.getTime()),time:'10:00',text:endText(left)});}
+ return items;
 }
 const meta=()=>{try{return JSON.parse(localStorage.getItem(SK))||{};}catch{return {};}};
 const setMeta=m=>{try{localStorage.setItem(SK,JSON.stringify(m));}catch{}};
@@ -232,13 +253,13 @@ root.MonoAccess={
  isPremium,
  canUse:()=>isPremium()||daysLeft(acc.trialUntil)>0,
  codeText:()=>acc.code?acc.code.slice(0,3)+' '+acc.code.slice(3):'',
- copyCode,queueSync,refresh,
+ copyCode,queueSync,refresh,nativeItems,daysUntilEnd,
  devGrant:days=>{if(!CFG.devMode)return false;acc.devUntil=Date.now()+days*864e5;save();refresh();return true;}
 };
 root.MonoProfile={render:renderProfile,startTrial,socials,decorate,safeAvatar,profileName,premiumDialog};decorate();
 if(acc.trialUntil)saveIdentity();else startTrial();
 ensureCode().then(()=>refresh());
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureCode().then(()=>refresh(true));}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureCode().then(()=>refresh(true));setTimeout(subscriptionNotice,1500);}});
 addEventListener('online',()=>{ensureCode().then(()=>refresh(true));});
 if(root.MonoNative)addEventListener('focus',()=>refresh(true));
 })(window);

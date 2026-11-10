@@ -1047,3 +1047,43 @@ body[data-page=menu] .menu-tile.menu-wide::after,.root-preview[data-page="menu"]
 #home{overflow-x:visible}
 body[data-page=home]{overflow-x:clip}
 .rem-carousel{overflow:visible}
+
+/* Календарь платежей: день без отдельной «карточки», ровные края внутри календаря */
+html[data-theme] .payments-agenda .agenda-day-details{background:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border:0!important;border-top:1px solid var(--line)!important;border-radius:0!important;margin-top:14px;padding:12px 2px 2px!important;overflow:visible}
+html[data-theme] .payments-agenda .agenda-day-details .agenda-payment{border-radius:14px;padding:10px 4px}
+
+/* Свайп «Удалить»: красная подложка заходит под скругление карточки — без белой полосы */
+.swipe-shell>.swipe-delete{width:118px;padding-left:32px;box-sizing:border-box}
+.swipe-shell.swipe-open,.swipe-shell.swipe-moving{background:linear-gradient(90deg,transparent 50%,var(--red) 50%)!important}
+.swipe-shell:not(.swipe-open):not(.swipe-moving)>.swipe-delete{visibility:hidden}
+
+/* Карусель на главной не перекрывает поиск и окна */
+#homeReminders,.rem-carousel{isolation:isolate}
+#homeReminders{z-index:0}
+
+/* Меню: без стрелочек на блоках */
+body[data-page=menu] .menu-tile::after,.root-preview[data-page="menu"] .menu-tile::after{content:none!important;display:none!important}
+
+/* Потяните вниз: только стрелочка по центру */
+.pull-hint{padding:0;width:40px;height:40px;justify-content:center;gap:0;border-radius:50%}
+.pull-hint .pull-text{display:none}
+.pull-hint .pull-arrow{width:40px;height:40px;background:transparent}
+.pull-hint .pull-arrow svg{width:20px;height:20px}
+.pull-hint.ready .pull-arrow{background:transparent}
+
+/* Поиск: шапка прячется сразу, без наложения под строку поиска */
+html.search-open header>*{opacity:0!important;transition:opacity .12s ease!important;pointer-events:none}
+#searchLayer,#searchLayer.on{opacity:1!important;transition:visibility 0s .38s!important}
+#searchLayer.on{transition:none!important}
+#searchLayer .search-backdrop{opacity:0;transition:opacity .3s ease}
+#searchLayer.on .search-backdrop{opacity:1}
+#searchLayer .search-results{transition:opacity .3s ease,transform .42s cubic-bezier(.22,1,.36,1)}
+#searchLayer:not(.on) .search-results{opacity:0}
+
+/* Премиум активен — кнопка с продлением */
+a.premium-button.premium-active{background:linear-gradient(135deg,#2fae6a,#25935a)!important;box-shadow:0 10px 24px #25935a40}
+a.premium-button.premium-active small{font-size:12.5px;font-weight:600;opacity:.92}
+
+/* Поддержка: почта */
+.support-mail h3{margin:0 0 6px}
+.support-mail-link{display:inline-block;font-size:17px;font-weight:650;color:var(--accent);text-decoration:none;margin-bottom:6px;word-break:break-all}
