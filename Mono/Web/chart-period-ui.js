@@ -74,8 +74,12 @@
   if(!chart.open||MonoCharts.isBusy()||moving)return;
   const active=!isMonthly();
   monthlyType=active?button.dataset.monthlyChart:'';
+  const visual=panel.querySelector('.chart-visual'),before=visual?.offsetHeight||0;
+  visual?.getAnimations().forEach(a=>a.cancel());
   if(active){cancelMotion();preview='';renderMonthly();}
   panel.querySelector('.chart-details-content').classList.toggle('show-monthly',active);
+  // Высота блока следует за видимым графиком: структура возвращается к своему размеру
+  if(visual){const after=visual.offsetHeight;if(before&&after&&before!==after&&!reducedMotion())visual.animate([{height:before+'px'},{height:after+'px'}],{duration:440,easing:'cubic-bezier(.22,1,.36,1)'});}
   button.setAttribute('aria-pressed',String(active));
   ring?.setAttribute('aria-pressed',String(!active));
   monthlyChart().inert=!active;

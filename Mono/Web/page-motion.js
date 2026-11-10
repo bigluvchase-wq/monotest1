@@ -3,7 +3,7 @@
 const app=document.querySelector('.app'),nav=document.querySelector('.bottom-nav'),buttons=[...nav.querySelectorAll('[data-nav]')],slider=document.createElement('span');
 slider.className='nav-slider';slider.setAttribute('aria-hidden','true');nav.prepend(slider);
 let stage=null,busy=false,navGesture=null,suppressUntil=0;
-const BLUR=window.MONO_PAGE_BLUR===false?0:16,ease='cubic-bezier(.22,1,.36,1)',clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
+const BLUR=window.MONO_PAGE_BLUR===true?16:0,ease='cubic-bezier(.22,1,.36,1)',clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
 function indicator(index,animate=true){const first=buttons[0].getBoundingClientRect(),last=buttons[1].getBoundingClientRect(),r=nav.getBoundingClientRect();slider.style.width=first.width+'px';slider.style.left=(first.left-r.left)+'px';slider.style.transition=animate&&!reducedMotion()?'transform 420ms '+ease:'none';slider.style.transform=`translateX(${(last.left-first.left)*index}px)`;buttons.forEach((button,i)=>{button.classList.toggle('nav-highlight',i===Math.round(index));button.style.transition=animate&&!reducedMotion()?'color 420ms '+ease:'none';});}
 function sync(){if(!stage&&!navGesture)indicator(Math.max(0,rootPages.indexOf(page)),true);}
 // Preview nodes are inert and contain no live form handlers or duplicate IDs.

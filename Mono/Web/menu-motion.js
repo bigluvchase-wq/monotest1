@@ -17,9 +17,9 @@
    if(focus&&root.MonoFocus?.isKeyboard()&&!document.querySelector('dialog[open]')){const target=plan.opening?document.querySelector('#pageTitle'):document.querySelector(`.menu-tile[data-go="${plan.route}"]`);if(target){if(plan.opening)target.tabIndex=-1;target.focus({preventScroll:true});}}
   }
   active={finish};
-  animations.push(workspace.animate([{opacity:.15,transform:`translateY(${direction*16}px)`},{opacity:1,transform:'translateY(0)'}],{duration:540,easing}));
+  animations.push(workspace.animate([{transform:`translateY(${direction*16}px)`},{transform:'translateY(0)'}],{duration:540,easing}));
   const children=plan.opening?document.querySelectorAll('#pageBody > *'):document.querySelectorAll('.menu-tile');
-  children.forEach((el,index)=>animations.push(el.animate([{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'translateY(0)'}],{duration:400,delay:55+Math.min(index,6)*18,easing,fill:'backwards'})));
+  children.forEach((el,index)=>animations.push(el.animate([{transform:'translateY(12px) scale(.985)'},{transform:'none'}],{duration:400,delay:55+Math.min(index,6)*18,easing,fill:'backwards'})));
   Promise.allSettled(animations.map(a=>a.finished)).then(()=>finish());timer=setTimeout(()=>finish(),740);
  }
  window.addEventListener('resize',cancel);window.addEventListener('pagehide',cancel);document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
