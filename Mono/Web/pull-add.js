@@ -8,7 +8,7 @@ const actions={
  deposits:()=>root.MonoDeposits?.form(),
  reminders:()=>root.MonoReminders?.form()
 };
-const hint=document.createElement('div');hint.className='pull-hint';hint.setAttribute('aria-hidden','true');hint.textContent='Потяните вниз для добавления';document.body.append(hint);
+const hint=document.createElement('div');hint.className='pull-hint';hint.setAttribute('aria-hidden','true');hint.textContent='↓';document.body.append(hint);
 const THRESHOLD=78;
 let g=null;
 const app=document.querySelector('.app');
@@ -32,7 +32,7 @@ document.addEventListener('touchmove',e=>{
  const p=Math.min(1,dy/THRESHOLD),pull=Math.min(dy,160)*.38;
  app.style.transition='none';app.style.transform=`translateY(${pull.toFixed(1)}px)`;
  hint.style.opacity=String(Math.min(1,p*1.2));hint.style.transform=`translate(-50%,${(-14+Math.min(18,pull*.5)).toFixed(1)}px)`;
- hint.textContent=p>=1?'Отпустите, чтобы добавить':'Потяните вниз для добавления';
+ hint.textContent=p>=1?'+':'↓';
  hint.classList.toggle('ready',p>=1);
 },{passive:false});
 function end(e){

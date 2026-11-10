@@ -52,6 +52,8 @@ function navigate(p,options={}){
  if(holding||listening)cancelVoice();
  if(p==='profile'){window.MonoProfile?.startTrial();if(page!=='profile')window.profileFrom=page;}
  const previous=page,nested=!rootPages.includes(p),app=$('.app');
+ if(nested&&p!=='profile'&&rootPages.includes(previous))window.nestedFrom=previous==='home'?'home':'menu';
+ window.backTarget=()=>page==='profile'?(window.profileFrom&&window.profileFrom!=='profile'?window.profileFrom:'home'):(window.nestedFrom==='home'?'home':'menu');
  const menuMotion=options.noAnimation?null:window.MonoMenuMotion?.prepare(previous,p);
  $$('.nav-ghost').forEach(el=>el.remove());app.getAnimations().forEach(animation=>animation.cancel());
  const direction=options.direction||(rootPages.includes(previous)&&rootPages.includes(p)?(rootPages.indexOf(p)>rootPages.indexOf(previous)?1:-1):nested||previous==='profile'?1:-1);
@@ -92,7 +94,7 @@ function navigate(p,options={}){
  if(tourActive)requestAnimationFrame(positionTour);
 }
 
-$$('[data-nav]').forEach(b=>b.onclick=()=>navigate(b.dataset.nav));$('#homeLogo').onclick=e=>{e.preventDefault();navigate('home');};$('#backToMenu').onclick=()=>navigate(page==='profile'?(window.profileFrom&&window.profileFrom!=='profile'?window.profileFrom:'home'):'menu');
+$$('[data-nav]').forEach(b=>b.onclick=()=>navigate(b.dataset.nav));$('#homeLogo').onclick=e=>{e.preventDefault();navigate('home');};$('#backToMenu').onclick=()=>navigate(window.backTarget());
 function currencyTabs(){const cs=[...new Set(state.accounts.map(a=>a.currency))];if(!cs.includes(selectedCurrency))selectedCurrency=cs[0];return `<div class="currency-tabs">${cs.map(c=>`<button data-currency="${c}" class="${c===selectedCurrency?'active':''}">${c}</button>`).join('')}</div>`;}
 const marks={accounts:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h3"/>',deposits:'<circle cx="12" cy="12" r="9"/><path d="m9 15 6-6"/><circle cx="9.2" cy="9.2" r="1.1"/><circle cx="14.8" cy="14.8" r="1.1"/>',reminders:'<path d="M6 17V11a6 6 0 1 1 12 0v6l1.5 2h-15z"/><path d="M10 21a2 2 0 0 0 4 0"/>',goals:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 9v6M9 12h6"/>',limits:'<path d="M4 19V9m8 10V4m8 15v-7M2 19h20"/>',payments:'<rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 11h16M8 15h2m4 0h2"/>',categories:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',achievements:'<path d="m12 3 3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 10l6-1z"/>',settings:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>',support:'<path d="M4 17v-5a8 8 0 0 1 16 0v5M4 12H2v6h4v-6zm16 0h2v6h-4v-6zM20 18c0 3-5 3-8 3"/>'};
 function icon(name){return `<span class="menu-symbol"><svg viewBox="0 0 24 24">${marks[name]||marks.accounts}</svg></span>`;}

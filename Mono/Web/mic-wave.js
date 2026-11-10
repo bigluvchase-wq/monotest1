@@ -6,6 +6,7 @@ const zone=document.querySelector('.voice-zone'),mic=document.getElementById('mi
 if(!zone||!mic)return;
 const make=cls=>{const el=document.createElement('i');el.className='voice-glass '+cls;el.setAttribute('aria-hidden','true');zone.insertBefore(el,mic);return el;};
 const g1=make('g1'),g2=make('g2');
+function size(){const w=mic.offsetWidth;if(w>0)zone.style.setProperty('--mic-size',w+'px');}
 const reduce=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
 let target=0,lv=0,lv2=0,last=0,raf=0,on=false,stream=null,audio=null,analyser=null,data=null,t0=0;
 function level(v){target=Math.max(0,Math.min(1,v));last=performance.now();}
@@ -36,10 +37,10 @@ async function openAudio(){
  }catch{}
 }
 function closeAudio(){analyser=null;try{stream?.getTracks().forEach(t=>t.stop());}catch{}stream=null;try{audio?.close();}catch{}audio=null;}
-function start(){if(on)return;on=true;zone.style.setProperty('--mic-size',mic.offsetWidth+'px');t0=performance.now();target=0;lv=0;lv2=0;last=0;zone.classList.add('wave-on');cancelAnimationFrame(raf);raf=requestAnimationFrame(frame);openAudio();}
+function start(){if(on)return;on=true;size();t0=performance.now();target=0;lv=0;lv2=0;last=0;zone.classList.add('wave-on');cancelAnimationFrame(raf);raf=requestAnimationFrame(frame);openAudio();}
 function stop(){if(!on)return;on=false;cancelAnimationFrame(raf);zone.classList.remove('wave-on');closeAudio();g1.style.transform=g2.style.transform='';zone.style.removeProperty('--lv');}
 const sync=()=>{const b=document.body.classList;(b.contains('holding')||b.contains('listening'))?start():stop();};
 new MutationObserver(sync).observe(document.body,{attributes:true,attributeFilter:['class']});sync();
-const size=()=>zone.style.setProperty('--mic-size',mic.offsetWidth+'px');size();addEventListener('resize',size);if(window.ResizeObserver)new ResizeObserver(size).observe(mic);
+size();addEventListener('resize',size);if(window.ResizeObserver)new ResizeObserver(size).observe(mic);
 root.MonoMicWave={level,start,stop};
 })(window);
