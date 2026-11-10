@@ -1,7 +1,24 @@
 (function(root){
  'use strict';
  const panel=document.querySelector('#chartPanel'),chart=document.querySelector('#chartDialog'),picker=document.querySelector('#periodDialog'),form=picker.querySelector('form');
- let monthlyType='',preview='',category='',graphTotal=0,granularity='day';
+ let monthlyType='',preview='',category='',graphTotal=0,granularity='day',zoom=1;
+ // Приближение графика «Динамика»: кнопки −/+ и жест двумя пальцами. При приближении график листается вбок.
+ const ZOOMS=[1,1.5,2,3,4,6];
+ function applyZoom(next,anchor=.5){
+  const monthly=monthlyChart();if(!monthly)return;
+  const scroll=monthly.querySelector('.monthly-scroll'),bars=monthly.querySelector('.monthly-bars');if(!scroll||!bars)return;
+  const old=bars.offsetWidth||1,focus=(scroll.scrollLeft+scroll.clientWidth*anchor)/old;
+  zoom=Math.max(1,Math.min(6,next));
+  monthly.classList.toggle('is-zoomed',zoom>1);
+  bars.style.width=zoom>1?(zoom*100)+'%':'';
+  const n=Number(bars.style.getPropertyValue('--columns'))||1,step=Math.max(1,Math.ceil(n/(6*zoom)));
+  bars.querySelectorAll('[data-monthly-pick]').forEach((b,i)=>{if(i%step)b.setAttribute('data-skip','');else b.removeAttribute('data-skip');});
+  scroll.scrollLeft=Math.max(0,focus*bars.offsetWidth-scroll.clientWidth*anchor);
+  const label=monthly.querySelector('.chart-zoom-value');if(label)label.textContent=zoom===1?'1×':(String(zoom).replace('.',','))+'×';
+  monthly.querySelector('[data-zoom="-1"]')?.toggleAttribute('disabled',zoom<=1);
+  monthly.querySelector('[data-zoom="1"]')?.toggleAttribute('disabled',zoom>=6);
+ }
+ function stepZoom(dir){const i=ZOOMS.findIndex(z=>z>=zoom-.01);const next=dir>0?ZOOMS.find(z=>z>zoom+.01)??6:[...ZOOMS].reverse().find(z=>z<zoom-.01)??1;applyZoom(next);void i;}
  const monthlyChart=()=>panel.querySelector('#monthlyChart');
  const isMonthly=()=>Boolean(monthlyType);
  function renderMonthly(){
@@ -11,6 +28,7 @@
   const entries=selectedEntries().filter(e=>e.type===monthlyType&&inChart(e));
   const categories=[...new Set([...((monthlyType==='income'?state.incomeCategories:state.categories)||[]),...entries.map(e=>e.category)])];
   if(!monthly.querySelector('.chart-gran')){const g=document.createElement('div');g.className='chart-gran';g.setAttribute('role','group');g.setAttribute('aria-label','Группировка');g.innerHTML='<button type="button" data-gran="day">Дни</button><button type="button" data-gran="week">Недели</button><button type="button" data-gran="month">Месяцы</button>';monthly.insertBefore(g,monthly.querySelector('.monthly-category'));}
+  if(!monthly.querySelector('.chart-zoom')){const z=document.createElement('div');z.className='chart-zoom';z.setAttribute('role','group');z.setAttribute('aria-label','Масштаб графика');z.innerHTML='<button type="button" data-zoom="-1" aria-label="Отдалить график">−</button><span class="chart-zoom-value" aria-live="polite">1×</span><button type="button" data-zoom="1" aria-label="Приблизить график">+</button>';monthly.querySelector('.monthly-category').after(z);}
   const filter=monthly.querySelector('[data-graph-category]');
   filter.innerHTML='<option value="">Все категории</option>'+categories.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join('');
   if(!categories.includes(category))category='';
@@ -55,6 +73,7 @@
   }).join('');
   const peakTag=max>0?`<span class="line-peak" aria-hidden="true" style="left:${((peak+.5)/n*100).toFixed(2)}%;top:calc(4px + var(--track-h) * ${((100-(max?H:0))/100).toFixed(3)})">${money(max,selectedCurrency)}</span>`:'';
   bars.innerHTML=svg+columns+peakTag;
+  requestAnimationFrame(()=>applyZoom(zoom));
   const unit=granularity==='day'?'день':granularity==='week'?'неделю':'месяц';
   let stats=monthly.querySelector('.monthly-stats');
   if(!stats){stats=document.createElement('div');stats.className='monthly-stats';monthly.append(stats);}
@@ -91,7 +110,7 @@
  let scrubUntil=0,scrubbing=false;
  function scrub(e){const bars=e.target.closest?.('.monthly-bars')||panel.querySelector('.monthly-bars');const buttons=[...bars.querySelectorAll('[data-monthly-pick]')];if(!buttons.length)return;const r=bars.getBoundingClientRect(),i=Math.max(0,Math.min(buttons.length-1,Math.floor((e.clientX-r.left)/r.width*buttons.length)));if(buttons[i].dataset.monthlyPick!==preview)selectPreview(buttons[i].dataset.monthlyPick);}
  panel.addEventListener('pointerdown',e=>{if(e.button!==0||!isMonthly()||!e.target.closest('.monthly-bars'))return;scrubbing=true;scrubUntil=performance.now()+450;scrub(e);},{passive:true});
- panel.addEventListener('pointermove',e=>{if(!scrubbing||!isMonthly())return;scrubUntil=performance.now()+450;scrub(e);},{passive:true});
+ panel.addEventListener('pointermove',e=>{if(!scrubbing||!isMonthly()||zoom>1)return;scrubUntil=performance.now()+450;scrub(e);},{passive:true});
  for(const type of ['pointerup','pointercancel'])panel.addEventListener(type,()=>{scrubbing=false;},{passive:true});
  let mode='preset',kind='month',gesture=null,suppressUntil=0,moving=false,epoch=0,animations=[];
  function showMode(value){mode=value;picker.querySelectorAll('[data-period-mode]').forEach(b=>{const on=b.dataset.periodMode===mode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});picker.querySelector('.period-preset-fields').hidden=mode!=='preset';picker.querySelector('.period-range-fields').hidden=mode!=='range';for(const name of ['from','to']){form.elements[name].required=mode==='range';form.elements[name].disabled=mode!=='range';}form.elements.anchor.disabled=mode!=='preset';form.elements.anchor.required=mode==='preset';picker.querySelector('.form-error').hidden=true;}
@@ -118,12 +137,17 @@
  animations=monthNodes().map(el=>el.animate([{transform:el.style.transform||'translateX(0)',opacity:el.style.opacity||1,filter:'blur(0px)'},{transform:`translateX(${-sign*70}px)`,opacity:0,filter:'blur(2px)'}],{duration:200,easing,fill:'forwards'}));await Promise.allSettled(animations.map(a=>a.finished));if(token!==epoch||!chart.open)return;animations.forEach(a=>a.cancel());resetMotion();apply(month);
  animations=monthNodes().map(el=>el.animate([{transform:`translateX(${sign*70}px)`,opacity:0,filter:'blur(2px)'},{transform:'translateX(0)',opacity:1,filter:'blur(0px)'}],{duration:390,easing,fill:'both'}));await Promise.allSettled(animations.map(a=>a.finished));if(token===epoch){animations.forEach(a=>a.cancel());animations=[];moving=false;resetMotion();}}
 
- panel.addEventListener('click',event=>{if(performance.now()<suppressUntil){event.preventDefault();event.stopImmediatePropagation();return;}const graph=event.target.closest('[data-monthly-chart]');if(graph){if(!isMonthly())toggleMonthly(graph);return;}const view=event.target.closest('[data-chart-view]');if(view){if(isMonthly())toggleMonthly(panel.querySelector('[data-monthly-chart]'));return;}const gran=event.target.closest('[data-gran]');if(gran){granularity=gran.dataset.gran;preview='';renderMonthly();return;}const month=event.target.closest('[data-monthly-pick]');if(month){if(performance.now()<scrubUntil)return;selectPreview(preview===month.dataset.monthlyPick?'':month.dataset.monthlyPick);return;}if(event.target.closest('.chart-period-button')){cancelMotion();choose();}const b=event.target.closest('[data-chart-month]');if(b)changeMonth(Number(b.dataset.chartMonth));},{capture:true});
+ panel.addEventListener('click',event=>{if(performance.now()<suppressUntil){event.preventDefault();event.stopImmediatePropagation();return;}const graph=event.target.closest('[data-monthly-chart]');if(graph){if(!isMonthly())toggleMonthly(graph);return;}const view=event.target.closest('[data-chart-view]');if(view){if(isMonthly())toggleMonthly(panel.querySelector('[data-monthly-chart]'));return;}const zb=event.target.closest('[data-zoom]');if(zb){stepZoom(Number(zb.dataset.zoom));return;}const gran=event.target.closest('[data-gran]');if(gran){granularity=gran.dataset.gran;preview='';zoom=1;renderMonthly();return;}const month=event.target.closest('[data-monthly-pick]');if(month){if(performance.now()<scrubUntil)return;selectPreview(preview===month.dataset.monthlyPick?'':month.dataset.monthlyPick);return;}if(event.target.closest('.chart-period-button')){cancelMotion();choose();}const b=event.target.closest('[data-chart-month]');if(b)changeMonth(Number(b.dataset.chartMonth));},{capture:true});
  panel.addEventListener('change',event=>{if(event.target.matches('[data-graph-category]')){category=event.target.value;preview='';renderMonthly();}});
  picker.querySelector('.period-close').onclick=()=>picker.close();picker.querySelectorAll('[data-period-mode]').forEach(b=>b.onclick=()=>showMode(b.dataset.periodMode));picker.querySelectorAll('[data-period-kind]').forEach(b=>b.onclick=()=>selectKind(b.dataset.periodKind));
  form.onsubmit=event=>{event.preventDefault();try{const p=mode==='range'?MonoPeriod.range(form.elements.from.value,form.elements.to.value):MonoPeriod.preset(kind,form.elements.anchor.value);picker.close();apply(p.start.slice(0,7),mode==='preset'?{...p,kind}:p);}catch(e){const error=picker.querySelector('.form-error');error.textContent=e.message;error.hidden=false;}};
  panel.addEventListener('pointerdown',e=>{if(!e.isPrimary||e.button!==0||moving||isMonthly()||MonoCharts.isBusy()||!e.target.closest('.chart-morph-space'))return;gesture={id:e.pointerId,x:e.clientX,y:e.clientY,dx:0,horizontal:false,cancelled:false};},{passive:true});
  panel.addEventListener('pointermove',e=>{const g=gesture;if(!g||g.id!==e.pointerId||g.cancelled)return;const dx=e.clientX-g.x,dy=e.clientY-g.y;if(!g.horizontal){if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)){g.cancelled=true;return;}if(Math.abs(dx)<12||Math.abs(dx)<Math.abs(dy)*1.4)return;g.horizontal=true;}g.dx=dx;pullMonth(dx);if(e.cancelable)e.preventDefault();},{passive:false});
- panel.addEventListener('pointerup',e=>{const g=gesture;if(!g||g.id!==e.pointerId)return;gesture=null;if(g.horizontal&&!g.cancelled){suppressUntil=performance.now()+300;if(Math.abs(g.dx)>65){changeMonth(g.dx<0?1:-1);return;}}resetMotion();},{passive:true});panel.addEventListener('pointercancel',()=>{gesture=null;resetMotion();},{passive:true});chart.addEventListener('close',()=>{cancelMotion();gesture=null;if(picker.open)picker.close();monthlyType='';preview='';category='';granularity='day';});
+ panel.addEventListener('pointerup',e=>{const g=gesture;if(!g||g.id!==e.pointerId)return;gesture=null;if(g.horizontal&&!g.cancelled){suppressUntil=performance.now()+300;if(Math.abs(g.dx)>65){changeMonth(g.dx<0?1:-1);return;}}resetMotion();},{passive:true});panel.addEventListener('pointercancel',()=>{gesture=null;resetMotion();},{passive:true});chart.addEventListener('close',()=>{cancelMotion();gesture=null;if(picker.open)picker.close();monthlyType='';preview='';category='';granularity='day';zoom=1;});
+ let pinch=null;
+ const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+ panel.addEventListener('touchstart',e=>{if(!isMonthly()||e.touches.length!==2||!e.target.closest('.monthly-scroll'))return;const r=panel.querySelector('.monthly-scroll').getBoundingClientRect();pinch={d:dist(e.touches),z:zoom,anchor:Math.max(0,Math.min(1,((e.touches[0].clientX+e.touches[1].clientX)/2-r.left)/r.width))};scrubbing=false;},{passive:true});
+ panel.addEventListener('touchmove',e=>{if(!pinch||e.touches.length!==2)return;if(e.cancelable)e.preventDefault();const next=pinch.z*dist(e.touches)/pinch.d;if(Math.abs(next-zoom)>.04)applyZoom(Math.round(next*10)/10,pinch.anchor);},{passive:false});
+ panel.addEventListener('touchend',e=>{if(pinch&&e.touches.length<2){pinch=null;scrubUntil=performance.now()+400;}},{passive:true});
  root.MonoMonthMotion={cancel:cancelMotion,isBusy:()=>moving};root.MonoChartPeriod={changeMonth,isMonthly,refreshMonthly:renderMonthly};
 })(window);

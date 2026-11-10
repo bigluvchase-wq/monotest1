@@ -404,7 +404,9 @@ app.post('/api/reward', async (req, res) => {
 // ==========================================
 // 10. Поддержка: обращение из приложения → Firestore + Telegram-бот
 // ==========================================
-const supportHits = new Map(); // не больше 20 обращений в сутки с одного кода/адреса
+// Защита от спама: не больше 3 обращений за 12 часов с одного кода и с одного IP-адреса
+const SUPPORT_LIMIT = 3, SUPPORT_WINDOW = 12 * 60 * 60 * 1000;
+const supportByIp = new Map();
 async function sendTelegram(text) {
     if (!process.env.TG_BOT_TOKEN || !process.env.TG_CHAT_ID) return;
     try {
@@ -422,20 +424,32 @@ async function sendTelegram(text) {
 app.post('/api/support', async (req, res) => {
     const code = cleanCode(req.body.code);
     const topic = ['Ошибка', 'Идея', 'Вопрос'].includes(req.body.topic) ? req.body.topic : 'Вопрос';
-    const email = String(req.body.email || '').trim().slice(0, 200);
+    // Контакт для ответа: почта или ник в Telegram
+    let contact = String(req.body.contact ?? req.body.email ?? '').trim().slice(0, 200);
+    if (/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(contact)) contact = '@' + contact;
     const message = String(req.body.message || '').trim().slice(0, 3000);
     if (!message) return res.status(400).json({ ok: false, error: 'empty' });
-    if (email && !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ ok: false, error: 'bad_email' });
+    if (contact && !/^\S+@\S+\.\S+$/.test(contact) && !/^@[A-Za-z][A-Za-z0-9_]{4,31}$/.test(contact)) return res.status(400).json({ ok: false, error: 'bad_contact' });
 
-    const who = code || req.ip, day = new Date().toISOString().slice(0, 10), key = who + '|' + day;
-    const hits = (supportHits.get(key) || 0) + 1;
-    supportHits.set(key, hits);
-    if (hits > 20) return res.status(429).json({ ok: false, error: 'too_many' });
+    const now = Date.now();
+    const ip = String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
+    // по IP считаем только запросы без кода: если nginx не передаёт адрес, у всех был бы один IP
+    const ipHits = code ? [] : (supportByIp.get(ip) || []).filter(t => now - t < SUPPORT_WINDOW);
+    if (!code && ipHits.length >= SUPPORT_LIMIT) return res.status(429).json({ ok: false, error: 'too_many' });
+    if (code) {
+        // по коду считаем в базе — лимит сохраняется и после перезапуска сервера
+        const since = new Date(now - SUPPORT_WINDOW).toISOString();
+        const recent = await db.collection('supportTickets').where('code', '==', code).get();
+        if (recent.docs.filter(d => String(d.get('createdAt') || '') >= since).length >= SUPPORT_LIMIT) {
+            return res.status(429).json({ ok: false, error: 'too_many' });
+        }
+    }
+    if (!code) { ipHits.push(now); supportByIp.set(ip, ipHits); }
 
     try {
-        await db.collection('supportTickets').add({ code, topic, email, message, status: 'new', createdAt: new Date().toISOString() });
+        await db.collection('supportTickets').add({ code, topic, contact, message, status: 'new', createdAt: new Date().toISOString() });
         const icon = topic === 'Ошибка' ? '🐞' : topic === 'Идея' ? '💡' : '❓';
-        await sendTelegram(`${icon} Поддержка · ${topic}\n\nКод: ${code || '—'}\nПочта: ${email || '—'}\n\n${message}`);
+        await sendTelegram(`${icon} Поддержка · ${topic}\n\nКод: ${code || '—'}\nОтветить: ${contact || '—'}\n\n${message}`);
         res.json({ ok: true });
     } catch (err) {
         console.error('Ошибка обращения в поддержку:', err);
