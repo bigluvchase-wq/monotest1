@@ -342,5 +342,61 @@ app.post('/api/referral', async (req, res) => {
     }
 });
 
+// ==========================================
+// 9. Награды: заявка «пост о моно в соцсетях» → Firestore + письмо на почту
+// Письмо отправляется, если в .env заданы MAIL_USER и MAIL_PASS (пароль приложения Gmail)
+// и установлен nodemailer (npm install nodemailer). Без них заявка всё равно сохраняется в Firestore.
+// ==========================================
+let mailer = null;
+try {
+    if (process.env.MAIL_USER && process.env.MAIL_PASS) {
+        const nodemailer = require('nodemailer');
+        mailer = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS } });
+    }
+} catch (e) {
+    console.error('nodemailer не установлен — письма о наградах не отправляются');
+}
+const REWARD_TO = process.env.REWARD_MAIL_TO || 'monofinapp@gmail.com';
+const REWARD_NETWORKS = { threads: ['Threads', 7], telegram: ['Telegram', 7], instagram: ['Instagram', 30], vk: ['ВКонтакте', 7] };
+const rewardHits = new Map(); // не больше 10 заявок в сутки с одного кода
+
+app.post('/api/reward', async (req, res) => {
+    const code = cleanCode(req.body.code);
+    const network = String(req.body.network || '');
+    const link = String(req.body.link || '').trim().slice(0, 500);
+    if (code.length !== 6 || !REWARD_NETWORKS[network] || !/^https?:\/\/\S+\.\S+/i.test(link)) {
+        return res.status(400).json({ ok: false, error: 'bad_request' });
+    }
+    const day = new Date().toISOString().slice(0, 10), key = code + '|' + day;
+    const hits = (rewardHits.get(key) || 0) + 1;
+    rewardHits.set(key, hits);
+    if (hits > 10) return res.status(429).json({ ok: false, error: 'too_many' });
+
+    const [networkName, days] = REWARD_NETWORKS[network];
+    try {
+        // Награду можно запросить только один раз с одного кода — что-то одно
+        const reqRef = db.collection('rewardRequests').doc(code);
+        const created = await db.runTransaction(async tx => {
+            const existing = await tx.get(reqRef);
+            if (existing.exists) return false;
+            tx.set(reqRef, { code, network, networkName, days, link, status: 'new', createdAt: new Date().toISOString() });
+            return true;
+        });
+        if (!created) return res.json({ ok: false, error: 'already_sent' });
+        if (mailer) {
+            await mailer.sendMail({
+                from: `Моно <${process.env.MAIL_USER}>`,
+                to: REWARD_TO,
+                subject: `Награда моно: ${networkName} · код ${code}`,
+                text: `Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nСсылка: ${link}\nНаграда: +${days} дней Премиума\n`
+            });
+        }
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('Ошибка заявки на награду:', err);
+        res.status(500).json({ ok: false, error: 'server' });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
