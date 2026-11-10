@@ -225,6 +225,8 @@ const SYNC_URL='https://api.monoapp.ru/api/sync';
 const toMs=v=>{const n=expiryMillis(v);return Number.isFinite(n)?n:0;};
 function syncMeta(){const m=meta();if(typeof m.rev!=='number'){m.rev=m.updatedAt&&(!m.syncedAt||m.updatedAt>m.syncedAt)?1:0;m.pushedRev=0;setMeta(m);}return m;}
 let pushAgain=false;
+// Аватарка хранится только на телефоне и на сервер не отправляется: она может много весить
+function withoutAvatar(s){const copy={...s,settings:{...(s.settings||{})}};delete copy.settings.profileAvatar;return copy;}
 function queueSync(){const m=syncMeta();m.rev+=1;m.updatedAt=new Date().toISOString();setMeta(m);if(!isPremium())return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1200);}
 async function push(options={}){
  if(!isPremium()||!acc.code)return;
@@ -232,7 +234,7 @@ async function push(options={}){
  syncing=true;pushAgain=false;
  const m=syncMeta(),rev=m.rev;
  try{
-  const response=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'application/json'},keepalive:!!options.keepalive,body:JSON.stringify({code:acc.code,state,updatedAt:m.updatedAt,rev})});
+  const response=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'application/json'},keepalive:!!options.keepalive,body:JSON.stringify({code:acc.code,state:withoutAvatar(state),updatedAt:m.updatedAt,rev})});
   if(!response.ok){pendingPush=true;return;}
   let serverMs=0;try{const j=await response.json();serverMs=toMs(j?.updatedAt);}catch{}
   if(!serverMs){try{const r=await fetch(`${SYNC_URL}?code=${acc.code}`);if(r.ok)serverMs=toMs((await r.json())?.updatedAt);}catch{}}
@@ -260,7 +262,8 @@ async function reconcile(){
   if(state.settings){
    j.state.settings=j.state.settings||{};
    if(!j.state.settings.profileName&&state.settings.profileName)j.state.settings.profileName=state.settings.profileName;
-   if(!j.state.settings.profileAvatar&&state.settings.profileAvatar)j.state.settings.profileAvatar=state.settings.profileAvatar;
+   // аватарка всегда своя, с этого телефона
+   if(state.settings.profileAvatar)j.state.settings.profileAvatar=state.settings.profileAvatar;else delete j.state.settings.profileAvatar;
    for(const k of ['notifyAsked','notifyGranted'])if(state.settings[k]!==undefined)j.state.settings[k]=state.settings[k];
    j.state.settings.language='ru';
   }
