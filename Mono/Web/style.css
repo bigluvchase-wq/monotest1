@@ -1291,3 +1291,48 @@ body[data-page=menu] .menu-tile.menu-wide .menu-symbol{width:36px;height:36px}
 /* Сноска про Meta */
 .meta-note{margin:14px 4px 4px;font-size:11px;line-height:1.45;color:var(--muted)}
 .rewards .meta-note{margin-top:2px}
+
+/* ===== Динамика: приближение графика ===== */
+.chart-zoom{display:inline-flex;align-items:center;gap:4px;margin:8px auto 0;padding:3px;border-radius:999px;background:var(--depth-bg);border:1px solid var(--depth-edge);box-shadow:var(--depth-shadow-soft)}
+#monthlyChart .chart-zoom{display:flex;width:max-content}
+.chart-zoom button{width:34px;height:30px;min-height:30px;padding:0;border-radius:999px;font-size:19px;line-height:1;color:var(--accent);background:transparent}
+.chart-zoom button:disabled{opacity:.3}
+.chart-zoom button:active:not(:disabled){background:var(--soft)}
+.chart-zoom-value{min-width:34px;text-align:center;font-size:12.5px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums}
+#monthlyChart.is-zoomed .monthly-scroll{overflow-x:auto!important;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px}
+#monthlyChart.is-zoomed .monthly-scroll::-webkit-scrollbar{display:none}
+#monthlyChart.is-zoomed .monthly-bars{touch-action:pan-x pan-y;transition:width .25s ease}
+
+/* ===== Платежи: плашки «сегодня» над календарём — ровные, без лишней обводки ===== */
+html[data-theme] .payments-agenda .agenda-today{display:grid;gap:8px;margin-top:12px}
+html[data-theme] .payments-agenda .agenda-today .agenda-payment,html[data-theme] .payments-agenda .agenda-day-details .agenda-payment{-webkit-appearance:none;appearance:none;border:1px solid var(--line)!important;border-radius:16px!important;background:color-mix(in srgb,var(--surface) 70%,transparent)!important;box-shadow:none!important;outline:none;padding:11px 14px!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:hidden;background-clip:padding-box}
+html[data-theme] .payments-agenda .agenda-day-details .agenda-payment+.agenda-payment{margin-top:8px}
+.agenda-day-details[hidden]{display:none!important}
+
+/* ===== Кнопки-статусы («Оплачено» и другие неактивные) читаются хорошо ===== */
+html[data-theme] .secondary:disabled,html[data-theme] button.small-link:disabled{opacity:1;color:var(--muted)!important;background:color-mix(in srgb,var(--bar) 55%,transparent)!important;box-shadow:none!important;border-color:var(--line)!important}
+html[data-theme] .secondary.payment-is-paid,html[data-theme] .secondary.payment-is-paid:disabled{color:var(--green)!important;background:color-mix(in srgb,var(--green) 14%,transparent)!important;border-color:color-mix(in srgb,var(--green) 32%,transparent)!important;font-weight:650}
+html[data-theme] .secondary.payment-is-paid::before{content:"✓ "}
+
+/* ===== «Проверим и запишем»: поле даты по сетке, как остальные ===== */
+.draft input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;text-align:left;line-height:normal}
+.draft input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
+.draft input[type=date]::-webkit-calendar-picker-indicator{margin-left:auto}
+.draft label{min-width:0}
+.draft-bottom{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+
+/* ===== Категории: плашки с расстоянием и широкой белой обводкой ===== */
+html[data-theme] .category-items{gap:10px}
+html[data-theme] .category-items>.swipe-shell,html[data-theme] .category-items>.category-item{border-radius:18px!important;border:2px solid var(--depth-edge)!important;box-shadow:0 4px 12px rgba(30,36,60,.07)!important;overflow:hidden}
+html[data-theme] .category-items>.swipe-shell .swipe-content,html[data-theme] .category-items>.category-item{background:color-mix(in srgb,var(--card-solid) 80%,transparent)!important}
+html[data-theme] .category-items .category-item{border-bottom:0!important;padding:14px 40px 14px 14px!important;min-height:54px}
+:root[data-theme=dark] .category-items>.swipe-shell,:root[data-theme=dark] .category-items>.category-item{border-color:rgba(255,255,255,.1)!important;box-shadow:0 6px 14px rgba(0,0,0,.3)!important}
+
+/* ===== Меню: 10 квадратных блоков, по 5 с каждой стороны; страница листается ===== */
+body[data-page=menu] .app,.root-preview[data-page="menu"] .app{height:auto!important;min-height:calc(100svh - var(--main-nav-space))}
+body[data-page=menu] #pageBody,.root-preview[data-page="menu"] [data-preview-id="pageBody"]{display:block;flex:none}
+body[data-page=menu] .menu-grid,.root-preview[data-page="menu"] .menu-grid{height:auto!important;flex:none!important;grid-template-rows:none!important;grid-auto-rows:auto;gap:11px;padding-bottom:calc(var(--main-nav-space,110px) + 8px)}
+body[data-page=menu] .menu-tile,.root-preview[data-page="menu"] .menu-tile{height:auto!important;aspect-ratio:1/.86;flex-direction:column!important;align-items:flex-start!important;justify-content:space-between!important}
+body[data-page=menu] .menu-tile .menu-symbol,.root-preview[data-page="menu"] .menu-tile .menu-symbol{width:42px!important;height:42px!important}
+.support-limit{margin:0;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink);font-size:13px;line-height:1.4}
+.support-form+.support-socials,.support-form~.support-socials{margin-top:18px}
