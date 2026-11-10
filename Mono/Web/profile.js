@@ -8,8 +8,9 @@ function startTrial(){
  saveIdentity();
 }
 const daysLeft=end=>Math.max(0,Math.ceil((end-Date.now())/DAY));
-const socialPaths={telegram:'<path d="m3 10 18-7-5 18-5-7-8-4zm8 4 10-11M11 14v5l4-3"/>',vk:'<path d="M3 6h4c0 5 2 8 4 9V6h4v5c2-1 3-3 4-5h3c-1 4-3 6-5 7 2 1 4 3 5 6h-4c-1-2-2-4-3-4v4h-2C6 19 3 13 3 6z"/>',instagram:'<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6"/>'};
-function socials(){return `<div class="support-socials">${Object.entries(socialPaths).map(([key,path])=>`<button type="button" disabled aria-label="${{telegram:'Telegram',vk:'VK',instagram:'Instagram'}[key]} — ссылка пока не добавлена" title="Ссылка пока не добавлена"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg></button>`).join('')}</div><p class="tiny muted">Ссылки на соцсети скоро появятся.</p>`;}
+const socialPaths={telegram:'<path d="m3 10 18-7-5 18-5-7-8-4zm8 4 10-11M11 14v5l4-3"/>',vk:'<path d="M3 6h4c0 5 2 8 4 9V6h4v5c2-1 3-3 4-5h3c-1 4-3 6-5 7 2 1 4 3 5 6h-4c-1-2-2-4-3-4v4h-2C6 19 3 13 3 6z"/>',instagram:'<rect x="3" y="5" width="14" height="14" rx="3"/><path d="m17 10 4-2.5v9L17 14"/><path d="m8.5 9.5 4 2.5-4 2.5z"/>'};
+const META_NOTE='* Instagram и Threads принадлежат компании Meta Platforms Inc., которая признана экстремистской организацией, её деятельность запрещена на территории Российской Федерации.';
+function socials(){const names={telegram:'Telegram',vk:'VK',instagram:'Instagram*'};return `<div class="support-socials">${Object.entries(socialPaths).map(([key,path])=>`<span class="support-social"><button type="button" disabled aria-label="${names[key]} — ссылка пока не добавлена" title="Ссылка пока не добавлена"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg></button><small>${names[key]}</small></span>`).join('')}</div><p class="tiny muted">Ссылки на соцсети скоро появятся.</p><p class="meta-note">* Instagram принадлежит компании Meta Platforms Inc., которая признана экстремистской организацией, её деятельность запрещена на территории Российской Федерации.</p>`;}
 function codeBlock(){
  const code=MonoAccess.codeText();
  const hint=code?'Это твой личный код. А также код приглашения.':accessAvailable?'Код появится, когда приложение подключится к серверу.':'Откройте Моно снова, чтобы загрузить ваш код.';

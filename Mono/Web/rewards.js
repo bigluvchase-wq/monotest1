@@ -5,15 +5,15 @@
 const MAIL='monofinapp@gmail.com';
 const REWARD_URL='https://api.monoapp.ru/api/reward';
 const icons={
- threads:'<path d="M16.6 11.3c-.4-2.5-2-3.8-4.3-3.8-2.6 0-4.3 1.9-4.3 4.5s1.6 4.6 4.3 4.6c2.3 0 3.7-1.3 3.7-3.1 0-2.4-3.4-2.8-5.4-2.2"/><path d="M12 21c5.2 0 8.5-3.5 8.5-9S17.2 3 12 3 3.5 6.5 3.5 12 6.8 21 12 21z"/>',
+ threads:'<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 3.5V17A2.5 2.5 0 0 1 4 14.5z"/><path d="M8 9h8M8 12.5h5"/>',
  telegram:'<path d="m3 10.5 17.5-7-3 17-5.5-5-3 3v-5l9-8-11.5 7z"/>',
- instagram:'<rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r=".7"/>',
+ instagram:'<rect x="3" y="5" width="14" height="14" rx="3"/><path d="m17 10 4-2.5v9L17 14"/><path d="m8.5 9.5 4 2.5-4 2.5z"/>',
  vk:'<path d="M3 6.5h3.6c.4 4.8 2.4 7.3 4.4 7.9V6.5h3.4v4.6c1.8-.4 3.4-2.3 4-4.6h3.3c-.6 3-2.6 5.2-4.2 6.2 1.6.8 3.6 2.7 4.5 5.8h-3.7c-.8-2.1-2.4-3.8-3.9-4v4H14C7.4 18.5 3.4 14 3 6.5z"/>'
 };
 const networks=[
- {id:'threads',name:'Threads',what:'Пост в Threads',days:7},
+ {id:'threads',name:'Threads*',what:'Пост в Threads*',days:7},
  {id:'telegram',name:'Telegram',what:'Пост в Telegram-канале',days:7},
- {id:'instagram',name:'Instagram',what:'Рилс в Instagram',days:30},
+ {id:'instagram',name:'Instagram*',what:'Рилс в Instagram*',days:30},
  {id:'vk',name:'ВКонтакте',what:'Пост во ВКонтакте',days:7}
 ];
 const svg=id=>`<svg viewBox="0 0 24 24" aria-hidden="true">${icons[id]}</svg>`;
@@ -39,6 +39,7 @@ function render(){
   <button class="primary" type="submit" ${sending?'disabled':''}>${sending?'Отправляем…':'Отправить заявку'}</button>
   <p class="tiny muted">Выберите что-то одно: заявку можно отправить только один раз. Она придёт к нам на почту ${MAIL}.</p>
  </form>`}</section>
+ <p class="meta-note">* Instagram и Threads принадлежат компании Meta Platforms Inc., которая признана экстремистской организацией, её деятельность запрещена на территории Российской Федерации.</p>
  </div>`;
 }
 function showError(form,text){const e=form.querySelector('.rewards-error');e.textContent=text;e.hidden=false;}

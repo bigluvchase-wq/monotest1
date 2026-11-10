@@ -1274,3 +1274,20 @@ body[data-page=menu] .menu-tile.menu-wide .menu-symbol{width:36px;height:36px}
 .rewards-sent>span{display:grid;place-items:center;width:52px;height:52px;margin:0 auto 10px;border-radius:50%;background:#2fae6a;color:#fff;font-size:26px;font-weight:700;box-shadow:0 10px 22px #2fae6a55}
 .rewards-sent b{display:block;font-size:17px;margin-bottom:6px}
 .rewards-sent p{margin:0 0 14px;color:var(--muted);font-size:14px;line-height:1.5}
+
+/* ===== Поддержка ===== */
+.support-socials{display:flex;gap:16px;align-items:flex-start}
+.support-social{display:grid;justify-items:center;gap:5px}
+.support-social small{font-size:11px;color:var(--muted)}
+.support-form{display:grid;gap:12px}
+.support-form h3{margin:0}
+.support-form .muted{margin:-6px 0 0}
+.support-form textarea{min-height:110px}
+.support-form .primary{width:100%}
+.ticket-card h3{margin:6px 0 6px}
+.ticket-status{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600}
+.ticket-status.is-sent{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}
+.ticket-status.is-draft{background:color-mix(in srgb,var(--red) 14%,transparent);color:var(--red)}
+/* Сноска про Meta */
+.meta-note{margin:14px 4px 4px;font-size:11px;line-height:1.45;color:var(--muted)}
+.rewards .meta-note{margin-top:2px}

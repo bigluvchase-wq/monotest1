@@ -385,22 +385,7 @@ app.post('/api/reward', async (req, res) => {
         });
         if (!created) return res.json({ ok: false, error: 'already_sent' });
         // Уведомление в Telegram (если в .env заданы TG_BOT_TOKEN и TG_CHAT_ID)
-        if (process.env.TG_BOT_TOKEN && process.env.TG_CHAT_ID) {
-            try {
-                const tg = await fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: process.env.TG_CHAT_ID,
-                        text: `🎁 Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nНаграда: +${days} дней Премиума\nСсылка: ${link}`,
-                        disable_web_page_preview: false
-                    })
-                });
-                if (!tg.ok) console.error('Telegram не принял сообщение:', await tg.text());
-            } catch (e) {
-                console.error('Ошибка отправки в Telegram:', e.message);
-            }
-        }
+        await sendTelegram(`🎁 Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nНаграда: +${days} дней Премиума\nСсылка: ${link}`);
         if (mailer) {
             await mailer.sendMail({
                 from: `Моно <${process.env.MAIL_USER}>`,
@@ -412,6 +397,48 @@ app.post('/api/reward', async (req, res) => {
         res.json({ ok: true });
     } catch (err) {
         console.error('Ошибка заявки на награду:', err);
+        res.status(500).json({ ok: false, error: 'server' });
+    }
+});
+
+// ==========================================
+// 10. Поддержка: обращение из приложения → Firestore + Telegram-бот
+// ==========================================
+const supportHits = new Map(); // не больше 20 обращений в сутки с одного кода/адреса
+async function sendTelegram(text) {
+    if (!process.env.TG_BOT_TOKEN || !process.env.TG_CHAT_ID) return;
+    try {
+        const tg = await fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: process.env.TG_CHAT_ID, text: text.slice(0, 4000), disable_web_page_preview: true })
+        });
+        if (!tg.ok) console.error('Telegram не принял сообщение:', await tg.text());
+    } catch (e) {
+        console.error('Ошибка отправки в Telegram:', e.message);
+    }
+}
+
+app.post('/api/support', async (req, res) => {
+    const code = cleanCode(req.body.code);
+    const topic = ['Ошибка', 'Идея', 'Вопрос'].includes(req.body.topic) ? req.body.topic : 'Вопрос';
+    const email = String(req.body.email || '').trim().slice(0, 200);
+    const message = String(req.body.message || '').trim().slice(0, 3000);
+    if (!message) return res.status(400).json({ ok: false, error: 'empty' });
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ ok: false, error: 'bad_email' });
+
+    const who = code || req.ip, day = new Date().toISOString().slice(0, 10), key = who + '|' + day;
+    const hits = (supportHits.get(key) || 0) + 1;
+    supportHits.set(key, hits);
+    if (hits > 20) return res.status(429).json({ ok: false, error: 'too_many' });
+
+    try {
+        await db.collection('supportTickets').add({ code, topic, email, message, status: 'new', createdAt: new Date().toISOString() });
+        const icon = topic === 'Ошибка' ? '🐞' : topic === 'Идея' ? '💡' : '❓';
+        await sendTelegram(`${icon} Поддержка · ${topic}\n\nКод: ${code || '—'}\nПочта: ${email || '—'}\n\n${message}`);
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('Ошибка обращения в поддержку:', err);
         res.status(500).json({ ok: false, error: 'server' });
     }
 });
