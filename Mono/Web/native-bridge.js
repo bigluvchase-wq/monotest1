@@ -41,6 +41,7 @@ function refreshReminders(){
    due=MonoSchedule.next(p,MonoSchedule.addDays(due,1));
   }
  }
+ try{items.push(...(root.MonoReminders?.nativeItems()||[]));}catch{}
  items.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
  post('reminders',{items:items.slice(0,60)});
 }

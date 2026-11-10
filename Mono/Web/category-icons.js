@@ -4,7 +4,6 @@ const icons={
  market:['Маркетплейсы','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M9 5v8h6V5"/>'],
  clothes:['Одежда и обувь','<path d="m8 4-5 3 2 5 3-1v9h8v-9l3 1 2-5-5-3a4 4 0 0 1-8 0Z"/>'],
  subscriptions:['Подписки','<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/>'],
- bets:['Ставки','<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 8h.01M12 12h.01M16 16h.01"/>'],
  fitness:['Спорт','<path d="M2 12h3m14 0h3M8 12h8M5 8h3v8H5zm11 0h3v8h-3z"/>'],
  cafe:['Кафе','<path d="M4 4h12v9a5 5 0 0 1-10 0V4m10 2h2a3 3 0 0 1 0 6h-2M3 21h16"/>'],
  groceries:['Продукты','<path d="M2 3h3l3 13h11l3-10H6"/><circle cx="10" cy="21" r="1"/><circle cx="18" cy="21" r="1"/>'],
@@ -33,7 +32,7 @@ const icons={
  auto:['Авто','<path d="M3 16v-4l2-5h10l3 4 3 1v4h-2M3 16h2m4 0h6M9 7v4m-4 0h13"/><circle cx="7" cy="16.5" r="2"/><circle cx="17" cy="16.5" r="2"/>'],
  charity:['Благотворительность','<path d="M12 20 4 12C0 6 7 2 12 7c5-5 12-1 8 5z"/>']
 };
-const defaults={expense:{'Кафе':'cafe','Продукты':'groceries','Транспорт':'transport','Авто':'auto','Покупки':'shopping','Дом':'home','Здоровье':'health','Развлечения':'fun','Работа':'work','Красота':'beauty','Маркетплейсы':'market','Одежда и обувь':'clothes','Подписки':'subscriptions','Ставки':'bets','Спорт':'fitness','Связь':'phone','Путешествия':'travel','Питомцы':'pet','Образование':'education','Подарки':'gift','Финансовые операции':'wallet','Переводы':'debt','Другое':'other'},income:{'Зарплата':'salary','Работа':'work','Подарки':'gift','Проценты':'interest','Продажи':'sales','Кешбэк':'wallet','Возврат долга':'debt','Аренда':'home','Возвраты':'debt','Займы':'debt','Переводы':'debt','Социальные выплаты':'wallet','Страховые выплаты':'insurance','Другое':'wallet'}};
+const defaults={expense:{'Кафе':'cafe','Продукты':'groceries','Транспорт':'transport','Авто':'auto','Покупки':'shopping','Дом':'home','Здоровье':'health','Развлечения':'fun','Работа':'work','Красота':'beauty','Маркетплейсы':'market','Одежда и обувь':'clothes','Подписки':'subscriptions','Спорт':'fitness','Связь':'phone','Путешествия':'travel','Питомцы':'pet','Образование':'education','Подарки':'gift','Финансовые операции':'wallet','Переводы':'debt','Другое':'other'},income:{'Зарплата':'salary','Работа':'work','Подарки':'gift','Проценты':'interest','Продажи':'sales','Кешбэк':'wallet','Возврат долга':'debt','Аренда':'home','Возвраты':'debt','Займы':'debt','Переводы':'debt','Социальные выплаты':'wallet','Страховые выплаты':'insurance','Другое':'wallet'}};
 function key(name,type='expense'){const saved=typeof state==='object'?state.settings.categoryIcons?.[type]:null,value=saved&&Object.hasOwn(saved,name)?saved[name]:null;return Object.hasOwn(icons,value)?value:(defaults[type]?.[name]||'other');}
 function paths(id){return (icons[id]||icons.other)[1];}
 function svg(id,cls='category-symbol'){return `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${paths(id)}</svg>`;}
