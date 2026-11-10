@@ -956,3 +956,11 @@ header [data-preview-id="helpButton"]{background: var(--glass); border: 1px soli
 [data-preview-id="searchLayer"][hidden]{display: none;}
 [data-preview-id="searchLayer"].on .search-top{transform: none;}
 [data-preview-id="searchLayer"].on .search-results{transform: none; opacity: 1;}
+
+/* header: search and profile buttons share one size; both only on home page */
+header #searchButton,header #helpButton{width:28px;height:28px;min-height:28px;padding:0}
+header #searchButton svg{width:17px;height:17px;stroke-width:1.8}
+body:not([data-page=home]) header #helpButton{visibility:hidden;pointer-events:none}
+header [data-preview-id="searchButton"],header [data-preview-id="helpButton"]{width:28px;height:28px;min-height:28px;padding:0}
+header [data-preview-id="searchButton"] svg{width:17px;height:17px;stroke-width:1.8}
+.root-preview:not([data-page="home"]) header [data-preview-id="helpButton"]{visibility:hidden;pointer-events:none}
