@@ -19,8 +19,10 @@ for(const dialog of document.querySelectorAll('dialog:not(#onboarding):not(#char
   if(document.body.dataset.page!=='home')return;
   const mic=document.querySelector('#mic'),key=document.querySelector('#textEntry');
   if(!mic||!key)return;
-  root.style.setProperty('--home-shift','0px');
-  const m=mic.getBoundingClientRect(),k=key.getBoundingClientRect(),foot=document.querySelector('.app footer')?.getBoundingClientRect();
+  // текущий сдвиг вычитаем из координат: при плавном переходе не сбрасываем его в ноль
+  const block=mic.closest('.recording-block'),t=block?getComputedStyle(block).transform:'none',ty=t&&t!=='none'?new DOMMatrixReadOnly(t).m42:0;
+  const shift=r=>({top:r.top-ty,height:r.height,bottom:r.bottom-ty});
+  const m=shift(mic.getBoundingClientRect()),k=shift(key.getBoundingClientRect()),foot=document.querySelector('.app footer')?.getBoundingClientRect();
   const reminder=document.querySelector('#homeReminders')?.firstElementChild?.getBoundingClientRect();
   const target=(window.__launchRatio||.47)*innerHeight,wanted=target-(m.top+m.height/2);
   const floor=Math.min(foot?foot.top:innerHeight-110,reminder?reminder.top:Infinity),room=floor-k.bottom-8;

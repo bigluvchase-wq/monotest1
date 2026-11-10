@@ -39,10 +39,10 @@ function renderProfile(){
     ${premiumLink()}
   </section>
   ${codeBlock()}
-  <button type="button" class="secondary profile-invite" data-profile-invite>Пригласить друга <span aria-hidden="true">↗</span></button>
+  <section class="card profile-invite-card"><h3>Пригласите друга</h3><p class="muted">Друг установит Моно — а вы получите <b>7 дней Премиума в подарок</b>.</p><button type="button" class="secondary profile-invite" data-profile-invite>Пригласить друга <span aria-hidden="true">↗</span></button></section>
  </div>`;
 }
-async function invite(){if(window.MonoNative){MonoNative.invite();return;}const url=location.origin;try{if(navigator.share){await navigator.share({title:'моно',text:'Просто скажи, сколько. Учёт денег голосом.',url});return;}if(navigator.clipboard){await navigator.clipboard.writeText(url);notify('Ссылка на моно скопирована');return;}}catch(e){if(e.name==='AbortError')return;}actionDialog('Пригласить друга',`<p class="muted">Поделитесь ссылкой на моно:</p><label class="field">Ссылка<input readonly value="${esc(url)}"></label>`);}
+async function invite(){if(window.MonoNative){MonoNative.invite();return;}const url=location.origin;try{if(navigator.share){await navigator.share({title:'моно',text:'Просто скажи, сколько. Учёт денег голосом. Попробуй моно!',url});return;}if(navigator.clipboard){await navigator.clipboard.writeText(url);notify('Ссылка на моно скопирована');return;}}catch(e){if(e.name==='AbortError')return;}actionDialog('Пригласить друга',`<p class="muted">Поделитесь ссылкой на моно:</p><label class="field">Ссылка<input readonly value="${esc(url)}"></label>`);}
 
 document.addEventListener('click',e=>{
  if(e.target.closest('[data-profile-edit]'))editProfile();
@@ -64,7 +64,7 @@ function editProfile(){let image=safeAvatar(state.settings.profileAvatar);action
 
 // ---------- Доступ: пробный период, Премиум, код, синхронизация ----------
 const CFG=root.MONO_CONFIG||{},AK='mono-access',SK='mono-sync',hex=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
-let acc={},paidUntil=0,activeWithoutDate=false,syncTimer=null,syncing=false,refreshTask=null;
+let pendingPush=false,acc={},paidUntil=0,activeWithoutDate=false,syncTimer=null,syncing=false,refreshTask=null;
 const isPremium=()=>activeWithoutDate||paidUntil>Date.now();
 try{acc=JSON.parse(localStorage.getItem(AK))||{};}catch{}
 const stored=root.monoStoredAccess;
@@ -159,6 +159,7 @@ async function refreshAccess(force){
  if(page==='profile')render();
  root.MonoNative?.refreshReminders?.();
  subscriptionNotice();
+ if(pendingPush&&isPremium()){pendingPush=false;push();}
 }
 // ---------- Напоминание о конце подписки: за 3 дня и за 1 день ----------
 const dayKey=ms=>{const d=new Date(ms);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -196,41 +197,43 @@ async function push(){
   if(response.ok){
    m.syncedAt = new Date().toISOString();
    setMeta(m);
-  }
+  }else pendingPush=true;
  }catch(e){
-  console.error("Ошибка выгрузки в облако", e);
+  pendingPush=true;
  }finally{syncing=false;}
 }
 
+// Синхронизация с сервером для Премиума — тихо, без уведомлений.
+// Сервер пуст → выгружаем; локальные данные новее → выгружаем; иначе берём данные с сервера.
 async function reconcile(){
- if(!isPremium())return; 
+ if(!isPremium()||!acc.code)return;
  try{
   const r=await fetch(`https://api.monoapp.ru/api/sync?code=${acc.code}`);
   if(!r.ok)return;
-  
   const j=await r.json();
+  if(j.empty||!j.state){push();return;}
   const m=meta();
-  
-  if(j.state){
-   if(!E.validateState(j.state))return;
-   try{localStorage.setItem('mono-backup-before-sync',JSON.stringify(state));}catch{}
-   
-   const wasProblem=storageProblem;storageProblem=false;
-   if(!persist(E.migrate(j.state),{remote:true})){storageProblem=wasProblem;return;}
-   
-   m.updatedAt=j.updatedAt || new Date().toISOString();
-   m.syncedAt=new Date().toISOString();
-   setMeta(m);
-   
-   refreshAccounts();
-   applyTheme();
-   renderHomeReminders();
-   if(page!=='home')render();
-   
+  // новое устройство без операций всегда берёт данные с сервера, а не затирает их
+  const freshDevice=!m.syncedAt&&!state.entries.length;
+  if(m.updatedAt&&!freshDevice){
+   const serverTime=j.updatedAt?new Date(j.updatedAt).getTime():0,localTime=new Date(m.updatedAt).getTime();
+   if(localTime>serverTime){push();return;}
   }
- }catch(e){
-  console.error("Ошибка загрузки из облака", e);
- }
+  if(!E.validateState(j.state))return;
+  try{localStorage.removeItem('mono-backup-before-sync');}catch{}
+  // имя и аватар профиля не теряются, если на сервере их ещё нет
+  if(state.settings){
+   j.state.settings=j.state.settings||{};
+   if(!j.state.settings.profileName&&state.settings.profileName)j.state.settings.profileName=state.settings.profileName;
+   if(!j.state.settings.profileAvatar&&state.settings.profileAvatar)j.state.settings.profileAvatar=state.settings.profileAvatar;
+   // настройки уведомлений этого устройства
+   for(const k of ['notifyAsked','notifyGranted'])if(state.settings[k]!==undefined)j.state.settings[k]=state.settings[k];
+  }
+  const wasProblem=storageProblem;storageProblem=false;
+  if(!persist(E.migrate(j.state),{remote:true})){storageProblem=wasProblem;return;}
+  m.updatedAt=j.updatedAt||new Date().toISOString();m.syncedAt=new Date().toISOString();setMeta(m);
+  refreshAccounts();applyTheme();renderHomeReminders();if(page!=='home')render();decorate();
+ }catch(e){console.error('Ошибка синхронизации',e);}
 }
 
 async function copyCode(){
@@ -260,6 +263,7 @@ root.MonoProfile={render:renderProfile,startTrial,socials,decorate,safeAvatar,pr
 if(acc.trialUntil)saveIdentity();else startTrial();
 ensureCode().then(()=>refresh());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureCode().then(()=>refresh(true));setTimeout(subscriptionNotice,1500);}});
-addEventListener('online',()=>{ensureCode().then(()=>refresh(true));});
+addEventListener('online',()=>{ensureCode().then(()=>refresh(true));if(pendingPush&&isPremium()){pendingPush=false;push();}});
+try{localStorage.removeItem('mono-backup-before-sync');}catch{}
 if(root.MonoNative)addEventListener('focus',()=>refresh(true));
 })(window);
