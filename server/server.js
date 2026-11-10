@@ -344,6 +344,7 @@ app.post('/api/referral', async (req, res) => {
 
 // ==========================================
 // 9. Награды: заявка «пост о моно в соцсетях» → Firestore + письмо на почту
+// Сообщение в Telegram — если в .env заданы TG_BOT_TOKEN и TG_CHAT_ID.
 // Письмо отправляется, если в .env заданы MAIL_USER и MAIL_PASS (пароль приложения Gmail)
 // и установлен nodemailer (npm install nodemailer). Без них заявка всё равно сохраняется в Firestore.
 // ==========================================
@@ -383,6 +384,23 @@ app.post('/api/reward', async (req, res) => {
             return true;
         });
         if (!created) return res.json({ ok: false, error: 'already_sent' });
+        // Уведомление в Telegram (если в .env заданы TG_BOT_TOKEN и TG_CHAT_ID)
+        if (process.env.TG_BOT_TOKEN && process.env.TG_CHAT_ID) {
+            try {
+                const tg = await fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: process.env.TG_CHAT_ID,
+                        text: `🎁 Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nНаграда: +${days} дней Премиума\nСсылка: ${link}`,
+                        disable_web_page_preview: false
+                    })
+                });
+                if (!tg.ok) console.error('Telegram не принял сообщение:', await tg.text());
+            } catch (e) {
+                console.error('Ошибка отправки в Telegram:', e.message);
+            }
+        }
         if (mailer) {
             await mailer.sendMail({
                 from: `Моно <${process.env.MAIL_USER}>`,
