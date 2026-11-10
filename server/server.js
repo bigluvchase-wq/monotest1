@@ -342,5 +342,106 @@ app.post('/api/referral', async (req, res) => {
     }
 });
 
+// ==========================================
+// 9. Награды: заявка «пост о моно в соцсетях» → Firestore + письмо на почту
+// Сообщение в Telegram — если в .env заданы TG_BOT_TOKEN и TG_CHAT_ID.
+// Письмо отправляется, если в .env заданы MAIL_USER и MAIL_PASS (пароль приложения Gmail)
+// и установлен nodemailer (npm install nodemailer). Без них заявка всё равно сохраняется в Firestore.
+// ==========================================
+let mailer = null;
+try {
+    if (process.env.MAIL_USER && process.env.MAIL_PASS) {
+        const nodemailer = require('nodemailer');
+        mailer = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS } });
+    }
+} catch (e) {
+    console.error('nodemailer не установлен — письма о наградах не отправляются');
+}
+const REWARD_TO = process.env.REWARD_MAIL_TO || 'monofinapp@gmail.com';
+const REWARD_NETWORKS = { threads: ['Threads', 7], telegram: ['Telegram', 7], instagram: ['Instagram', 30], vk: ['ВКонтакте', 7] };
+const rewardHits = new Map(); // не больше 10 заявок в сутки с одного кода
+
+app.post('/api/reward', async (req, res) => {
+    const code = cleanCode(req.body.code);
+    const network = String(req.body.network || '');
+    const link = String(req.body.link || '').trim().slice(0, 500);
+    if (code.length !== 6 || !REWARD_NETWORKS[network] || !/^https?:\/\/\S+\.\S+/i.test(link)) {
+        return res.status(400).json({ ok: false, error: 'bad_request' });
+    }
+    const day = new Date().toISOString().slice(0, 10), key = code + '|' + day;
+    const hits = (rewardHits.get(key) || 0) + 1;
+    rewardHits.set(key, hits);
+    if (hits > 10) return res.status(429).json({ ok: false, error: 'too_many' });
+
+    const [networkName, days] = REWARD_NETWORKS[network];
+    try {
+        // Награду можно запросить только один раз с одного кода — что-то одно
+        const reqRef = db.collection('rewardRequests').doc(code);
+        const created = await db.runTransaction(async tx => {
+            const existing = await tx.get(reqRef);
+            if (existing.exists) return false;
+            tx.set(reqRef, { code, network, networkName, days, link, status: 'new', createdAt: new Date().toISOString() });
+            return true;
+        });
+        if (!created) return res.json({ ok: false, error: 'already_sent' });
+        // Уведомление в Telegram (если в .env заданы TG_BOT_TOKEN и TG_CHAT_ID)
+        await sendTelegram(`🎁 Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nНаграда: +${days} дней Премиума\nСсылка: ${link}`);
+        if (mailer) {
+            await mailer.sendMail({
+                from: `Моно <${process.env.MAIL_USER}>`,
+                to: REWARD_TO,
+                subject: `Награда моно: ${networkName} · код ${code}`,
+                text: `Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nСсылка: ${link}\nНаграда: +${days} дней Премиума\n`
+            });
+        }
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('Ошибка заявки на награду:', err);
+        res.status(500).json({ ok: false, error: 'server' });
+    }
+});
+
+// ==========================================
+// 10. Поддержка: обращение из приложения → Firestore + Telegram-бот
+// ==========================================
+const supportHits = new Map(); // не больше 20 обращений в сутки с одного кода/адреса
+async function sendTelegram(text) {
+    if (!process.env.TG_BOT_TOKEN || !process.env.TG_CHAT_ID) return;
+    try {
+        const tg = await fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: process.env.TG_CHAT_ID, text: text.slice(0, 4000), disable_web_page_preview: true })
+        });
+        if (!tg.ok) console.error('Telegram не принял сообщение:', await tg.text());
+    } catch (e) {
+        console.error('Ошибка отправки в Telegram:', e.message);
+    }
+}
+
+app.post('/api/support', async (req, res) => {
+    const code = cleanCode(req.body.code);
+    const topic = ['Ошибка', 'Идея', 'Вопрос'].includes(req.body.topic) ? req.body.topic : 'Вопрос';
+    const email = String(req.body.email || '').trim().slice(0, 200);
+    const message = String(req.body.message || '').trim().slice(0, 3000);
+    if (!message) return res.status(400).json({ ok: false, error: 'empty' });
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ ok: false, error: 'bad_email' });
+
+    const who = code || req.ip, day = new Date().toISOString().slice(0, 10), key = who + '|' + day;
+    const hits = (supportHits.get(key) || 0) + 1;
+    supportHits.set(key, hits);
+    if (hits > 20) return res.status(429).json({ ok: false, error: 'too_many' });
+
+    try {
+        await db.collection('supportTickets').add({ code, topic, email, message, status: 'new', createdAt: new Date().toISOString() });
+        const icon = topic === 'Ошибка' ? '🐞' : topic === 'Идея' ? '💡' : '❓';
+        await sendTelegram(`${icon} Поддержка · ${topic}\n\nКод: ${code || '—'}\nПочта: ${email || '—'}\n\n${message}`);
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('Ошибка обращения в поддержку:', err);
+        res.status(500).json({ ok: false, error: 'server' });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
