@@ -15,9 +15,4 @@
  <key>NSSpeechRecognitionUsageDescription</key><string>моно преобразует вашу речь в текст для заполнения операций.</string>
  <key>UILaunchScreen</key><dict><key>UIColorName</key><string>LaunchBackground</string></dict>
  <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
-<key>NSAppTransportSecurity</key>
-<dict>
-    <key>NSAllowsArbitraryLoads</key>
-    <true/>
-</dict>
 </dict></plist>

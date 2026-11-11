@@ -50,17 +50,6 @@ async function applyFriendCode(raw){
 document.addEventListener('submit',e=>{const f=e.target.closest('[data-friend-form]');if(!f)return;e.preventDefault();f.querySelector('input').blur();applyFriendCode(f.elements.friend.value);});
 document.addEventListener('input',e=>{const i=e.target.closest('[data-friend-form] input');if(!i)return;const d=i.value.replace(/\D/g,'').slice(0,6);i.value=d.length>3?d.slice(0,3)+' '+d.slice(3):d;friendDraft=i.value;if(friendStatus?.kind==='bad'){friendStatus=null;const b=i.form.querySelector('.friend-check');b.classList.remove('is-bad');b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';i.form.parentElement.querySelector('.friend-hint').textContent='Введите код друга — вы оба получите 7 дней Премиума.';}});
 
-function premiumLink(){
- const isPrem = MonoAccess.isPremium();
- const deviceCode = acc.code ? acc.code.replace(/\s+/g, '') : '';
- const payUrl = deviceCode ? `http://monoapp.ru/?code=${deviceCode}` : 'http://monoapp.ru/';
- if (isPrem) {
-  // Активный Премиум тоже ведёт на страницу оплаты — там подписку можно продлить
-  return `<a class="primary premium-button premium-active" href="${payUrl}"><span>Премиум активен ✓</span><small>Продлить <span aria-hidden="true">↗</span></small></a>`;
- }
- return `<a class="primary premium-button" href="${payUrl}">Премиум <span aria-hidden="true">↗</span></a>`;
-}
-
 function renderProfile(){
  return `<div class="profile-layout">
   <section class="card profile-intro"><button type="button" class="profile-avatar" data-profile-edit aria-label="Изменить аватарку">${avatar()}</button><div class="profile-identity"><h2>${esc(profileName())}</h2></div><button type="button" class="profile-edit" data-profile-edit aria-label="Изменить имя и аватарку"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16 11-11 4 4L8 20H4zm9-9 4 4m-1-7 2-2 4 4-2 2"/></svg></button></section>
@@ -77,7 +66,6 @@ const PREMIUM_FEATURES=[
  ['reminders','Напоминания','Свои напоминания с повтором'],
  ['deposits','Вклады','Проценты сами попадают в доходы']
 ];
-function payUrl(){const c=acc.code?acc.code.replace(/\s+/g,''):'';return c?`http://monoapp.ru/?code=${c}`:'http://monoapp.ru/';}
 const dayWord=n=>{const a=n%10,b=n%100;return a===1&&b!==11?'день':a>=2&&a<=4&&(b<10||b>=20)?'дня':'дней';};
 // Активный Премиум: до какого числа и сколько дней осталось
 function premiumStatus(){
@@ -95,7 +83,7 @@ function renderPremium(){
   ${trial?`<p class="premium-trial">Пробный доступ ко всем функциям: осталось ${trial} ${trial===1?'день':trial<5?'дня':'дней'}.</p>`:''}
   <section class="card premium-features">${PREMIUM_FEATURES.map(([k,t,d])=>`<div class="premium-feature">${icon(k)}<span><b>${t}</b><small>${d}</small></span></div>`).join('')}</section>
   ${codeBlock()}
-  <p class="premium-site">${isPremium()?'Продлить':'Оформить'} Премиум можно на <a href="${payUrl()}">monoapp.ru</a>. ${isPremium()?'Новый срок прибавится к оставшемуся.':'Премиум включится сам, перезапускать приложение не нужно.'}</p>
+  <p class="premium-site">${isPremium()?'Продлить Премиум можно на нашем сайте. Новый срок прибавится к оставшемуся.':'Оформить Премиум можно на нашем сайте.'}</p>
  </div>`;
 }
 function inviteText(){return 'Попробуй моно — учёт денег голосом. Просто скажи, сколько потратил.';}
