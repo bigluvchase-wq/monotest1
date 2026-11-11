@@ -1392,3 +1392,9 @@ html[data-theme] .limit-items.card{background:var(--card-solid)!important}
 html[data-theme] .limit-items .swipe-shell,html[data-theme] .limit-items .swipe-content{background:var(--card-solid)!important;box-shadow:none!important;border:0!important}
 html[data-theme] .limit-items .swipe-shell.swipe-open,html[data-theme] .limit-items .swipe-shell.swipe-moving{background:linear-gradient(90deg,transparent 50%,var(--red) 50%)!important}
 .limits-add-category{margin:4px 0 12px}
+
+/* Лимиты: фон строки с лимитом скруглён, без острых углов */
+html[data-theme] .limit-items .swipe-shell{border-radius:18px!important;overflow:hidden}
+html[data-theme] .limit-items .swipe-content{border-radius:inherit!important}
+html[data-theme] .limit-items .swipe-shell .limit-item{padding-left:8px;padding-right:8px}
+html[data-theme] .limit-items .swipe-shell{margin:0 -8px}
