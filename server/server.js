@@ -14,6 +14,8 @@ initializeApp({
 const db = getFirestore();
 
 const app = express();
+// Адрес клиента берём из заголовка, который ставит nginx (сервер стоит за ним на этой же машине)
+app.set('trust proxy', 'loopback');
 app.use(cors());
 // Данные приложения (история, аватар) могут быть большими
 app.use(express.json({ limit: '15mb' }));
@@ -47,6 +49,50 @@ async function findUserDocs(code, tx = null) {
     }
     return snapshot.docs;
 }
+
+// ==========================================
+// Защита данных: ключ устройства + ограничение попыток
+// Код привязки почти публичный (вводится на сайте, виден в профиле), поэтому для истории
+// требуется ещё и секретный ключ устройства. Приложение хранит его в Keychain и передаёт
+// в заголовке X-Mono-Key. На сервере хранится только его хеш (keyHash).
+// Первый запрос с ключом для кода, у которого ключа ещё нет, запоминает его.
+// ==========================================
+const crypto = require('crypto');
+const hashKey = key => crypto.createHash('sha256').update(String(key)).digest('hex');
+const keyOf = req => String(req.get('x-mono-key') || req.body?.key || '').trim();
+const validKey = key => /^[0-9a-f]{64}$/i.test(key);
+function sameHash(a, b) {
+    const x = Buffer.from(String(a)), y = Buffer.from(String(b));
+    return x.length === y.length && crypto.timingSafeEqual(x, y);
+}
+// Проверяет ключ для документа пользователя. true — можно, иначе отправляет ошибку сам.
+async function checkKey(req, res, doc) {
+    const key = keyOf(req);
+    if (!validKey(key)) { noteFailure(req); res.status(401).json({ ok: false, error: 'no_key' }); return false; }
+    const stored = doc.get('keyHash');
+    if (!stored) { await doc.ref.update({ keyHash: hashKey(key), keySetAt: new Date().toISOString() }); return true; }
+    if (sameHash(stored, hashKey(key))) return true;
+    noteFailure(req);
+    res.status(403).json({ ok: false, error: 'wrong_key' });
+    return false;
+}
+// Не больше 20 неудачных попыток (неверный ключ или неизвестный код) в минуту с одного адреса
+// и не больше 120 запросов к данным в минуту с одного адреса
+const failures = new Map(), hits = new Map();
+const ipOf = req => String(req.ip || '');
+// если nginx не передал адрес клиента, все запросы выглядят как с 127.0.0.1 — такие не ограничиваем, чтобы не заблокировать всех
+const isLoopback = ip => /^(::1|127\.|::ffff:127\.)/.test(ip);
+function noteFailure(req) { if (isLoopback(ipOf(req))) return; const now = Date.now(), list = (failures.get(ipOf(req)) || []).filter(t => now - t < 60000); list.push(now); failures.set(ipOf(req), list); }
+function rateLimit(req, res, next) {
+    const ip = ipOf(req), now = Date.now();
+    if (isLoopback(ip)) return next();
+    const failed = (failures.get(ip) || []).filter(t => now - t < 60000);
+    const recent = (hits.get(ip) || []).filter(t => now - t < 60000);
+    recent.push(now); hits.set(ip, recent);
+    if (failed.length >= 20 || recent.length > 120) return res.status(429).json({ ok: false, error: 'too_many' });
+    next();
+}
+setInterval(() => { const now = Date.now(); for (const m of [failures, hits]) for (const [k, v] of m) { const f = v.filter(t => now - t < 60000); if (f.length) m.set(k, f); else m.delete(k); } }, 60000).unref();
 
 // Тарифы: сумма → месяцы. Цены со страницы оплаты и прежние цены — на всякий случай
 const PLAN_MONTHS = { 129: 1, 649: 6, 1299: 12, 199: 1, 999: 6, 1799: 12 };
@@ -164,7 +210,7 @@ app.post('/api/result', async (req, res) => {
 // ==========================================
 // 4. Проверка статуса (для приложения)
 // ==========================================
-app.get('/api/check', async (req, res) => {
+app.get('/api/check', rateLimit, async (req, res) => {
     const { code } = req.query;
     if (!code) return res.status(400).json({ error: 'Код не передан' });
 
@@ -199,12 +245,16 @@ app.post('/api/registerUser', async (req, res) => {
 
     try {
         const docs = await findUserDocs(code);
+        const key = keyOf(req);
         if (!docs.length) {
             await usersRef.add({
                 code: String(code),
                 premium: false,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                ...(validKey(key) ? { keyHash: hashKey(key), keySetAt: new Date().toISOString() } : {})
             });
+        } else if (validKey(key) && !docs[0].get('keyHash')) {
+            await docs[0].ref.update({ keyHash: hashKey(key), keySetAt: new Date().toISOString() });
         }
         res.json({ success: true });
     } catch (err) {
@@ -255,7 +305,7 @@ async function loadState(doc) {
 }
 
 // Сохранение данных в облако
-app.post('/api/sync', async (req, res) => {
+app.post('/api/sync', rateLimit, async (req, res) => {
     const code = cleanCode(req.body.code);
     const { state } = req.body;
     if (!code || !state || typeof state !== 'object') return res.status(400).json({ error: 'Нет данных для синхронизации' });
@@ -263,9 +313,11 @@ app.post('/api/sync', async (req, res) => {
     try {
         let docs = await findUserDocs(code);
         if (!docs.length) {
-            const ref = await usersRef.add({ code, premium: false, createdAt: new Date().toISOString() });
+            const key = keyOf(req);
+            if (!validKey(key)) { noteFailure(req); return res.status(401).json({ ok: false, error: 'no_key' }); }
+            const ref = await usersRef.add({ code, premium: false, createdAt: new Date().toISOString(), keyHash: hashKey(key), keySetAt: new Date().toISOString() });
             docs = [await ref.get()];
-        }
+        } else if (!(await checkKey(req, res, docs[0]))) return;
         // ждём, пока данные действительно запишутся, и только потом отвечаем
         const updatedAt = await saveState(docs[0].id, state);
         return res.json({ success: true, ok: true, updatedAt });
@@ -276,13 +328,14 @@ app.post('/api/sync', async (req, res) => {
 });
 
 // Загрузка данных из облака
-app.get('/api/sync', async (req, res) => {
+app.get('/api/sync', rateLimit, async (req, res) => {
     const code = cleanCode(req.query.code);
     if (!code) return res.status(400).json({ error: 'Нет кода' });
 
     try {
         const docs = await findUserDocs(code);
-        if (!docs.length) return res.status(404).json({ error: 'Нет данных' });
+        if (!docs.length) { noteFailure(req); return res.status(404).json({ error: 'Нет данных' }); }
+        if (!(await checkKey(req, res, docs[0]))) return;
         const saved = await loadState(docs[0]);
         // данных ещё нет (например, только купил Премиум) — приложение пришлёт свои
         if (!saved) return res.json({ empty: true });
@@ -307,7 +360,7 @@ function extendIso(currentIso, now) {
     return new Date(Math.max(now, Number.isFinite(current) ? current : 0) + 7 * DAY).toISOString();
 }
 
-app.post('/api/referral', async (req, res) => {
+app.post('/api/referral', rateLimit, async (req, res) => {
     const code = cleanCode(req.body.code);
     const friendCode = cleanCode(req.body.friendCode);
     if (code.length !== 6 || friendCode.length !== 6) return res.json({ ok: false, error: 'not_found' });
@@ -317,7 +370,7 @@ app.post('/api/referral', async (req, res) => {
         const result = await db.runTransaction(async tx => {
             const [meDocs, friendDocs] = await Promise.all([findUserDocs(code, tx), findUserDocs(friendCode, tx)]);
             const me = meDocs[0], friend = friendDocs[0];
-            if (!me || !friend) return { ok: false, error: 'not_found' };
+            if (!me || !friend) { noteFailure(req); return { ok: false, error: 'not_found' }; }
             const meData = me.data(), friendData = friend.data();
             if (meData.referredBy) return { ok: false, error: 'already_used' };
             if (String(friendData.referredBy || '') === code) return { ok: false, error: 'mutual' };
@@ -361,7 +414,7 @@ const REWARD_TO = process.env.REWARD_MAIL_TO || 'monofinapp@gmail.com';
 const REWARD_NETWORKS = { threads: ['Threads', 7], telegram: ['Telegram', 7], instagram: ['Instagram', 30], vk: ['ВКонтакте', 7] };
 const rewardHits = new Map(); // не больше 10 заявок в сутки с одного кода
 
-app.post('/api/reward', async (req, res) => {
+app.post('/api/reward', rateLimit, async (req, res) => {
     const code = cleanCode(req.body.code);
     const network = String(req.body.network || '');
     const link = String(req.body.link || '').trim().slice(0, 500);
@@ -421,7 +474,7 @@ async function sendTelegram(text) {
     }
 }
 
-app.post('/api/support', async (req, res) => {
+app.post('/api/support', rateLimit, async (req, res) => {
     const code = cleanCode(req.body.code);
     const topic = ['Ошибка', 'Идея', 'Вопрос'].includes(req.body.topic) ? req.body.topic : 'Вопрос';
     // Контакт для ответа: почта или ник в Telegram
@@ -463,11 +516,13 @@ app.post('/api/support', async (req, res) => {
 // Из заявки на награду убирается ссылка (сама отметка остаётся, чтобы награду нельзя было получить повторно).
 // Остаётся: код привязки и Премиум (premium, premiumUntil), отметки кода друга — они нужны для подписки и защиты от повторов.
 // ==========================================
-app.post('/api/deleteData', async (req, res) => {
+app.post('/api/deleteData', rateLimit, async (req, res) => {
     const code = cleanCode(req.body.code);
     if (code.length !== 6) return res.status(400).json({ ok: false, error: 'bad_code' });
     try {
         const docs = await findUserDocs(code);
+        if (!docs.length) { noteFailure(req); return res.status(404).json({ ok: false, error: 'not_found' }); }
+        if (!(await checkKey(req, res, docs[0]))) return;
         for (const doc of docs) {
             const chunks = await usersRef.doc(doc.id).collection('syncChunks').get();
             const batch = db.batch();

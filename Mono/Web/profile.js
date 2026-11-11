@@ -146,7 +146,7 @@ async function ensureCode(){
   try {
    await fetch('https://api.monoapp.ru/api/registerUser', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Mono-Key': acc.secret || '' },
     body: JSON.stringify({ code: acc.code })
    });
   } catch(e) {}
@@ -236,6 +236,8 @@ const setMeta=m=>{try{localStorage.setItem(SK,JSON.stringify(m));}catch{}};
 // Пока есть неотправленные изменения (rev > pushedRev), данные с сервера их не перезаписывают —
 // поэтому удалённые операции и напоминания не возвращаются.
 const SYNC_URL='https://api.monoapp.ru/api/sync';
+// Секретный ключ устройства (из Keychain) — без него сервер не отдаёт и не меняет историю
+const keyHeaders=(json=true)=>({...(json?{'Content-Type':'application/json'}:{}),'X-Mono-Key':acc.secret||''});
 const toMs=v=>{const n=expiryMillis(v);return Number.isFinite(n)?n:0;};
 function syncMeta(){const m=meta();if(typeof m.rev!=='number'){m.rev=m.updatedAt&&(!m.syncedAt||m.updatedAt>m.syncedAt)?1:0;m.pushedRev=0;setMeta(m);}return m;}
 let pushAgain=false;
@@ -248,10 +250,10 @@ async function push(options={}){
  syncing=true;pushAgain=false;
  const m=syncMeta(),rev=m.rev;
  try{
-  const response=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'application/json'},keepalive:!!options.keepalive,body:JSON.stringify({code:acc.code,state:withoutAvatar(state),updatedAt:m.updatedAt,rev})});
+  const response=await fetch(SYNC_URL,{method:'POST',headers:keyHeaders(),keepalive:!!options.keepalive,body:JSON.stringify({code:acc.code,state:withoutAvatar(state),updatedAt:m.updatedAt,rev})});
   if(!response.ok){pendingPush=true;return;}
   let serverMs=0;try{const j=await response.json();serverMs=toMs(j?.updatedAt);}catch{}
-  if(!serverMs){try{const r=await fetch(`${SYNC_URL}?code=${acc.code}`);if(r.ok)serverMs=toMs((await r.json())?.updatedAt);}catch{}}
+  if(!serverMs){try{const r=await fetch(`${SYNC_URL}?code=${acc.code}`,{headers:keyHeaders(false)});if(r.ok)serverMs=toMs((await r.json())?.updatedAt);}catch{}}
   const now=syncMeta();now.pushedRev=Math.max(now.pushedRev||0,rev);now.syncedAt=new Date().toISOString();if(serverMs)now.serverMs=serverMs;setMeta(now);
  }catch(e){pendingPush=true;}
  // изменения, сделанные во время отправки, уходят следующей отправкой; ошибки сети — при появлении связи
@@ -261,7 +263,7 @@ const unsynced=()=>{const m=syncMeta();return m.rev>(m.pushedRev||0);};
 async function reconcile(){
  if(!isPremium()||!acc.code||syncing)return;
  try{
-  const r=await fetch(`${SYNC_URL}?code=${acc.code}`);
+  const r=await fetch(`${SYNC_URL}?code=${acc.code}`,{headers:keyHeaders(false)});
   if(!r.ok)return;
   const j=await r.json();
   if(j.empty||!j.state){push();return;}
@@ -307,7 +309,7 @@ async function deleteMyData(){
  clearTimeout(syncTimer);
  if(acc.code&&onServer){
   try{
-   const r=await fetch(DELETE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:acc.code})});
+   const r=await fetch(DELETE_URL,{method:'POST',headers:keyHeaders(),body:JSON.stringify({code:acc.code})});
    const j=await r.json().catch(()=>({}));
    if(!r.ok||j.ok===false)throw Error();
   }catch{
@@ -317,7 +319,7 @@ async function deleteMyData(){
   }
  }else if(acc.code){
   // без Премиума на сервере только обращения и заявки — удаляем, но не ждём
-  fetch(DELETE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:acc.code})}).catch(()=>{});
+  fetch(DELETE_URL,{method:'POST',headers:keyHeaders(),body:JSON.stringify({code:acc.code})}).catch(()=>{});
  }
  // телефон: чистые данные, без повторного обучения и запроса уведомлений
  const fresh=E.initialState();fresh.reminders=[];fresh.deposits=[];
