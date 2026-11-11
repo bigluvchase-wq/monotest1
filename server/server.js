@@ -368,10 +368,13 @@ try {
 const REWARD_TO = process.env.REWARD_MAIL_TO || 'monofinapp@gmail.com';
 const REWARD_NETWORKS = { threads: ['Threads', 7], telegram: ['Telegram', 7], instagram: ['Instagram', 30], vk: ['ВКонтакте', 7] };
 
+// TG_API_BASE — адрес-посредник для Telegram, если из России api.telegram.org недоступен (например, https://tg.monoapp.ru)
+const TG_API = (process.env.TG_API_BASE || 'https://api.telegram.org').replace(/\/+$/, '');
 async function sendTelegram(text) {
     if (!process.env.TG_BOT_TOKEN || !process.env.TG_CHAT_ID) return;
     try {
-        const tg = await fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
+        const tg = await fetch(`${TG_API}/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
+            signal: AbortSignal.timeout(15000),
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chat_id: process.env.TG_CHAT_ID, text: text.slice(0, 4000), disable_web_page_preview: true })
@@ -392,7 +395,7 @@ app.post('/api/reward', rateLimit, async (req, res) => {
     const [networkName, days] = REWARD_NETWORKS[network];
     try {
         if (!q.addReward.run(code, network, networkName, days, link, now()).changes) return res.json({ ok: false, error: 'already_sent' });
-        await sendTelegram(`🎁 Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nНаграда: +${days} дней Премиума\nСсылка: ${link}`);
+        sendTelegram(`🎁 Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nНаграда: +${days} дней Премиума\nСсылка: ${link}`);
         if (mailer) {
             await mailer.sendMail({
                 from: `моно <${process.env.MAIL_USER}>`,
@@ -434,7 +437,7 @@ app.post('/api/support', rateLimit, async (req, res) => {
     try {
         q.addTicket.run(code, topic, contact, message, now());
         const icon = topic === 'Ошибка' ? '🐞' : topic === 'Идея' ? '💡' : '❓';
-        await sendTelegram(`${icon} Поддержка · ${topic}\n\nКод: ${code || '—'}\nОтветить: ${contact || '—'}\n\n${message}`);
+        sendTelegram(`${icon} Поддержка · ${topic}\n\nКод: ${code || '—'}\nОтветить: ${contact || '—'}\n\n${message}`);
         res.json({ ok: true });
     } catch (err) {
         console.error('Ошибка обращения в поддержку:', err);
