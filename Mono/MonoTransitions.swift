@@ -13,6 +13,7 @@ import WebKit
 ///   pageDrag {from, to, dir}              → свайп между экранами: дальше палец ведёт натив,
 ///                                           по отпусканию натив вызывает nativeNavigate(to) или отменяет
 ///   cachePage {page}                      → запомнить снимок корневого экрана для свайпов
+@MainActor
 final class MonoTransitions: NSObject, UIGestureRecognizerDelegate {
     private weak var web: WKWebView?
     private weak var host: UIView?
