@@ -380,7 +380,8 @@ const SUPPORT_TO = process.env.SUPPORT_MAIL_TO || process.env.MAIL_USER;
 async function sendMail(subject, text, replyTo) {
     if (!mailer || !SUPPORT_TO) return;
     try {
-        await mailer.sendMail({ from: `моно <${process.env.MAIL_USER}>`, to: SUPPORT_TO, subject, text, ...(replyTo ? { replyTo } : {}) });
+        const html = '<div style="font:15px/1.5 -apple-system,Segoe UI,Arial,sans-serif;white-space:pre-wrap">' + String(text).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '</div>';
+        await mailer.sendMail({ from: `моно <${process.env.MAIL_USER}>`, to: SUPPORT_TO, subject, text, html, ...(replyTo ? { replyTo } : {}) });
     } catch (e) {
         console.error('Письмо не отправлено:', e.message);
     }

@@ -99,7 +99,7 @@ function renderPremium(){
  </div>`;
 }
 function inviteText(){return 'Попробуй моно — учёт денег голосом. Просто скажи, сколько потратил.';}
-async function invite(){if(window.MonoNative){MonoNative.invite(inviteText());return;}const url=location.origin;try{if(navigator.share){await navigator.share({title:'моно',text:inviteText(),url});return;}if(navigator.clipboard){await navigator.clipboard.writeText(url);notify('Ссылка на моно скопирована');return;}}catch(e){if(e.name==='AbortError')return;}actionDialog('Пригласить друга',`<p class="muted">Поделитесь ссылкой на моно:</p><label class="field">Ссылка<input readonly value="${esc(url)}"></label>`);}
+async function invite(){if(window.MonoNative){MonoNative.invite(inviteText());return;}const url='https://monoapp.ru';try{if(navigator.share){await navigator.share({title:'моно',text:inviteText(),url});return;}if(navigator.clipboard){await navigator.clipboard.writeText(url);notify('Ссылка на моно скопирована');return;}}catch(e){if(e.name==='AbortError')return;}actionDialog('Пригласить друга',`<p class="muted">Поделитесь ссылкой на моно:</p><label class="field">Ссылка<input readonly value="${esc(url)}"></label>`);}
 
 document.addEventListener('click',e=>{
  if(e.target.closest('[data-profile-edit]'))editProfile();

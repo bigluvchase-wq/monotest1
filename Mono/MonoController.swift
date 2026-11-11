@@ -83,7 +83,7 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
             // Текст с кодом приглашения и ссылка
             var items: [Any] = []
             if let text = body["text"] as? String, !text.isEmpty { items.append(text) }
-            if let url = URL(string: "https://monovo-nikita.zava-keith.chatgpt.site") { items.append(url) }
+            if let url = URL(string: "https://monoapp.ru") { items.append(url) }
             presentActivity(items)
         case "settings":
             if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }

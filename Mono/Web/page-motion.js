@@ -3,7 +3,7 @@
 const app=document.querySelector('.app'),nav=document.querySelector('.bottom-nav'),buttons=[...nav.querySelectorAll('[data-nav]')],slider=document.createElement('span');
 slider.className='nav-slider';slider.setAttribute('aria-hidden','true');nav.prepend(slider);
 let stage=null,busy=false,navGesture=null,suppressUntil=0;
-const BLUR=window.MONO_PAGE_BLUR===true?16:0,ease='cubic-bezier(.32,.72,0,1)',clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
+const BLUR=window.MONO_PAGE_BLUR===true?16:0,ease='cubic-bezier(.22,1,.36,1)',DEPTH=.08,FADE=.42,clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
 function indicator(index,animate=true){const first=buttons[0].getBoundingClientRect(),last=buttons[1].getBoundingClientRect(),r=nav.getBoundingClientRect();slider.style.width=first.width+'px';slider.style.left=(first.left-r.left)+'px';slider.style.transition=animate&&!reducedMotion()?'transform 420ms '+ease:'none';slider.style.transform=`translateX(${(last.left-first.left)*index}px)`;buttons.forEach((button,i)=>{button.classList.toggle('nav-highlight',i===Math.round(index));button.style.transition=animate&&!reducedMotion()?'color 420ms '+ease:'none';});}
 function sync(){if(!stage&&!navGesture)indicator(Math.max(0,rootPages.indexOf(page)),true);}
 // Preview nodes are inert and contain no live form handlers or duplicate IDs.
@@ -32,10 +32,12 @@ function preview(target){
 function begin(target){if(busy||!rootPages.includes(page)||!rootPages.includes(target)||target===page)return false;if(stage?.target===target)return true;if(stage)clean();const sign=rootPages.indexOf(target)>rootPages.indexOf(page)?1:-1;stage={target,sign,layer:preview(target),dx:0};{const L=stage.layer,inner=L.firstElementChild;L.style.transform=`translateX(${sign*innerWidth}px)`;L.style.willChange='transform';if(BLUR){inner.style.filter=`blur(${BLUR}px)`;inner.style.willChange='filter';}}document.body.classList.add('root-dragging');app.style.position='relative';app.style.zIndex='9';return true;}
 let dragFrame=0,dragDx=0;
 function drag(dx){dragDx=dx;if(dragFrame)return;dragFrame=requestAnimationFrame(()=>{dragFrame=0;applyDrag(dragDx);});}
-function applyDrag(dx){if(!stage)return;stage.dx=dx;const p=clamp(Math.abs(dx)/innerWidth);app.style.transform=`translateX(${dx}px)`;stage.layer.style.transform=`translateX(${stage.sign*innerWidth+dx}px)`;if(BLUR){const inner=stage.layer.firstElementChild;inner.style.filter=p>=.995?'none':`blur(${(Math.pow(1-p,1.6)*BLUR).toFixed(2)}px)`;}const from=rootPages.indexOf(page),to=rootPages.indexOf(stage.target);indicator(from+(to-from)*p,false);}
+// Как в карусели напоминаний: уходящая страница чуть уменьшается и бледнеет, приходящая вырастает до полного размера
+const outT=(x,p)=>`translateX(${x}px) scale(${(1-DEPTH*p).toFixed(4)})`,inT=(x,p)=>`translateX(${x}px) scale(${(1-DEPTH*(1-p)).toFixed(4)})`;
+function applyDrag(dx){if(!stage)return;stage.dx=dx;const p=clamp(Math.abs(dx)/innerWidth);app.style.transformOrigin=`50% ${scrollY+innerHeight/2}px`;app.style.transform=outT(dx,p);app.style.opacity=String(1-FADE*p);stage.layer.style.transform=inT(stage.sign*innerWidth+dx,p);stage.layer.style.opacity=String(1-FADE*(1-p));if(BLUR){const inner=stage.layer.firstElementChild;inner.style.filter=p>=.995?'none':`blur(${(Math.pow(1-p,1.6)*BLUR).toFixed(2)}px)`;}const from=rootPages.indexOf(page),to=rootPages.indexOf(stage.target);indicator(from+(to-from)*p,false);}
 function clean(){
  stage?.layer.remove();stage=null;
- app.style.transform='';app.style.opacity='';app.style.position='';app.style.zIndex='';app.style.background='';app.style.filter='';app.inert=false;
+ app.style.transform='';app.style.transformOrigin='';app.style.opacity='';app.style.position='';app.style.zIndex='';app.style.background='';app.style.filter='';app.inert=false;
  document.body.classList.remove('root-dragging');busy=false;
 }
 async function settle(commit=true){
@@ -45,7 +47,7 @@ async function settle(commit=true){
  const start=s.dx,edge=s.sign*innerWidth,fromFilter=s.layer.firstElementChild.style.filter||'none';
  let outgoing=app,incoming=s.layer;
  if(commit){
-  const clone=app.cloneNode(true);
+  const clone=app.cloneNode(true);if(typeof trimOffscreen==='function')trimOffscreen(app,clone);
   clone.style.cssText=`margin-top:${-window.scrollY}px`;
   outgoing=mountPreview(page,clone);
   navigate(s.target,{noPageMotion:true,noAnimation:true});
@@ -53,9 +55,12 @@ async function settle(commit=true){
   incoming=app;
  }
  app.inert=true;
- const duration=reducedMotion()?0:commit?Math.round(380+180*(1-clamp(Math.abs(start)/innerWidth))):380;
- const slide=(el,from,to)=>el.animate([{transform:`translateX(${from}px)`},{transform:`translateX(${to}px)`}],{duration,easing:ease,fill:'both'});
- s.animations=[slide(outgoing,start,commit?-edge:0),slide(incoming,edge+start,commit?0:edge)];
+ const p0=clamp(Math.abs(start)/innerWidth),duration=reducedMotion()?0:commit?Math.round(420+120*(1-p0)):420;
+ const frame=(el,x,p,out)=>({transform:out?outT(x,p):inT(x,p),opacity:out?1-FADE*p:1-FADE*(1-p)});
+ const move=(el,a,b)=>el.animate([a,b],{duration,easing:ease,fill:'both'});
+ incoming.style.transformOrigin=commit?`50% ${innerHeight/2}px`:'50% 50%';
+ s.animations=commit?[move(outgoing,frame(outgoing,start,p0,true),frame(outgoing,-edge,1,true)),move(incoming,frame(incoming,edge+start,p0,false),frame(incoming,0,1,false))]
+  :[move(outgoing,frame(outgoing,start,p0,true),frame(outgoing,0,0,true)),move(incoming,frame(incoming,edge+start,p0,false),frame(incoming,edge,0,false))];
  if(BLUR){
   const content=commit?incoming:incoming.firstElementChild;
   s.animations.push(content.animate([{filter:fromFilter},{filter:commit?'blur(0px)':`blur(${BLUR}px)`}],{duration,easing:ease,fill:'both'}));

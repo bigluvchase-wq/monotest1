@@ -6,6 +6,8 @@
  const ZOOMS=[1,1.5,2,3,4,6];
  function applyZoom(next,anchor=.5){
   const monthly=monthlyChart();if(!monthly)return;
+  // приближение только в режиме «Дни»
+  const days=granularity==='day';monthly.querySelector('.chart-zoom')?.toggleAttribute('hidden',!days);if(!days)next=1;
   const scroll=monthly.querySelector('.monthly-scroll'),bars=monthly.querySelector('.monthly-bars');if(!scroll||!bars)return;
   const old=bars.offsetWidth||1,focus=(scroll.scrollLeft+scroll.clientWidth*anchor)/old;
   zoom=Math.max(1,Math.min(6,next));
@@ -171,7 +173,7 @@
  panel.addEventListener('pointerup',e=>{const g=gesture;if(!g||g.id!==e.pointerId)return;gesture=null;if(g.horizontal&&!g.cancelled){suppressUntil=performance.now()+300;if(Math.abs(g.dx)>65){changeMonth(g.dx<0?1:-1);return;}}resetMotion();},{passive:true});panel.addEventListener('pointercancel',()=>{gesture=null;resetMotion();},{passive:true});chart.addEventListener('close',()=>{cancelMotion();gesture=null;if(picker.open)picker.close();monthlyType='';preview='';category='';granularity='day';zoom=1;});
  let pinch=null;
  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
- panel.addEventListener('touchstart',e=>{if(!isMonthly()||e.touches.length!==2||!e.target.closest('.monthly-scroll'))return;const r=panel.querySelector('.monthly-scroll').getBoundingClientRect();pinch={d:dist(e.touches),z:zoom,anchor:Math.max(0,Math.min(1,((e.touches[0].clientX+e.touches[1].clientX)/2-r.left)/r.width))};scrubbing=false;},{passive:true});
+ panel.addEventListener('touchstart',e=>{if(!isMonthly()||granularity!=='day'||e.touches.length!==2||!e.target.closest('.monthly-scroll'))return;const r=panel.querySelector('.monthly-scroll').getBoundingClientRect();pinch={d:dist(e.touches),z:zoom,anchor:Math.max(0,Math.min(1,((e.touches[0].clientX+e.touches[1].clientX)/2-r.left)/r.width))};scrubbing=false;},{passive:true});
  panel.addEventListener('touchmove',e=>{if(!pinch||e.touches.length!==2)return;if(e.cancelable)e.preventDefault();const next=pinch.z*dist(e.touches)/pinch.d;if(Math.abs(next-zoom)>.04)applyZoom(Math.round(next*10)/10,pinch.anchor);},{passive:false});
  panel.addEventListener('touchend',e=>{if(pinch&&e.touches.length<2){pinch=null;scrubUntil=performance.now()+400;}},{passive:true});
  root.MonoMonthMotion={cancel:cancelMotion,isBusy:()=>moving};root.MonoChartPeriod={changeMonth,isMonthly,refreshMonthly:renderMonthly};

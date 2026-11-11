@@ -36,7 +36,7 @@ function plan(state,{kind,id,type='expense',currency='RUB'}){
  }else if(kind==='deposit'){
   const d=(next.deposits||[]).find(d=>d.id===id);if(!d)throw Error('Вклад уже удалён.');warning=`Удалить вклад «${d.name}»? Уже начисленные проценты в доходах останутся.`;next.deposits=next.deposits.filter(d=>d.id!==id);label='Вклад удалён';
  }else if(kind==='ticket'){
-  const t=next.tickets.find(t=>t.id===id);if(!t)throw Error('Черновик уже удалён.');warning='Удалить черновик обращения с этого устройства?';next.tickets=next.tickets.filter(t=>t.id!==id);label='Черновик удалён';
+  const t=next.tickets.find(t=>t.id===id);if(!t)throw Error('Обращение уже удалено.');warning=t.sent?'Удалить обращение из списка? Оно уже отправлено — мы его получили.':'Удалить неотправленное обращение?';next.tickets=next.tickets.filter(t=>t.id!==id);label='Обращение удалено';
  }else throw Error('Неизвестный тип записи.');
  if(!Engine.validateState(next))throw Error('Не удалось безопасно удалить запись. Данные не изменены.');
  return {next,warning,label};
