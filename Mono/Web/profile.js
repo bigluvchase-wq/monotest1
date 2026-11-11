@@ -245,6 +245,24 @@ async function push(options={}){
  finally{syncing=false;if(pushAgain&&!pendingPush){pushAgain=false;clearTimeout(syncTimer);syncTimer=setTimeout(push,800);}}
 }
 const unsynced=()=>{const m=syncMeta();return m.rev>(m.pushedRev||0);};
+// Объединение двух копий данных: всё из обеих, без повторов. Для одинаковых записей
+// берётся версия с телефона, настройки — с телефона. Удалённое («надгробия») не возвращается.
+function mergeStates(server,local){
+ try{
+  const out=structuredClone(server),tombs={...(server.deletedIds||{}),...(local.deletedIds||{})};
+  const byId=(a,b)=>{const map=new Map();for(const x of a||[])if(x?.id)map.set(x.id,x);for(const x of b||[])if(x?.id)map.set(x.id,x);return [...map.values()].filter(x=>!tombs[x.id]);};
+  for(const kind of ['accounts','entries','goals','payments','deposits','reminders','tickets'])out[kind]=byId(server[kind],local[kind]);
+  if(!out.accounts.length)out.accounts=structuredClone(local.accounts);
+  const names=(a,b)=>{const list=[...new Set([...(a||[]),...(b||[])])].filter(c=>c!=='Другое');return [...list,'Другое'];};
+  out.categories=names(server.categories,local.categories);
+  out.incomeCategories=names(server.incomeCategories,local.incomeCategories);
+  out.limits=structuredClone(server.limits||{});
+  for(const [cur,ls] of Object.entries(local.limits||{}))out.limits[cur]={...(out.limits[cur]||{}),...ls};
+  out.settings={...(server.settings||{}),...(local.settings||{})};
+  out.deletedIds=tombs;
+  return E.validateState(out)?out:null;
+ }catch{return null;}
+}
 async function reconcile(){
  if(!isPremium()||!acc.code||syncing)return;
  try{
@@ -255,6 +273,19 @@ async function reconcile(){
   const m=syncMeta(),serverMs=toMs(j.updatedAt);
   // новое устройство без операций берёт данные с сервера, а не затирает их
   const freshDevice=!m.syncedAt&&!state.entries.length;
+  // Устройство ещё ни разу не синхронизировалось, но на нём уже есть записи (например, приложение
+  // переустановили и что-то внесли без подписки) — объединяем историю с сервера и с телефона, ничего не теряя.
+  if(!m.syncedAt&&state.entries.length&&E.validateState(j.state)){
+   const merged=mergeStates(E.migrate(j.state),state);
+   if(merged){
+    const wasProblem=storageProblem;storageProblem=false;
+    if(!persist(merged,{remote:true})){storageProblem=wasProblem;return;}
+    const after=syncMeta();after.syncedAt=new Date().toISOString();after.serverMs=serverMs||Date.now();setMeta(after);
+    queueSync(); // отправить объединённые данные на сервер
+    refreshAccounts();applyTheme();renderHomeReminders();if(page!=='home')render();decorate();
+    return;
+   }
+  }
   if(!freshDevice&&unsynced()){push();return;}
   // сервер не менялся с прошлой синхронизации — ничего не делаем
   if(!freshDevice&&m.serverMs&&serverMs&&serverMs<=m.serverMs)return;
