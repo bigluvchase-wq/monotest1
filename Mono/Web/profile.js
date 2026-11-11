@@ -13,7 +13,7 @@ const META_NOTE='* Instagram и Threads принадлежат компании 
 function socials(){const names={telegram:'Telegram',vk:'VK',instagram:'Instagram*'};return `<div class="support-socials">${Object.entries(socialPaths).map(([key,path])=>`<span class="support-social"><button type="button" disabled aria-label="${names[key]} — ссылка пока не добавлена" title="Ссылка пока не добавлена"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg></button><small>${names[key]}</small></span>`).join('')}</div><p class="tiny muted">Ссылки на соцсети скоро появятся.</p><p class="meta-note">* Instagram принадлежит компании Meta Platforms Inc., которая признана экстремистской организацией, её деятельность запрещена на территории Российской Федерации.</p>`;}
 function codeBlock(){
  const code=MonoAccess.codeText();
- const hint=code?'Это твой личный код. А также код приглашения.':accessAvailable?'Код появится, когда приложение подключится к серверу.':'Откройте моно снова, чтобы загрузить ваш код.';
+ const hint=code?'Ваш личный код. Укажите его при оформлении Премиума на сайте — Премиум включится сам.':accessAvailable?'Код появится, когда приложение подключится к серверу.':'Откройте моно снова, чтобы загрузить ваш код.';
  return `<section class="card profile-code"><h3>Код привязки</h3><div class="code-row"><strong class="profile-code-value">${esc(code||'··· ···')}</strong><button type="button" class="secondary" data-profile-copy ${code?'':'disabled'}>Копировать</button></div><p class="tiny muted">${hint}</p></section>`;
 }
 
@@ -62,28 +62,41 @@ function premiumLink(){
 }
 
 function renderProfile(){
- const paid=isPremium(),days=daysLeft(paid?paidUntil:acc.trialUntil);
- const status=paid?'Премиум активен':days?'Пробный доступ':'Пробный доступ завершён';
- const details=days?`Осталось дней: ${days}`:paid?'Срок действия не указан сервером.':'';
  return `<div class="profile-layout">
   <section class="card profile-intro"><button type="button" class="profile-avatar" data-profile-edit aria-label="Изменить аватарку">${avatar()}</button><div class="profile-identity"><h2>${esc(profileName())}</h2></div><button type="button" class="profile-edit" data-profile-edit aria-label="Изменить имя и аватарку"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16 11-11 4 4L8 20H4zm9-9 4 4m-1-7 2-2 4 4-2 2"/></svg></button></section>
-  <section class="card profile-subscription">
-    <h3>Доступ</h3><p class="profile-access-status">${status}</p>
-    ${details?`<p class="tiny muted">${details}</p>`:''}
-    ${premiumLink()}
-  </section>
-  ${codeBlock()}
-  ${friendBlock()}
-  <section class="card profile-invite-card"><h3>Пригласите друга</h3><p class="muted">Отправьте другу свой код — <b>вам обоим дадут по 7 дней Премиума бесплатно</b>.</p><button type="button" class="secondary profile-invite" data-profile-invite>Пригласить друга <span aria-hidden="true">↗</span></button></section>
+  <button type="button" class="primary premium-button profile-premium" data-go-premium><span class="premium-spark" aria-hidden="true">✦</span><span>Премиум</span><span aria-hidden="true">›</span></button>
+  <section class="card profile-invite-card"><h3>Пригласите друга</h3><p class="muted">Расскажите друзьям о моно — учёт денег голосом пригодится и им.</p><button type="button" class="secondary profile-invite" data-profile-invite>Пригласить друга <span aria-hidden="true">↗</span></button></section>
  </div>`;
 }
-function inviteText(){return 'Попробуй моно — учёт денег голосом.'+(acc.code?` Мой код приглашения: ${acc.code}. Введи его в профиле моно — и мы оба получим 7 дней Премиума.`:'');}
+// Экран «Премиум»: что даёт, личный код и ссылка на сайт. Без цен и оплаты внутри приложения.
+const PREMIUM_FEATURES=[
+ ['accounts','Дополнительные счета','Наличные, карты и валюты — отдельно'],
+ ['goals','Цели','Копите на мечты и следите за прогрессом'],
+ ['limits','Лимиты','Контроль расходов по категориям'],
+ ['payments','Обязательные платежи','Даты, календарь и напоминания о платежах'],
+ ['reminders','Напоминания','Свои напоминания с повтором'],
+ ['deposits','Вклады','Проценты сами попадают в доходы']
+];
+function payUrl(){const c=acc.code?acc.code.replace(/\s+/g,''):'';return c?`http://monoapp.ru/?code=${c}`:'http://monoapp.ru/';}
+function renderPremium(){
+ const trial=!isPremium()&&daysLeft(acc.trialUntil)>0?daysLeft(acc.trialUntil):0;
+ const icon=k=>`<span class="menu-symbol"><svg viewBox="0 0 24 24" aria-hidden="true">${(window.MonoMenuMarks||{})[k]||''}</svg></span>`;
+ return `<div class="premium-page">
+  <p class="premium-lead">Всё, чем вы пользуетесь сейчас, останется бесплатным. С Премиумом откроются:</p>
+  ${trial?`<p class="premium-trial">Пробный доступ ко всем функциям: осталось ${trial} ${trial===1?'день':trial<5?'дня':'дней'}.</p>`:''}
+  <section class="card premium-features">${PREMIUM_FEATURES.map(([k,t,d])=>`<div class="premium-feature">${icon(k)}<span><b>${t}</b><small>${d}</small></span></div>`).join('')}</section>
+  ${codeBlock()}
+  <p class="premium-site">Оформить Премиум можно на <a href="${payUrl()}">monoapp.ru</a>. Премиум включится сам, перезапускать приложение не нужно.</p>
+ </div>`;
+}
+function inviteText(){return 'Попробуй моно — учёт денег голосом. Просто скажи, сколько потратил.';}
 async function invite(){if(window.MonoNative){MonoNative.invite(inviteText());return;}const url=location.origin;try{if(navigator.share){await navigator.share({title:'моно',text:inviteText(),url});return;}if(navigator.clipboard){await navigator.clipboard.writeText(url);notify('Ссылка на моно скопирована');return;}}catch(e){if(e.name==='AbortError')return;}actionDialog('Пригласить друга',`<p class="muted">Поделитесь ссылкой на моно:</p><label class="field">Ссылка<input readonly value="${esc(url)}"></label>`);}
 
 document.addEventListener('click',e=>{
  if(e.target.closest('[data-profile-edit]'))editProfile();
  if(e.target.closest('[data-profile-copy]'))MonoAccess.copyCode();
  if(e.target.closest('[data-profile-invite]'))invite();
+ if(e.target.closest('[data-go-premium]'))navigate('premium');
 });
 
 const person='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3"/><path d="M5 20a7 6 0 0 1 14 0"/></svg>';
@@ -133,7 +146,7 @@ async function ensureCode(){
   try {
    await fetch('https://api.monoapp.ru/api/registerUser', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Mono-Key': acc.secret || '' },
     body: JSON.stringify({ code: acc.code })
    });
   } catch(e) {}
@@ -223,6 +236,8 @@ const setMeta=m=>{try{localStorage.setItem(SK,JSON.stringify(m));}catch{}};
 // Пока есть неотправленные изменения (rev > pushedRev), данные с сервера их не перезаписывают —
 // поэтому удалённые операции и напоминания не возвращаются.
 const SYNC_URL='https://api.monoapp.ru/api/sync';
+// Секретный ключ устройства (из Keychain) — без него сервер не отдаёт и не меняет историю
+const keyHeaders=(json=true)=>({...(json?{'Content-Type':'application/json'}:{}),'X-Mono-Key':acc.secret||''});
 const toMs=v=>{const n=expiryMillis(v);return Number.isFinite(n)?n:0;};
 function syncMeta(){const m=meta();if(typeof m.rev!=='number'){m.rev=m.updatedAt&&(!m.syncedAt||m.updatedAt>m.syncedAt)?1:0;m.pushedRev=0;setMeta(m);}return m;}
 let pushAgain=false;
@@ -235,10 +250,10 @@ async function push(options={}){
  syncing=true;pushAgain=false;
  const m=syncMeta(),rev=m.rev;
  try{
-  const response=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'application/json'},keepalive:!!options.keepalive,body:JSON.stringify({code:acc.code,state:withoutAvatar(state),updatedAt:m.updatedAt,rev})});
+  const response=await fetch(SYNC_URL,{method:'POST',headers:keyHeaders(),keepalive:!!options.keepalive,body:JSON.stringify({code:acc.code,state:withoutAvatar(state),updatedAt:m.updatedAt,rev})});
   if(!response.ok){pendingPush=true;return;}
   let serverMs=0;try{const j=await response.json();serverMs=toMs(j?.updatedAt);}catch{}
-  if(!serverMs){try{const r=await fetch(`${SYNC_URL}?code=${acc.code}`);if(r.ok)serverMs=toMs((await r.json())?.updatedAt);}catch{}}
+  if(!serverMs){try{const r=await fetch(`${SYNC_URL}?code=${acc.code}`,{headers:keyHeaders(false)});if(r.ok)serverMs=toMs((await r.json())?.updatedAt);}catch{}}
   const now=syncMeta();now.pushedRev=Math.max(now.pushedRev||0,rev);now.syncedAt=new Date().toISOString();if(serverMs)now.serverMs=serverMs;setMeta(now);
  }catch(e){pendingPush=true;}
  // изменения, сделанные во время отправки, уходят следующей отправкой; ошибки сети — при появлении связи
@@ -248,7 +263,7 @@ const unsynced=()=>{const m=syncMeta();return m.rev>(m.pushedRev||0);};
 async function reconcile(){
  if(!isPremium()||!acc.code||syncing)return;
  try{
-  const r=await fetch(`${SYNC_URL}?code=${acc.code}`);
+  const r=await fetch(`${SYNC_URL}?code=${acc.code}`,{headers:keyHeaders(false)});
   if(!r.ok)return;
   const j=await r.json();
   if(j.empty||!j.state){push();return;}
@@ -279,30 +294,61 @@ async function reconcile(){
 // Перед уходом приложения в фон отправляем несохранённые изменения
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&unsynced()&&isPremium()){clearTimeout(syncTimer);push({keepalive:true});}else if(!document.hidden&&isPremium())setTimeout(reconcile,1200);});
 
+// ---------- Удаление данных пользователя ----------
+// Сначала сервер (копия истории, обращения, заявки), потом телефон. Код и Премиум остаются.
+const DELETE_URL='https://api.monoapp.ru/api/deleteData';
+function confirmDeleteData(){
+ actionDialog('Удалить мои данные?',`<div class="delete-data-sheet"><p>Будут удалены <b>все операции, счета, цели, лимиты, платежи, вклады, напоминания, свои категории, обращения в поддержку, имя и аватар</b> — на этом телефоне и на сервере.</p><p class="muted">Код привязки и оплаченный Премиум сохранятся. Отменить удаление нельзя.</p><p class="form-error delete-data-error" role="alert" hidden></p><button type="button" class="primary danger-primary" id="deleteDataConfirm">Удалить навсегда</button><button type="button" class="secondary full" id="deleteDataCancel">Отмена</button></div>`);
+ document.querySelector('#deleteDataCancel').onclick=()=>document.querySelector('#actionDialog').close();
+ document.querySelector('#deleteDataConfirm').onclick=deleteMyData;
+}
+async function deleteMyData(){
+ const btn=document.querySelector('#deleteDataConfirm'),err=document.querySelector('.delete-data-error');
+ btn.disabled=true;btn.textContent='Удаляем…';err.hidden=true;
+ const m=syncMeta(),onServer=!!m.syncedAt||isPremium();
+ clearTimeout(syncTimer);
+ if(acc.code&&onServer){
+  try{
+   const r=await fetch(DELETE_URL,{method:'POST',headers:keyHeaders(),body:JSON.stringify({code:acc.code})});
+   const j=await r.json().catch(()=>({}));
+   if(!r.ok||j.ok===false)throw Error();
+  }catch{
+   btn.disabled=false;btn.textContent='Удалить навсегда';
+   err.textContent='Нет связи с сервером — данные не удалены. Попробуйте ещё раз, когда появится интернет.';err.hidden=false;
+   return;
+  }
+ }else if(acc.code){
+  // без Премиума на сервере только обращения и заявки — удаляем, но не ждём
+  fetch(DELETE_URL,{method:'POST',headers:keyHeaders(),body:JSON.stringify({code:acc.code})}).catch(()=>{});
+ }
+ // телефон: чистые данные, без повторного обучения и запроса уведомлений
+ const fresh=E.initialState();fresh.reminders=[];fresh.deposits=[];
+ for(const k of ['onboarded','notifyAsked','notifyGranted','theme'])if(state.settings[k]!==undefined)fresh.settings[k]=state.settings[k];
+ fresh.settings.onboarded=true;
+ const wasProblem=storageProblem;storageProblem=false;
+ if(!persist(fresh,{remote:true})){storageProblem=wasProblem;btn.disabled=false;btn.textContent='Удалить навсегда';return;}
+ for(const key of ['mono-sync','mono-notes-seen','mono-reminders-seen','mono-sub-notice','mono-backup-before-v2','mono-backup-before-sync'])try{localStorage.removeItem(key);}catch{}
+ document.querySelector('#actionDialog').close();
+ refreshAccounts();applyTheme();decorate();renderHomeReminders();
+ setTimeout(()=>{navigate('home');notify('Данные удалены',true);},320);
+}
 async function copyCode(){
  const c=acc.code;if(!c)return;
  try{await navigator.clipboard.writeText(c);}catch{const t=document.createElement('textarea');t.value=c;t.setAttribute('readonly','');t.style.cssText='position:fixed;opacity:0;top:0';document.body.append(t);t.select();try{document.execCommand('copy');}catch{}t.remove();}
  notify('Код скопирован',true);
 }
-function premiumDialog(reason){
- const text={
-  voice:'Голосовой ввод доступен в пробный период и с Премиумом.',
-  export:'Выгрузка операций доступна в пробный период и с Премиумом.',
-  goals:'Настройка целей доступна в пробный период и с Премиумом.',
-  limits:'Настройка лимитов доступна в пробный период и с Премиумом.',
-  accounts:'Дополнительные счета доступны в пробный период и с Премиумом.',
-  payments:'Добавление обязательных платежей доступно в пробный период и с Премиумом.'
- }[reason]||'';
- actionDialog('Премиум',`${text?`<p class="muted">${esc(text)}</p>`:''}${codeBlock()}${premiumLink()}`);
+function premiumDialog(){
+ document.querySelectorAll('dialog[open]').forEach(d=>d.close());
+ setTimeout(()=>navigate('premium'),document.querySelector('dialog[open]')?320:0);
 }
 root.MonoAccess={
  isPremium,
  canUse:()=>isPremium()||daysLeft(acc.trialUntil)>0,
  codeText:()=>acc.code?acc.code.slice(0,3)+' '+acc.code.slice(3):'',
- copyCode,queueSync,refresh,nativeItems,daysUntilEnd,
+ copyCode,queueSync,refresh,confirmDeleteData,nativeItems,daysUntilEnd,
  devGrant:days=>{if(!CFG.devMode)return false;acc.devUntil=Date.now()+days*864e5;save();refresh();return true;}
 };
-root.MonoProfile={render:renderProfile,startTrial,socials,decorate,safeAvatar,profileName,premiumDialog};decorate();
+root.MonoProfile={render:renderProfile,renderPremium,startTrial,socials,decorate,safeAvatar,profileName,premiumDialog};decorate();
 if(acc.trialUntil)saveIdentity();else startTrial();
 ensureCode().then(()=>refresh());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureCode().then(()=>refresh(true));setTimeout(subscriptionNotice,1500);}});
