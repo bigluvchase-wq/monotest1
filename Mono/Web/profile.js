@@ -64,7 +64,8 @@ const PREMIUM_FEATURES=[
  ['limits','Лимиты','Контроль расходов по категориям'],
  ['payments','Обязательные платежи','Даты, календарь и напоминания о платежах'],
  ['reminders','Напоминания','Свои напоминания с повтором'],
- ['deposits','Вклады','Проценты сами попадают в доходы']
+ ['deposits','Вклады','Проценты сами попадают в доходы'],
+ ['themes','Различные темы','Чёрная, фиолетовая, зелёная и бургунди']
 ];
 const dayWord=n=>{const a=n%10,b=n%100;return a===1&&b!==11?'день':a>=2&&a<=4&&(b<10||b>=20)?'дня':'дней';};
 // Активный Премиум: до какого числа и сколько дней осталось
@@ -74,6 +75,7 @@ function premiumStatus(){
  const left=Math.max(0,daysUntilEnd()??0),date=new Date(paidUntil).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}).replace(/ г\.$/,'');
  return `<section class="card premium-status"><span class="premium-spark" aria-hidden="true">✦</span><div><b>Премиум активен</b><small>Осталось ${left} ${dayWord(left)} · до ${esc(date)}</small></div></section>`;
 }
+function payUrl(){const c=acc.code?acc.code.replace(/\s+/g,''):'';return c?`https://monoapp.ru/?code=${c}`:'https://monoapp.ru/';}
 function renderPremium(){
  const trial=!isPremium()&&daysLeft(acc.trialUntil)>0?daysLeft(acc.trialUntil):0;
  const icon=k=>`<span class="menu-symbol"><svg viewBox="0 0 24 24" aria-hidden="true">${(window.MonoMenuMarks||{})[k]||''}</svg></span>`;
@@ -83,7 +85,7 @@ function renderPremium(){
   ${trial?`<p class="premium-trial">Пробный доступ ко всем функциям: осталось ${trial} ${trial===1?'день':trial<5?'дня':'дней'}.</p>`:''}
   <section class="card premium-features">${PREMIUM_FEATURES.map(([k,t,d])=>`<div class="premium-feature">${icon(k)}<span><b>${t}</b><small>${d}</small></span></div>`).join('')}</section>
   ${codeBlock()}
-  <p class="premium-site">${isPremium()?'Продлить Премиум можно на нашем сайте. Новый срок прибавится к оставшемуся.':'Оформить Премиум можно на нашем сайте.'}</p>
+  <p class="premium-site">${isPremium()?'Продлить':'Оформить'} Премиум можно на сайте <a href="${payUrl()}">monoapp.ru</a>.${isPremium()?' Новый срок прибавится к оставшемуся.':''}</p>
  </div>`;
 }
 function inviteText(){return 'Попробуй моно — учёт денег голосом. Просто скажи, сколько потратил.';}
@@ -207,6 +209,8 @@ async function refreshAccess(force){
  }
 
  if(isPremium()&&!was)reconcile();
+ // цветные темы — с Премиумом: если доступ закончился, вернётся обычная тема
+ root.applyTheme?.();
  if(page==='profile'||page==='premium'||isPremium()!==was)render();
  root.MonoNative?.refreshReminders?.();
  subscriptionNotice();
