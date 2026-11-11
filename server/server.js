@@ -354,36 +354,37 @@ app.post('/api/referral', rateLimit, (req, res) => {
 });
 
 // ==========================================
-// 9. Награды (в приложении сейчас скрыты): одна заявка на код → база + Telegram/почта
+// 9. Награды (в приложении сейчас скрыты): одна заявка на код → база + письмо
 // ==========================================
+// Почта: письма уходят через SMTP почтового ящика в России (по умолчанию Яндекс Почта).
+// В .env: MAIL_USER=ящик@yandex.ru, MAIL_PASS=пароль приложения, SUPPORT_MAIL_TO=куда присылать (по умолчанию MAIL_USER)
 let mailer = null;
 try {
     if (process.env.MAIL_USER && process.env.MAIL_PASS) {
         const nodemailer = require('nodemailer');
-        mailer = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS } });
+        mailer = nodemailer.createTransport({
+            host: process.env.SMTP_HOST || 'smtp.yandex.ru',
+            port: Number(process.env.SMTP_PORT || 465),
+            secure: Number(process.env.SMTP_PORT || 465) === 465,
+            auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
+            connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 20000
+        });
+    } else {
+        console.warn('MAIL_USER/MAIL_PASS не заданы — обращения сохраняются только в базе');
     }
 } catch (e) {
-    console.error('nodemailer не установлен — письма о наградах не отправляются');
+    console.error('nodemailer не установлен (npm install) — письма не отправляются');
 }
-const REWARD_TO = process.env.REWARD_MAIL_TO || 'monofinapp@gmail.com';
-const REWARD_NETWORKS = { threads: ['Threads', 7], telegram: ['Telegram', 7], instagram: ['Instagram', 30], vk: ['ВКонтакте', 7] };
-
-// TG_API_BASE — адрес-посредник для Telegram, если из России api.telegram.org недоступен (например, https://tg.monoapp.ru)
-const TG_API = (process.env.TG_API_BASE || 'https://api.telegram.org').replace(/\/+$/, '');
-async function sendTelegram(text) {
-    if (!process.env.TG_BOT_TOKEN || !process.env.TG_CHAT_ID) return;
+const SUPPORT_TO = process.env.SUPPORT_MAIL_TO || process.env.MAIL_USER;
+async function sendMail(subject, text, replyTo) {
+    if (!mailer || !SUPPORT_TO) return;
     try {
-        const tg = await fetch(`${TG_API}/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
-            signal: AbortSignal.timeout(15000),
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: process.env.TG_CHAT_ID, text: text.slice(0, 4000), disable_web_page_preview: true })
-        });
-        if (!tg.ok) console.error('Telegram не принял сообщение:', await tg.text());
+        await mailer.sendMail({ from: `моно <${process.env.MAIL_USER}>`, to: SUPPORT_TO, subject, text, ...(replyTo ? { replyTo } : {}) });
     } catch (e) {
-        console.error('Ошибка отправки в Telegram:', e.message);
+        console.error('Письмо не отправлено:', e.message);
     }
 }
+const REWARD_NETWORKS = { threads: ['Threads', 7], telegram: ['Telegram', 7], instagram: ['Instagram', 30], vk: ['ВКонтакте', 7] };
 
 app.post('/api/reward', rateLimit, async (req, res) => {
     const code = cleanCode(req.body.code);
@@ -395,15 +396,7 @@ app.post('/api/reward', rateLimit, async (req, res) => {
     const [networkName, days] = REWARD_NETWORKS[network];
     try {
         if (!q.addReward.run(code, network, networkName, days, link, now()).changes) return res.json({ ok: false, error: 'already_sent' });
-        sendTelegram(`🎁 Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nНаграда: +${days} дней Премиума\nСсылка: ${link}`);
-        if (mailer) {
-            await mailer.sendMail({
-                from: `моно <${process.env.MAIL_USER}>`,
-                to: REWARD_TO,
-                subject: `Награда моно: ${networkName} · код ${code}`,
-                text: `Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nСсылка: ${link}\nНаграда: +${days} дней Премиума\n`
-            });
-        }
+        sendMail(`Награда моно: ${networkName} · код ${code}`, `Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nСсылка: ${link}\nНаграда: +${days} дней Премиума\n`);
         res.json({ ok: true });
     } catch (err) {
         console.error('Ошибка заявки на награду:', err);
@@ -412,7 +405,7 @@ app.post('/api/reward', rateLimit, async (req, res) => {
 });
 
 // ==========================================
-// 10. Поддержка: обращение из приложения → база + Telegram-бот
+// 10. Поддержка: обращение из приложения → база + письмо на почту
 // Не больше 3 обращений за 12 часов с одного кода (и с одного адреса — для запросов без кода)
 // ==========================================
 const SUPPORT_LIMIT = 3, SUPPORT_WINDOW = 12 * 60 * 60 * 1000;
@@ -437,7 +430,9 @@ app.post('/api/support', rateLimit, async (req, res) => {
     try {
         q.addTicket.run(code, topic, contact, message, now());
         const icon = topic === 'Ошибка' ? '🐞' : topic === 'Идея' ? '💡' : '❓';
-        sendTelegram(`${icon} Поддержка · ${topic}\n\nКод: ${code || '—'}\nОтветить: ${contact || '—'}\n\n${message}`);
+        const replyTo = /^\S+@\S+\.\S+$/.test(contact) ? contact : '';
+        sendMail(`${icon} Поддержка моно · ${topic}${code ? ' · код ' + code : ''}`,
+            `Тема: ${topic}\nКод привязки: ${code || '—'}\nОтветить: ${contact || '—'}${contact.startsWith('@') ? ' (Telegram)' : ''}\n\n${message}\n`, replyTo);
         res.json({ ok: true });
     } catch (err) {
         console.error('Ошибка обращения в поддержку:', err);
