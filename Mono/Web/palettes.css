@@ -1,0 +1,42 @@
+/* Сгенерировано tools/build-palettes.py из style.css — не править вручную. */
+html[data-palette=purple]{--paper:#ece6ff;--ink:#1b1740;--muted:#7a74a3;--line:rgba(112,92,214,.16);--soft:#e5defd;--bar:#ddd5f7;--card-solid:#f6f3ff;--shadow:rgba(101,81,220,.16);--surface:rgba(255,255,255,.62);--input:rgba(255,255,255,.74);--glass:rgba(255,255,255,.72);--card-edge:rgba(255,255,255,.85);--glow:rgba(120,92,255,.35);--bg1:#f4f0ff;--bg2:#e6dcff;--bg3:#d9d1fb;--blob-a:rgba(139,108,255,.5);--blob-b:rgba(176,160,255,.42);--blob-c:rgba(150,170,255,.38);--wave:rgba(255,255,255,.55);--depth-bg:linear-gradient(160deg,rgba(255,255,255,.94) 0%,rgba(246,243,255,.86) 46%,rgba(234,228,255,.82) 100%);--chip-bg:linear-gradient(150deg,#ffffff,#ebe6fb)}
+html[data-palette=green]{--paper:#ecf9f4;--ink:#1f382b;--muted:#50685c;--line:rgba(64,138,103,.16);--soft:#e6f5ef;--bar:#deeee8;--card-solid:#f6fcfa;--shadow:rgba(58,140,100,.16);--surface:rgba(255,255,255,.62);--input:rgba(255,255,255,.74);--glass:rgba(255,255,255,.72);--card-edge:rgba(255,255,255,.85);--glow:rgba(44,186,120,.35);--bg1:#f4fbf9;--bg2:#e5f6f0;--bg3:#dbf0e7;--blob-a:rgba(46,194,131,.5);--blob-b:rgba(184,231,209,.42);--blob-c:rgba(176,229,186,.38);--wave:rgba(255,255,255,.55);--depth-bg:linear-gradient(160deg,rgba(255,255,255,.94) 0%,rgba(246,252,250,.86) 46%,rgba(235,248,243,.82) 100%);--chip-bg:linear-gradient(150deg,#ffffff,#ebf6f2)}
+html[data-palette=green]{--accent:#408260;--soft:#edf6f2}
+html[data-palette=green] button:focus-visible,html[data-palette=green] a:focus-visible{outline:3px solid #53aa7f}
+html[data-palette=green] .mic{box-shadow:0 12px 26px #40826022}
+html[data-palette=green] #tourFocus{box-shadow:0 0 30px #40826012}
+html[data-palette=green] .operations-tools .month-control:focus-within{outline:3px solid #53aa7f}
+html[data-palette=green] .picker-box:focus-within{outline:3px solid #53aa7f}
+html[data-palette=green] a.premium-button{background:#408260}
+html[data-palette=green] a.premium-button:active{background:#3d6e55}
+html[data-palette=green] .launch-name{text-shadow:0 2px 24px #c2ebdd60}
+html[data-palette=green] .launch-name span{color:#ace3cf}
+html[data-palette=green]{--paper:#ecf9f4;--ink:#1f382b;--line:rgba(64,138,103,.16);--accent:#3a8c64;--accent-2:#35b47f;--soft:#e6f5ef;--shadow:rgba(58,140,100,.16);--bar:#deeee8;--glow:rgba(44,186,120,.35);--bg2:#e5f6f0;--bg3:#dbf0e7;--blob-a:rgba(46,194,131,.5);--btn-grad:linear-gradient(135deg,#35ab75,#38825e);--sphere:radial-gradient(circle at 34% 28%,#aee4cc 0%,#35a271 42%,#367859 100%)}
+html[data-palette=green] .mic{box-shadow:0 18px 50px var(--glow),inset 0 2px 8px rgba(255,255,255,.45),inset 0 -14px 30px rgba(36,89,64,.35)}
+html[data-palette=green] .voice-ripple{border-color:rgba(46,194,131,.6)}
+html[data-palette=green] dialog{box-shadow:0 30px 90px rgba(41,91,68,.35)}
+html[data-palette=green] dialog::backdrop{background:rgba(29,62,46,.28)}
+html[data-palette=green] .search-backdrop{background:rgba(29,62,46,.2)}
+html[data-palette=green] .search-results{box-shadow:0 24px 60px rgba(41,91,68,.28)}
+html[data-palette=green] [data-preview-id="tourFocus"]{box-shadow:rgba(64,130,96,0.07) 0px 0px 30px}
+html[data-palette=green] .reward-instagram .reward-icon{background:linear-gradient(45deg,#f9b23c,#e4405f 45%,#366a6a)}
+html[data-palette=burgundy]{--paper:#f8edef;--ink:#381f28;--muted:#5b474d;--line:rgba(121,57,75,.16);--soft:#f4e7ea;--bar:#eddfe2;--card-solid:#fcf6f7;--shadow:rgba(122,52,74,.16);--surface:rgba(255,255,255,.62);--input:rgba(255,255,255,.74);--glass:rgba(255,255,255,.72);--card-edge:rgba(255,255,255,.85);--glow:rgba(161,40,74,.35);--bg1:#fbf4f6;--bg2:#f5e6e9;--bg3:#efdde2;--blob-a:rgba(168,42,72,.5);--blob-b:rgba(227,188,199,.42);--blob-c:rgba(225,180,209,.38);--wave:rgba(255,255,255,.55);--depth-bg:linear-gradient(160deg,rgba(255,255,255,.94) 0%,rgba(252,246,247,.86) 46%,rgba(247,236,238,.82) 100%);--chip-bg:linear-gradient(150deg,#ffffff,#f5ecee)}
+html[data-palette=burgundy]{--accent:#71394c;--soft:#f5eeef}
+html[data-palette=burgundy] button:focus-visible,html[data-palette=burgundy] a:focus-visible{outline:3px solid #944a61}
+html[data-palette=burgundy] .mic{box-shadow:0 12px 26px #71394c22}
+html[data-palette=burgundy] #tourFocus{box-shadow:0 0 30px #71394c12}
+html[data-palette=burgundy] .operations-tools .month-control:focus-within{outline:3px solid #944a61}
+html[data-palette=burgundy] .picker-box:focus-within{outline:3px solid #944a61}
+html[data-palette=burgundy] a.premium-button{background:#71394c}
+html[data-palette=burgundy] a.premium-button:active{background:#603644}
+html[data-palette=burgundy] .launch-name{text-shadow:0 2px 24px #e7c5ca60}
+html[data-palette=burgundy] .launch-name span{color:#dfb1ba}
+html[data-palette=burgundy]{--paper:#f8edef;--ink:#381f28;--line:rgba(121,57,75,.16);--accent:#7a344a;--accent-2:#9c314a;--soft:#f4e7ea;--shadow:rgba(122,52,74,.16);--bar:#eddfe2;--glow:rgba(161,40,74,.35);--bg2:#f5e6e9;--bg3:#efdde2;--blob-a:rgba(168,42,72,.5);--btn-grad:linear-gradient(135deg,#94304b,#713245);--sphere:radial-gradient(circle at 34% 28%,#e0b2be 0%,#8d3149 42%,#693141 100%)}
+html[data-palette=burgundy] .mic{box-shadow:0 18px 50px var(--glow),inset 0 2px 8px rgba(255,255,255,.45),inset 0 -14px 30px rgba(78,32,46,.35)}
+html[data-palette=burgundy] .voice-ripple{border-color:rgba(168,42,72,.6)}
+html[data-palette=burgundy] dialog{box-shadow:0 30px 90px rgba(79,37,49,.35)}
+html[data-palette=burgundy] dialog::backdrop{background:rgba(54,26,34,.28)}
+html[data-palette=burgundy] .search-backdrop{background:rgba(54,26,34,.2)}
+html[data-palette=burgundy] .search-results{box-shadow:0 24px 60px rgba(79,37,49,.28)}
+html[data-palette=burgundy] [data-preview-id="tourFocus"]{box-shadow:rgba(113,57,76,0.07) 0px 0px 30px}
+html[data-palette=burgundy] .reward-instagram .reward-icon{background:linear-gradient(45deg,#f9b23c,#e4405f 45%,#5d3830)}

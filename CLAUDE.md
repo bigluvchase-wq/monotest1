@@ -5,6 +5,7 @@
 ## Как устроено приложение
 - iOS-приложение: нативная оболочка на Swift (`Mono/*.swift`) + интерфейс в WKWebView (`Mono/Web/*.js`, `index.html`, `style.css`).
 - Папка `Mono/Web` подключена в Xcode как folder reference — новые файлы попадают в сборку сами. При изменении JS/CSS повышай `?v=N` у файла в `index.html`.
+- Цветные темы (фиолетовая, зелёная, бургунди) — `Mono/Web/palettes.css`, генерируется из `style.css`: после правок цветов запусти `pip install tinycss2 && python3 tools/build-palettes.py` и повысь `palettes.css?v=N`.
 - Сборка — Codemagic. Здесь (Linux) Xcode нет: Swift-код нельзя собрать или запустить, только проверять внимательно. JS проверяй `node --check` и в Chromium (Playwright), тесты — `node --test tests/*.test.cjs`.
 - Сервер: `server/` (Node + Express + SQLite), развёрнут в Москве (pm2 `mono-pay`, папка `/root/mono-server`). Сайт и документы: `site/` (monoapp.ru).
 - Данные пользователей храним только в России (152-ФЗ). Почта поддержки — monoapp@mail.ru через SMTP Mail.ru.
