@@ -11,7 +11,11 @@
  }
  function play(plan){
   if(!plan)return;
-  if(!plan.opening)return;
+  if(!plan.opening){
+   // Возврат в меню: блоки меню плавно встают на место, одним движением
+   if(!reducedMotion()){const grid=document.querySelector('.menu-grid');grid?.animate([{transform:'translateX(-18px) scale(.985)'},{transform:'none'}],{duration:520,easing:'cubic-bezier(.32,.72,0,1)'});}
+   return;
+  }
   const workspace=document.querySelector('#workspace'),animations=[],direction=plan.opening?1:-1;let ended=false,timer;
   function finish(focus=true){
    if(ended)return;ended=true;clearTimeout(timer);animations.forEach(a=>a.cancel());if(active?.finish===finish)active=null;

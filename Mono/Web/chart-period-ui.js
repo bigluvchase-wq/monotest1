@@ -18,7 +18,16 @@
   monthly.querySelector('[data-zoom="-1"]')?.toggleAttribute('disabled',zoom<=1);
   monthly.querySelector('[data-zoom="1"]')?.toggleAttribute('disabled',zoom>=6);
  }
- function stepZoom(dir){const i=ZOOMS.findIndex(z=>z>=zoom-.01);const next=dir>0?ZOOMS.find(z=>z>zoom+.01)??6:[...ZOOMS].reverse().find(z=>z<zoom-.01)??1;applyZoom(next);void i;}
+ // столбик, к которому приближаем: выбранный, иначе сегодняшний, иначе последний с суммой
+ function focusIndex(){
+  const bars=[...(monthlyChart()?.querySelectorAll('[data-monthly-pick]')||[])];if(!bars.length)return -1;
+  if(preview){const i=bars.findIndex(b=>b.dataset.monthlyPick===preview);if(i>=0)return i;}
+  const today=E.dateString(new Date());const t=bars.findIndex(b=>b.dataset.monthlyPick<=today&&(b.dataset.end||b.dataset.monthlyPick)>=today);if(t>=0)return t;
+  for(let i=bars.length-1;i>=0;i--)if(Number(bars[i].dataset.amount)>0)return i;return bars.length-1;
+ }
+ function centerOn(i){const monthly=monthlyChart(),scroll=monthly?.querySelector('.monthly-scroll'),bars=monthly?.querySelector('.monthly-bars'),n=Number(bars?.style.getPropertyValue('--columns'))||1;if(!scroll||i<0)return;const x=(i+.5)/n*bars.offsetWidth-scroll.clientWidth/2;scroll.scrollTo({left:Math.max(0,x),behavior:reducedMotion()?'auto':'smooth'});}
+ function focusBar(start){const bars=[...monthlyChart().querySelectorAll('[data-monthly-pick]')];const i=bars.findIndex(b=>b.dataset.monthlyPick===start);if(i>=0&&zoom>1)centerOn(i);}
+ function stepZoom(dir){const i=ZOOMS.findIndex(z=>z>=zoom-.01);const next=dir>0?ZOOMS.find(z=>z>zoom+.01)??6:[...ZOOMS].reverse().find(z=>z<zoom-.01)??1;applyZoom(next);centerOn(focusIndex());void i;}
  const monthlyChart=()=>panel.querySelector('#monthlyChart');
  const isMonthly=()=>Boolean(monthlyType);
  function renderMonthly(){
@@ -69,7 +78,7 @@
   const svg=`<svg class="line-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line class="grid" x1="0" x2="100" y1="${yOf(max).toFixed(2)}" y2="${yOf(max).toFixed(2)}"/><line class="grid" x1="0" x2="100" y1="${yOf(max/2).toFixed(2)}" y2="${yOf(max/2).toFixed(2)}"/><line class="grid" x1="0" x2="100" y1="100" y2="100"/>${max&&n>1?`<line class="avg" x1="0" x2="100" y1="${yOf(average).toFixed(2)}" y2="${yOf(average).toFixed(2)}"/>`:''}</svg>`;
   const columns=buckets.map((bucket,i)=>{
    const {start}=bucket,amount=totals[i],label=longLabel(bucket),cls=(i===peak&&max>0?' is-max':'')+(amount>0&&amount===min&&positive.length>1?' is-min':'');
-   return `<button type="button" class="${cls.trim()}" data-monthly-pick="${start}" data-amount="${amount}" data-label="${esc(label)}"${i%step?' data-skip':''} aria-label="${esc(label+' · '+money(amount,selectedCurrency))}"><span class="monthly-track" aria-hidden="true"><span style="--h:${(max?amount/max*H:0).toFixed(1)}%;--i:${i}"></span></span><span class="monthly-cap">${esc(caption(bucket))}</span></button>`;
+   return `<button type="button" class="${cls.trim()}" data-monthly-pick="${start}" data-end="${bucket.end}" data-amount="${amount}" data-label="${esc(label)}"${i%step?' data-skip':''} aria-label="${esc(label+' · '+money(amount,selectedCurrency))}"><span class="monthly-track" aria-hidden="true"><span style="--h:${(max?amount/max*H:0).toFixed(1)}%;--i:${i}"></span></span><span class="monthly-cap">${esc(caption(bucket))}</span></button>`;
   }).join('');
   const peakTag=max>0?`<span class="line-peak" aria-hidden="true" style="left:${((peak+.5)/n*100).toFixed(2)}%;top:calc(4px + var(--track-h) * ${((100-(max?H:0))/100).toFixed(3)})">${money(max,selectedCurrency)}</span>`:'';
   bars.innerHTML=svg+columns+peakTag;
@@ -78,7 +87,8 @@
   let stats=monthly.querySelector('.monthly-stats');
   if(!stats){stats=document.createElement('div');stats.className='monthly-stats';monthly.append(stats);}
   const maxBucket=buckets[peak],minBucket=buckets[totals.indexOf(min)];
-  stats.innerHTML=`<div><small>Итого</small><b>${money(graphTotal,selectedCurrency)}</b></div><div><small>В среднем за ${unit}</small><b>${money(Math.round(average/100)*100,selectedCurrency)}</b></div><div class="stat-max"><small>Больше всего${max>0?' · '+esc(caption(maxBucket)):''}</small><b>${money(max,selectedCurrency)}</b></div><div class="stat-min"><small>Меньше всего${min>0?' · '+esc(caption(minBucket)):''}</small><b>${min>0?money(min,selectedCurrency):'—'}</b></div>`;
+  stats.innerHTML=`<div><small>Итого</small><b>${money(graphTotal,selectedCurrency)}</b></div><div><small>В среднем за ${unit}</small><b>${money(Math.round(average/100)*100,selectedCurrency)}</b></div><button type="button" class="stat-max" ${max>0?`data-stat-pick="${maxBucket.start}"`:'disabled'}><small>Больше всего${max>0?' · '+esc(caption(maxBucket)):''}</small><b>${money(max,selectedCurrency)}</b><i aria-hidden="true">›</i></button><button type="button" class="stat-min" ${min>0?`data-stat-pick="${minBucket.start}"`:'disabled'}><small>Меньше всего${min>0?' · '+esc(caption(minBucket)):''}</small><b>${min>0?money(min,selectedCurrency):'—'}</b><i aria-hidden="true">›</i></button>`;
+  let ops=monthly.querySelector('.monthly-ops');if(!ops){ops=document.createElement('div');ops.className='monthly-ops';monthly.append(ops);}
   selectPreview(preview);
  }
  function selectPreview(value){
@@ -88,6 +98,18 @@
   bars.forEach(b=>b.setAttribute('aria-pressed',String(b===selected)));
   monthly.querySelector('.monthly-month').textContent=selected?.dataset.label||'Итого за период';
   panel.querySelector('.monthly-total').textContent=money(selected?Number(selected.dataset.amount):graphTotal,selectedCurrency);
+  showOps(selected);
+ }
+ // Операции выбранного дня (недели, месяца) — под итогами графика
+ function showOps(selected){
+  const ops=monthlyChart()?.querySelector('.monthly-ops');if(!ops)return;
+  monthlyChart().querySelectorAll('[data-stat-pick]').forEach(b=>b.setAttribute('aria-pressed',String(!!selected&&b.dataset.statPick===selected.dataset.monthlyPick)));
+  if(!selected||!Number(selected.dataset.amount)){ops.innerHTML='';return;}
+  const start=selected.dataset.monthlyPick,end=selected.dataset.end||start;
+  const rows=selectedEntries().filter(e=>e.type===monthlyType&&inChart(e)&&e.date>=start&&e.date<=end&&(!category||e.category===category)).sort((a,b)=>b.date.localeCompare(a.date));
+  ops.innerHTML=`<h3 class="monthly-ops-title">Операции · ${esc(selected.dataset.label||'')}</h3>${groupedEntriesHTML(rows)}`;
+  root.MonoSwipe?.decorate(ops);
+  if(!reducedMotion())ops.animate([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}],{duration:360,easing:'cubic-bezier(.32,.72,0,1)'});
  }
  function toggleMonthly(button){const ring=panel.querySelector('[data-chart-view]');
   if(!chart.open||MonoCharts.isBusy()||moving)return;
@@ -137,7 +159,7 @@
  animations=monthNodes().map(el=>el.animate([{transform:el.style.transform||'translateX(0)',opacity:el.style.opacity||1,filter:'blur(0px)'},{transform:`translateX(${-sign*70}px)`,opacity:0,filter:'blur(2px)'}],{duration:200,easing,fill:'forwards'}));await Promise.allSettled(animations.map(a=>a.finished));if(token!==epoch||!chart.open)return;animations.forEach(a=>a.cancel());resetMotion();apply(month);
  animations=monthNodes().map(el=>el.animate([{transform:`translateX(${sign*70}px)`,opacity:0,filter:'blur(2px)'},{transform:'translateX(0)',opacity:1,filter:'blur(0px)'}],{duration:390,easing,fill:'both'}));await Promise.allSettled(animations.map(a=>a.finished));if(token===epoch){animations.forEach(a=>a.cancel());animations=[];moving=false;resetMotion();}}
 
- panel.addEventListener('click',event=>{if(performance.now()<suppressUntil){event.preventDefault();event.stopImmediatePropagation();return;}const graph=event.target.closest('[data-monthly-chart]');if(graph){if(!isMonthly())toggleMonthly(graph);return;}const view=event.target.closest('[data-chart-view]');if(view){if(isMonthly())toggleMonthly(panel.querySelector('[data-monthly-chart]'));return;}const zb=event.target.closest('[data-zoom]');if(zb){stepZoom(Number(zb.dataset.zoom));return;}const gran=event.target.closest('[data-gran]');if(gran){granularity=gran.dataset.gran;preview='';zoom=1;renderMonthly();return;}const month=event.target.closest('[data-monthly-pick]');if(month){if(performance.now()<scrubUntil)return;selectPreview(preview===month.dataset.monthlyPick?'':month.dataset.monthlyPick);return;}if(event.target.closest('.chart-period-button')){cancelMotion();choose();}const b=event.target.closest('[data-chart-month]');if(b)changeMonth(Number(b.dataset.chartMonth));},{capture:true});
+ panel.addEventListener('click',event=>{if(performance.now()<suppressUntil){event.preventDefault();event.stopImmediatePropagation();return;}const graph=event.target.closest('[data-monthly-chart]');if(graph){if(!isMonthly())toggleMonthly(graph);return;}const view=event.target.closest('[data-chart-view]');if(view){if(isMonthly())toggleMonthly(panel.querySelector('[data-monthly-chart]'));return;}const zb=event.target.closest('[data-zoom]');if(zb){stepZoom(Number(zb.dataset.zoom));return;}const st=event.target.closest('[data-stat-pick]');if(st){const v=st.dataset.statPick;selectPreview(preview===v?'':v);if(preview){focusBar(preview);setTimeout(()=>monthlyChart()?.querySelector('.monthly-ops')?.scrollIntoView({behavior:reducedMotion()?'auto':'smooth',block:'start'}),60);}return;}const gran=event.target.closest('[data-gran]');if(gran){granularity=gran.dataset.gran;preview='';zoom=1;renderMonthly();return;}const month=event.target.closest('[data-monthly-pick]');if(month){if(performance.now()<scrubUntil)return;selectPreview(preview===month.dataset.monthlyPick?'':month.dataset.monthlyPick);return;}if(event.target.closest('.chart-period-button')){cancelMotion();choose();}const b=event.target.closest('[data-chart-month]');if(b)changeMonth(Number(b.dataset.chartMonth));},{capture:true});
  panel.addEventListener('change',event=>{if(event.target.matches('[data-graph-category]')){category=event.target.value;preview='';renderMonthly();}});
  picker.querySelector('.period-close').onclick=()=>picker.close();picker.querySelectorAll('[data-period-mode]').forEach(b=>b.onclick=()=>showMode(b.dataset.periodMode));picker.querySelectorAll('[data-period-kind]').forEach(b=>b.onclick=()=>selectKind(b.dataset.periodKind));
  form.onsubmit=event=>{event.preventDefault();try{const p=mode==='range'?MonoPeriod.range(form.elements.from.value,form.elements.to.value):MonoPeriod.preset(kind,form.elements.anchor.value);picker.close();apply(p.start.slice(0,7),mode==='preset'?{...p,kind}:p);}catch(e){const error=picker.querySelector('.form-error');error.textContent=e.message;error.hidden=false;}};

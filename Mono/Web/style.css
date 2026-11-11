@@ -1398,3 +1398,35 @@ html[data-theme] .limit-items .swipe-shell{border-radius:18px!important;overflow
 html[data-theme] .limit-items .swipe-content{border-radius:inherit!important}
 html[data-theme] .limit-items .swipe-shell .limit-item{padding-left:8px;padding-right:8px}
 html[data-theme] .limit-items .swipe-shell{margin:0 -8px}
+
+/* ===== Динамика: «Больше/Меньше всего» открывают операции дня ===== */
+#monthlyChart.is-zoomed .monthly-bars{transition:none!important}
+.monthly-stats button{position:relative;display:block;text-align:left;padding:10px 26px 10px 10px;border-radius:16px;background:var(--input);border:1px solid var(--card-edge)!important;min-width:0;min-height:0;color:inherit;font:inherit;transition:transform .25s cubic-bezier(.32,.72,0,1),border-color .25s ease,box-shadow .25s ease}
+.monthly-stats button i{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-style:normal;font-size:18px;color:var(--muted)}
+.monthly-stats button:active:not(:disabled){transform:scale(.97)}
+.monthly-stats button[aria-pressed=true]{border-color:var(--accent)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
+.monthly-stats button:disabled{opacity:.6}
+.monthly-stats button:disabled i{display:none}
+.monthly-ops:empty{display:none}
+.monthly-ops{margin-top:14px;text-align:left}
+.monthly-ops-title{margin:0 0 6px;font-size:14px;font-weight:650;color:var(--ink)}
+.monthly-ops .entry-day h3{display:none}
+
+/* ===== Операции сверх лимита: без красной обводки, только надпись ===== */
+html[data-theme] .entry.over-limit{box-shadow:none!important;border-radius:0}
+
+/* ===== Поиск: страница под ним не листается ===== */
+html.search-open,html.search-open body{overflow:hidden!important;overscroll-behavior:none}
+#searchLayer{overscroll-behavior:contain;touch-action:none}
+#searchLayer .search-results{touch-action:pan-y}
+
+/* ===== Поддержка: компактная форма, соцсети видны без прокрутки ===== */
+.support-form{gap:8px!important;padding:16px!important}
+.support-form h3{font-size:17px}
+.support-form .muted{margin:-2px 0 2px!important}
+.support-form .field{gap:4px;margin:0}
+.support-form textarea{min-height:84px!important}
+.support-form .primary{min-height:46px;margin-top:2px}
+body[data-page=support] .support-socials{margin-top:12px}
+body[data-page=support] .meta-note{margin-top:6px}
+body[data-page=support] .support-socials+.tiny{margin:6px 0 0}

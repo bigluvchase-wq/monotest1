@@ -98,11 +98,10 @@ function navigate(p,options={}){
  if(ghost){
   const duration=options.duration||600,easing='cubic-bezier(.32,.72,0,1)';
   if(zoomFrom){
-   // Вход «внутрь» карточки с главного экрана
-   const e3='cubic-bezier(.22,1,.36,1)',cx=zoomFrom.left+zoomFrom.width/2-innerWidth/2,cy=zoomFrom.top+zoomFrom.height/2-innerHeight/2,k=Math.max(.2,Math.min(.6,zoomFrom.width/innerWidth));
-   ghost.animate([{opacity:1,transform:'none',transformOrigin:`${zoomFrom.left+zoomFrom.width/2}px ${zoomFrom.top+zoomFrom.height/2+oldScroll}px`},{opacity:0,transform:'scale(1.12)',transformOrigin:`${zoomFrom.left+zoomFrom.width/2}px ${zoomFrom.top+zoomFrom.height/2+oldScroll}px`}],{duration:420,easing:e3,fill:'forwards'}).finished.catch(()=>{}).finally(()=>ghost.remove());
-   app.animate([{transform:`translate(${cx}px,${cy}px) scale(${k})`,borderRadius:'24px'},{transform:'none',borderRadius:'0px'}],{duration:560,easing:e3});
-   $$('#pageBody > *').forEach((el,i)=>el.animate([{transform:'translateY(18px)'},{transform:'none'}],{duration:520,delay:60+Math.min(i,6)*40,easing:e3,fill:'backwards'}));
+   // Вход в напоминания с главной: главная мягко отступает, страница плавно приближается — одним движением, без ступенек
+   const soft='cubic-bezier(.32,.72,0,1)',ox=zoomFrom.left+zoomFrom.width/2,oy=zoomFrom.top+zoomFrom.height/2;
+   ghost.animate([{opacity:1,transform:'none'},{opacity:0,transform:'scale(1.04)'}],{duration:340,easing:'cubic-bezier(.4,0,.6,1)',fill:'forwards'}).finished.catch(()=>{}).finally(()=>ghost.remove());
+   app.animate([{transform:'scale(.92)',transformOrigin:`${ox}px ${oy}px`},{transform:'none',transformOrigin:`${ox}px ${oy}px`}],{duration:620,easing:soft});
   }else if(profileMotion){
    // Профиль: главная мягко уходит, затем профиль плавно проявляется — без наложения страниц
    const soft='cubic-bezier(.33,0,.15,1)';
