@@ -1,0 +1,207 @@
+
+# Live Activities (ActivityKit) — Discipline
+
+Live Activities show glanceable, persistent, current-state information about an ongoing event on the Lock Screen, in the Dynamic Island, and in StandBy — plus Apple Watch Smart Stack (one modifier), automatically CarPlay and the Mac menu bar, and — from Mac apps themselves — the Mac's Dynamic Island. They are built *in* a widget extension (they share WidgetKit rendering), but the runtime lifecycle is driven by **ActivityKit** from your app and your server.
+
+## Core mental model
+
+A Live Activity has two halves:
+- **Static `ActivityAttributes`** — set once at start, never change (order number, team names).
+- **Dynamic `ContentState`** — the changing data (score, ETA), delivered via `update(_:)` or a push payload.
+
+The widget extension only *renders* what it receives. It cannot fetch network state itself. Every change must arrive through ActivityKit (local `update`) or a push notification.
+
+## When to Use This Skill
+
+- Starting, updating, or ending a Live Activity (delivery, rideshare, sports, workouts, flights)
+- Designing the `ActivityAttributes` / `ContentState` split
+- Choosing an update mechanism: local, per-activity push, push-to-start, or broadcast
+- Hitting the 4KB limit, authorization failures, or "zombie" activities that won't dismiss
+- Building Dynamic Island presentations or adding interactivity (App Intents)
+- Surfacing a Live Activity on Apple Watch, CarPlay, or the Mac menu bar
+- Starting a Live Activity from a Mac app (Dynamic Island on a Mac with Dynamic Island, menu bar elsewhere)
+
+For static/timeline widgets and Control Center controls, use `skills/extensions-widgets.md` instead. For APNs auth, payload mechanics, and token management, see `skills/push-notifications.md`/`-ref.md`. For AlarmKit (which renders alarms/timers *as* Live Activities), see `skills/alarmkit-ref.md`.
+
+## System Requirements
+
+| Capability | Minimum |
+|------------|---------|
+| Live Activities (Lock Screen + Dynamic Island) | iOS 16.1+ |
+| `ActivityContent` (`staleDate`, `relevanceScore`) | iOS 16.2+ |
+| App Intents interactivity in a Live Activity | iOS 17+ |
+| Push-to-start (`pushToStartTokenUpdates`) | iOS 17.2+ |
+| Broadcast push channels (`.channel`) | iOS 18+ |
+| Frequent updates (`NSSupportsLiveActivitiesFrequentUpdates`) | iOS 16.2+ |
+| Apple Watch Smart Stack surfacing | watchOS 11 (paired with iOS 18) |
+| AlarmKit-backed alarms/timers | iOS 26+ |
+| Native Mac Live Activities (started by a Mac app) | macOS 27.3, Mac Catalyst 27.3 (Xcode 27.3 SDK) |
+
+Dynamic Island is hardware-specific (iPhone 14 Pro and later); Live Activities still render on the Lock Screen on every supported device. `NSSupportsLiveActivities` must be `YES` in the app target's Info.plist — without it, nothing starts. visionOS has no Live Activities (no ActivityKit in its SDK); a compatible iPad/iPhone app running there gets a failed request.
+
+## Critical Gotchas
+
+| Gotcha | Why it bites | Fix |
+|--------|--------------|-----|
+| `ContentState` uses a custom Codable strategy | Custom `CodingKeys` / encoder strategies serialize on-device but **silently fail to decode** push payloads | Keep `ContentState` on default `Codable` key names |
+| `ActivityAttributes` + `ContentState` > 4KB | `Activity.request`/`update` fails (`ActivityAuthorizationError.attributesTooLarge`) | Store IDs/references, use asset-catalog images, keep state minimal |
+| Activity never dismisses | An activity runs until you call `end(_:dismissalPolicy:)`, but the system ends it automatically after **8 hours** and immediately removes it from the Dynamic Island | Always `end` with an explicit policy when the event completes |
+| Widget tries to fetch data | Widget extension can't make arbitrary network calls | Deliver every change via `update` or push |
+| `Activity.request` from the background | `Activity.request` needs the app in the foreground unless the start comes from an App Intent that adopts `LiveActivityIntent`; a server push-to-start never calls `Activity.request` at all | Start in the foreground, start from a `LiveActivityIntent`, or start remotely with push-to-start |
+
+## Authorization and starting
+
+Always check authorization first. `Activity.request` is **throwing, not async**; `update`/`end` are async.
+
+```swift
+import ActivityKit
+
+guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+
+let attributes = PizzaDeliveryAttributes(orderNumber: "12345", pizzaType: "Pepperoni")
+let initial = PizzaDeliveryAttributes.ContentState(status: .preparing,
+                                                   eta: .now.addingTimeInterval(1800))
+
+let activity = try Activity.request(
+    attributes: attributes,
+    content: ActivityContent(state: initial, staleDate: nil),
+    pushType: nil          // nil = local updates; .token = per-activity push; .channel(id) = broadcast
+)
+```
+
+See `skills/live-activities-ref.md` for the full `ActivityAttributes`/`ContentState` definition and error catalog.
+
+## Lifecycle
+
+`ActivityState` has five states: `.pending` (**iOS 26+** — scheduled to start at a specified date but not started yet), `.active`, `.stale` (**iOS 16.2+** — past its `staleDate`, still visible), `.ended` (finished, still visible until dismissed), `.dismissed` (removed). Observe them with `activity.activityStateUpdates`.
+
+End with an explicit dismissal policy:
+- `.immediate` — transient events (timer done, song finished)
+- `.default` — most activities (lingers ~4 hours showing the completed state)
+- `.after(date)` — a known end time (meeting ends, flight lands)
+
+```swift
+await activity.end(ActivityContent(state: finalState, staleDate: nil),
+                   dismissalPolicy: .default)
+```
+
+Set a `staleDate` so the system shows a stale indicator when your data is too old to trust, and a `relevanceScore` to rank concurrent activities for Dynamic Island/Smart Stack placement.
+
+## Updating — local first, push second
+
+Push-notification entitlement approval takes days. Ship local updates first, add push when approved. This phased path is the difference between shipping on time and blocking a launch on Apple review.
+
+**Phase 1 — local (no entitlement).** Call `await activity.update(_:)` whenever your app has fresh data (foreground, pull-to-refresh). Acceptable for v1.
+
+**Phase 2 — per-activity push (`.token`).** Each activity has a unique push token; send it to your server and push updates to APNs. Right when each viewer needs *different* data (your delivery, your ride).
+
+```swift
+for await token in activity.pushTokenUpdates {   // tokens rotate — always use the latest
+    await sendToServer(activityID: activity.id, token: token.hexString)
+}
+```
+
+**Phase 3 — push-to-start (iOS 17.2+).** Start an activity from a push without the app running. Observe the static `pushToStartTokenUpdates` sequence, send that token to your server, and push with `event: "start"`.
+
+```swift
+for await token in Activity<PizzaDeliveryAttributes>.pushToStartTokenUpdates {
+    await sendStartTokenToServer(token.hexString)
+}
+```
+
+## Broadcast push channels (iOS 18)
+
+When *many* people watch the *same* event (a game, a flight), don't manage thousands of tokens. Create a **channel** (a base64 channel ID); every activity subscribes; one push to the channel fans out to all subscribers via APNs.
+
+1. Enable the **broadcast** capability in the developer portal (Push Notifications → broadcast toggle).
+2. Create a channel — Push Notifications Console (Channels → New Channel) for testing, or your server via the APNs channel-management API in production. Pick a storage policy: **No Storage** (only currently-connected devices; higher publishing budget) or **Most Recent Message** (stores the latest deferred message per device).
+3. Subscribe by passing the channel ID as the push type:
+
+```swift
+let activity = try Activity.request(
+    attributes: attributes,
+    content: ActivityContent(state: initial, staleDate: nil),
+    pushType: .channel(channelID)   // channelID fetched from your server for this event
+)
+```
+
+4. Send one broadcast push on the channel; APNs delivers to everyone.
+
+Channel lifecycle is **independent** of the activities — a channel ID stays valid with zero subscribers. The number of active channels is limited, so delete channels you no longer need via the channel-management API (e.g. when the game ends). You cannot *start* an activity via broadcast — push-to-start uses per-app tokens, not channels.
+
+## Frequent updates budget (iOS 16.2+)
+
+Standard push updates run against a system-imposed hourly budget — Apple publishes no figure for it, and exceeding it gets your updates throttled rather than rejected. For genuinely live data (sports, stocks):
+
+- Add `NSSupportsLiveActivitiesFrequentUpdates` = `YES` to Info.plist.
+- Check `ActivityAuthorizationInfo().frequentPushesEnabled` before relying on it (users can disable it).
+- Use `apns-priority: 10` for immediate, budget-counting delivery; `apns-priority: 5` for low-priority updates that don't count against the budget.
+
+Don't promise "instant" — push delivery is asynchronous, APNs makes no timing guarantee, and the budget exists to protect battery. Position as "near real-time".
+
+## Interactivity (iOS 17+)
+
+Buttons and toggles inside a Live Activity must use `Button(intent:)` / `Toggle(intent:)` with an `AppIntent` — not closures. The intent's `perform()` updates shared state; the activity re-renders. See `skills/app-intents-ref.md` for the intent definition.
+
+## Other surfaces
+
+- `.supplementalActivityFamilies([.small])` on your `ActivityConfiguration` → Apple Watch Smart Stack (watchOS 11+)
+- CarPlay (iOS 26+) and the Mac menu bar (macOS Tahoe 26+) surface a paired iPhone's Live Activity **automatically** — no code or modifier (CarPlay Live Activities arrived with the 26 cycle; WWDC25 session 216)
+- **Mac apps' own Live Activities** — see below.
+
+Adapt layout with `@Environment(\.activityFamily)` and simplify for Always On Display via `@Environment(\.isLuminanceReduced)`.
+
+### Native Mac Live Activities
+
+From tech talk 111467. Mac apps can start Live Activities themselves, not just mirror an iPhone's. **The Xcode 27.3 SDK ships it**: ActivityKit's current API (`Activity`, `ActivityAttributes`, `ActivityContent`, `ActivityAuthorizationInfo`, push tokens and channels) and WidgetKit's `ActivityConfiguration`, `DynamicIsland` and `ActivityViewContext` are now `macOS 27.3, macCatalyst 27.3`. The deprecated iOS 16.1 `contentState:` API (`request(attributes:contentState:pushType:)`, `update(using:)`, `contentState`) stays unavailable on the Mac. With the 27.2 SDK the whole framework is unavailable there, so keep `#if os(iOS) && !targetEnvironment(macCatalyst)` around the code only while you still build with Xcode 27.2.
+
+Gate shared code with all three platforms. Mac Catalyst needs its own `macCatalyst 27.3` entry, or a Catalyst build with a deployment target below 27.3 fails with "only available in Mac Catalyst 27.3 or newer":
+
+```swift
+@available(iOS 16.2, macOS 27.3, macCatalyst 27.3, *)
+func startDelivery(_ attributes: PizzaDeliveryAttributes,
+                   _ initial: PizzaDeliveryAttributes.ContentState) throws -> Activity<PizzaDeliveryAttributes>? {
+    guard ActivityAuthorizationInfo().areActivitiesEnabled else { return nil }
+    return try Activity.request(attributes: attributes,
+                                content: ActivityContent(state: initial, staleDate: nil))
+}
+```
+
+- **Same code.** A universal app's existing Live Activity runs on the Mac unchanged; a Mac-only app adopts the same `ActivityAttributes` / `ActivityConfiguration` / `Activity` API.
+- **Where it shows.** The Dynamic Island along the top edge of a Mac with Dynamic Island; the menu bar on other Macs and displays. It mixes with the system's own (timers, Now Playing, calls).
+- **Views.** The `ActivityConfiguration` content closure (the Lock Screen view on iPhone) is the **expanded menu-bar view** on the Mac. The `dynamicIsland` closure's `compactLeading`/`compactTrailing`/`minimal` and expanded regions work as on iPhone.
+- **Expansion.** An activity expands only when the user clicks or taps it, or when an update carries an alert. Only one is expanded at a time, so alert only for high-priority updates or ones that need a response.
+- **Starting it.** On a local event, at a scheduled time, or by push. It works with the Mac's background tasks and user agents.
+- **Dismissal.** Users can hide or end an activity by swiping or from its context menu, so it can disappear before your `end`.
+- **Sandboxed apps can't start one on the macOS 27.3 beta.** The app sandbox profile doesn't allow the lookup of `com.apple.sessionservices`, the Live Activities service, so in a sandboxed app (every Mac App Store app) `areActivitiesEnabled` is `false` and `Activity.request` throws, while the same app unsandboxed works. The `guard` above then returns `nil` with no error, so log that case. To test on this beta, add `com.apple.security.temporary-exception.mach-lookup.global-name` = `[com.apple.sessionservices]` to a development build only; don't ship a temporary exception to work around a beta bug. Recheck on each new macOS build. Mac Catalyst apps are sandboxed by default too (untested).
+
+
+## Common Mistakes
+
+- Custom `Codable` strategy on `ContentState` — works locally, silently fails to decode pushes.
+- Never calling `end(_:dismissalPolicy:)` → activities linger for hours (negative reviews).
+- Embedding image `Data` or unbounded arrays in `ContentState` → blows the 4KB limit.
+- Promising "real-time"/"instant" to stakeholders — it's near-real-time with a battery-protecting budget.
+- Using broadcast push to *start* an activity — broadcast updates only; use push-to-start tokens.
+- Fetching data inside the widget view — deliver it via `update`/push.
+
+## Debugging Checklist
+
+- ☐ `NSSupportsLiveActivities` = `YES` in the app Info.plist
+- ☐ `ActivityAuthorizationInfo().areActivitiesEnabled` is `true`
+- ☐ `ActivityAttributes` + `ContentState` encode to < 4KB (`try JSONEncoder().encode(...).count`)
+- ☐ `ContentState` uses default `Codable` (no custom `CodingKeys`/strategies) so pushes decode
+- ☐ `pushType` matches your server integration (`nil`/`.token`/`.channel`)
+- ☐ Every `end` specifies a dismissal policy
+- ☐ For frequent updates: `NSSupportsLiveActivitiesFrequentUpdates` set and `frequentPushesEnabled` checked
+- ☐ Verified on a device or in the Simulator — Apple documents simulator push testing (`xcrun simctl push <device> <bundle-id> payload.apns`)
+
+## Resources
+
+**WWDC**: 2023-10184, 2023-10194, 2023-10185, 2024-10069, 2024-10068, 2025-230
+
+**Tech Talks**: 111467
+
+**Docs**: /activitykit, /activitykit/activity, /activitykit/activityattributes, /activitykit/activitycontent, /widgetkit/activityconfiguration, /widgetkit/dynamicisland
+
+**Skills**: skills/live-activities-ref.md, axiom-macos (skills/touch.md), skills/extensions-widgets.md (static/timeline widgets, Control Center), skills/push-notifications.md (APNs setup), skills/alarmkit-ref.md (alarms/timers as Live Activities), axiom-watchos (Smart Stack)
