@@ -38,9 +38,11 @@ function show(){
  open=true;clearTimeout(timer);
  if(holding||listening)cancelVoice();
  document.documentElement.classList.add('search-open');
- layer.hidden=false;layer.setAttribute('aria-hidden','false');input.value='';render();
+ layer.hidden=false;layer.setAttribute('aria-hidden','false');input.value='';
  void layer.offsetWidth;layer.classList.add('on');
+ // клавиатура открывается сразу в том же нажатии, результаты дорисовываются следом
  input.focus({preventScroll:true});
+ requestAnimationFrame(()=>{if(open&&!input.value)render();});
 }
 function hide(){
  if(!open)return;open=false;
@@ -60,11 +62,26 @@ layer.addEventListener('click',e=>{if(e.target.closest('[data-entry-open]'))inpu
 input.addEventListener('input',()=>{render();results.scrollTop=0;});
 input.addEventListener('keydown',e=>{if(e.key==='Escape')hide();if(e.key==='Enter')input.blur();});
 document.addEventListener('keydown',e=>{if(open&&e.key==='Escape')hide();});
-document.addEventListener('click',e=>{if(e.target.closest('#searchButton')){e.preventDefault();show();}});
+// открываем по касанию, не дожидаясь click — поле и клавиатура появляются без задержки
+let touchOpened=0;
+document.addEventListener('touchend',e=>{if(e.target.closest('#searchButton')){if(e.cancelable)e.preventDefault();touchOpened=performance.now();show();}},{passive:false});
+document.addEventListener('click',e=>{if(e.target.closest('#searchButton')){e.preventDefault();if(performance.now()-touchOpened>600)show();}});
 // Смахивание вниз на главной экране
 (()=>{const home=document.querySelector('#home');let g=null;
  home.addEventListener('touchstart',e=>{if(page!=='home'||e.touches.length!==1||holding||listening||tourActive||e.target.closest('#mic,#voiceAccount,.reminder,select,input')){g=null;return;}const t=e.touches[0];g={x:t.clientX,y:t.clientY,t:performance.now()};},{passive:true});
  home.addEventListener('touchend',e=>{if(!g)return;const t=e.changedTouches[0],dx=t.clientX-g.x,dy=t.clientY-g.y,dt=performance.now()-g.t;g=null;if(dy>70&&Math.abs(dx)<dy*.6&&dt<800)show();},{passive:true});
  home.addEventListener('touchcancel',()=>{g=null;},{passive:true});})();
+// Поиск в «Операциях»: пока открыта клавиатура, страница не прокручивается по вертикали.
+// Касание вне поля закрывает клавиатуру, и прокрутка возвращается.
+(()=>{const html=document.documentElement;let tap=null;
+ const locked=()=>html.classList.contains('ops-search-lock');
+ document.addEventListener('focusin',e=>{if(e.target.id==='search'){html.classList.add('ops-search-lock');}});
+ document.addEventListener('focusout',e=>{if(e.target.id==='search')html.classList.remove('ops-search-lock');});
+ document.addEventListener('touchstart',e=>{tap=locked()&&!e.target.closest('#search')?{x:e.touches[0].clientX,y:e.touches[0].clientY}:null;},{passive:true});
+ document.addEventListener('touchmove',e=>{if(!locked())return;if(tap){const t=e.touches[0];if(Math.hypot(t.clientX-tap.x,t.clientY-tap.y)>8)tap=null;}if(e.cancelable)e.preventDefault();},{passive:false});
+ document.addEventListener('touchend',()=>{if(tap&&locked())document.querySelector('#search')?.blur();tap=null;},{passive:true});
+ window.addEventListener('scroll',()=>{if(locked()&&html.dataset.lockY!==undefined)window.scrollTo(0,Number(html.dataset.lockY));},{passive:true});
+ new MutationObserver(()=>{if(locked()){if(html.dataset.lockY===undefined)setTimeout(()=>{if(locked())html.dataset.lockY=String(window.scrollY);},350);}else delete html.dataset.lockY;}).observe(html,{attributes:true,attributeFilter:['class']});
+})();
 root.MonoSearch={show,hide,isOpen:()=>open};
 })(window);

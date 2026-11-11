@@ -78,15 +78,24 @@ const PREMIUM_FEATURES=[
  ['deposits','Вклады','Проценты сами попадают в доходы']
 ];
 function payUrl(){const c=acc.code?acc.code.replace(/\s+/g,''):'';return c?`http://monoapp.ru/?code=${c}`:'http://monoapp.ru/';}
+const dayWord=n=>{const a=n%10,b=n%100;return a===1&&b!==11?'день':a>=2&&a<=4&&(b<10||b>=20)?'дня':'дней';};
+// Активный Премиум: до какого числа и сколько дней осталось
+function premiumStatus(){
+ if(!isPremium())return '';
+ if(!paidUntil)return `<section class="card premium-status"><span class="premium-spark" aria-hidden="true">✦</span><div><b>Премиум активен</b></div></section>`;
+ const left=Math.max(0,daysUntilEnd()??0),date=new Date(paidUntil).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}).replace(/ г\.$/,'');
+ return `<section class="card premium-status"><span class="premium-spark" aria-hidden="true">✦</span><div><b>Премиум активен</b><small>Осталось ${left} ${dayWord(left)} · до ${esc(date)}</small></div></section>`;
+}
 function renderPremium(){
  const trial=!isPremium()&&daysLeft(acc.trialUntil)>0?daysLeft(acc.trialUntil):0;
  const icon=k=>`<span class="menu-symbol"><svg viewBox="0 0 24 24" aria-hidden="true">${(window.MonoMenuMarks||{})[k]||''}</svg></span>`;
  return `<div class="premium-page">
-  <p class="premium-lead">Всё, чем вы пользуетесь сейчас, останется бесплатным. С Премиумом откроются:</p>
+  ${premiumStatus()}
+  <p class="premium-lead">${isPremium()?'С Премиумом вам доступны:':'Всё, чем вы пользуетесь сейчас, останется бесплатным. С Премиумом откроются:'}</p>
   ${trial?`<p class="premium-trial">Пробный доступ ко всем функциям: осталось ${trial} ${trial===1?'день':trial<5?'дня':'дней'}.</p>`:''}
   <section class="card premium-features">${PREMIUM_FEATURES.map(([k,t,d])=>`<div class="premium-feature">${icon(k)}<span><b>${t}</b><small>${d}</small></span></div>`).join('')}</section>
   ${codeBlock()}
-  <p class="premium-site">Оформить Премиум можно на <a href="${payUrl()}">monoapp.ru</a>. Премиум включится сам, перезапускать приложение не нужно.</p>
+  <p class="premium-site">${isPremium()?'Продлить':'Оформить'} Премиум можно на <a href="${payUrl()}">monoapp.ru</a>. ${isPremium()?'Новый срок прибавится к оставшемуся.':'Премиум включится сам, перезапускать приложение не нужно.'}</p>
  </div>`;
 }
 function inviteText(){return 'Попробуй моно — учёт денег голосом. Просто скажи, сколько потратил.';}
@@ -96,7 +105,7 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-profile-edit]'))editProfile();
  if(e.target.closest('[data-profile-copy]'))MonoAccess.copyCode();
  if(e.target.closest('[data-profile-invite]'))invite();
- if(e.target.closest('[data-go-premium]'))navigate('premium');
+ const goPremium=e.target.closest('[data-go-premium]');if(goPremium)navigate('premium',{dive:goPremium.getBoundingClientRect()});
 });
 
 const person='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3"/><path d="M5 20a7 6 0 0 1 14 0"/></svg>';
