@@ -1475,3 +1475,7 @@ body[data-page=menu] .menu-tile.menu-wide .menu-copy,.root-preview[data-page="me
 .premium-lock-card b{font-size:17px}
 .premium-lock-card .secondary{min-width:150px}
 body[data-page=menu] .menu-grid,.root-preview[data-page="menu"] .menu-grid{grid-template-rows:repeat(4,minmax(0,1fr)) minmax(0,.55fr)!important}
+/* «Поддержка» — невысокая полоса фиксированной высоты на любом экране */
+body[data-page=menu] .menu-grid,.root-preview[data-page="menu"] .menu-grid{grid-template-rows:repeat(4,minmax(0,1fr)) 62px!important}
+body[data-page=menu] .menu-tile.menu-wide,.root-preview[data-page="menu"] .menu-tile.menu-wide{padding:10px 14px!important}
+body[data-page=menu] .menu-tile.menu-wide .menu-symbol,.root-preview[data-page="menu"] .menu-tile.menu-wide .menu-symbol{width:32px!important;height:32px!important}
