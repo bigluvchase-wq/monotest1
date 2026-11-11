@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>МОНО • Премиум</title>
+    <title>моно • Премиум</title>
     <style>
         * { box-sizing: border-box; }
         
@@ -222,6 +222,12 @@
         .submit-btn:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 10px 25px rgba(133, 75, 255, 0.4); }
         .submit-btn:disabled { background: #bba2eb; cursor: not-allowed; transform: none; box-shadow: none; }
 
+        .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; line-height: 1.45; color: var(--text-muted); margin: 4px 0 14px; cursor: pointer; }
+        .consent input { flex: none; width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--primary); cursor: pointer; }
+        .consent a, .pay-notes a, .footer-info a { color: var(--primary); text-decoration: none; }
+        .pay-notes { font-size: 11.5px; line-height: 1.5; color: var(--text-muted); margin-top: 14px; text-align: center; }
+        .footer-links { margin-top: 8px; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; }
+
         .footer-info {
             text-align: center;
             font-size: 11px;
@@ -234,15 +240,16 @@
 </head>
 <body>
 
-    <div class="header-logo">МОНО<span>•</span></div>
+    <div class="header-logo">моно<span>•</span></div>
     
     <div class="title">Оформление<br>Премиума</div>
 
     <div class="main-card">
         
-        <div class="features-title">Премиум-доступ включает:</div>
+        <div class="features-title">С Премиумом откроются:</div>
         <div class="features-text">
-            Запись трат голосом, доступ к добавлению лимитов, вкладов, целей, платежей, счетов и удобных напоминаний.
+            Дополнительные счета, цели, лимиты, обязательные платежи, напоминания и вклады, а также хранение истории на сервере.
+            Всё остальное в приложении бесплатно.
         </div>
 
         <div class="input-label">Код привязки устройства</div>
@@ -270,13 +277,30 @@
             </div>
         </div>
 
-        <button type="button" class="submit-btn" id="submit-btn">Оплатить 999 ₽</button>
+        <label class="consent">
+            <input type="checkbox" id="consent-check">
+            <span>Я принимаю условия <a href="/offer.html" target="_blank">публичной оферты</a> и даю <a href="/consent.html" target="_blank">согласие на обработку персональных данных</a> в соответствии с <a href="/privacy.html" target="_blank">политикой конфиденциальности</a></span>
+        </label>
+
+        <button type="button" class="submit-btn" id="submit-btn" disabled>Оплатить 999 ₽</button>
+
+        <div class="pay-notes">
+            Оплата через сервис Робокасса. Чек придёт на почту, указанную при оплате.
+            Оплата разовая, без автопродления. Премиум включится в приложении сам в течение нескольких минут.
+            Условия возврата — в <a href="/offer.html#refund" target="_blank">оферте</a>.
+        </div>
     </div>
 
     <div class="footer-info">
-        ИП Пушкарев Евгений Станиславович<br>
+        Пушкарев Евгений Станиславович, самозанятый (НПД)<br>
         ИНН 183208266545<br>
-        Поддержка: monofinapp@gmail.com
+        Поддержка: <a href="mailto:monofinapp@gmail.com">monofinapp@gmail.com</a>
+        <div class="footer-links">
+            <a href="/offer.html">Оферта</a>
+            <a href="/privacy.html">Конфиденциальность</a>
+            <a href="/consent.html">Согласие на обработку данных</a>
+            <a href="/contacts.html">Контакты</a>
+        </div>
     </div>
 
     <script>
@@ -294,6 +318,9 @@
             }
         });
 
+        const consentCheck = document.getElementById('consent-check');
+        consentCheck.addEventListener('change', () => { submitBtn.disabled = !consentCheck.checked; });
+
         let selectedPrice = "999";
         const tariffCards = document.querySelectorAll('.tariff-card');
         const submitBtn = document.getElementById('submit-btn');
@@ -310,8 +337,9 @@
         });
 
         submitBtn.addEventListener('click', async () => {
-            const code = codeInput.value.trim();
-            if (code.length < 5) {
+            const code = codeInput.value.replace(/[^0-9]/g, '');
+            if (!consentCheck.checked) { alert('Подтвердите согласие с офертой и обработкой персональных данных.'); return; }
+            if (code.length !== 6) {
                 alert('Пожалуйста, введите корректный код из приложения.');
                 return;
             }
@@ -333,12 +361,12 @@
                     }
                 } else {
                     alert('Ошибка при создании платежа. Попробуйте позже.');
-                    submitBtn.disabled = false;
+                    submitBtn.disabled = !consentCheck.checked;
                     submitBtn.textContent = `Оплатить ${selectedPrice.replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ₽`;
                 }
             } catch (e) {
                 alert('Ошибка связи с сервером. Проверьте интернет.');
-                submitBtn.disabled = false;
+                submitBtn.disabled = !consentCheck.checked;
                 submitBtn.textContent = `Оплатить ${selectedPrice.replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ₽`;
             }
         });
