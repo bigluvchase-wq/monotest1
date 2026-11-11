@@ -18,7 +18,7 @@
    if(focus&&root.MonoFocus?.isKeyboard()&&!document.querySelector('dialog[open]')){const target=plan.opening?document.querySelector('#pageTitle'):document.querySelector(`.menu-tile[data-go="${plan.route}"]`);if(target){if(plan.opening)target.tabIndex=-1;target.focus({preventScroll:true});}}
   }
   active={finish};
-  animations.push(workspace.animate([{transform:'translateX(28px)'},{transform:'none'}],{duration:420,easing:'cubic-bezier(.22,1,.36,1)'}));
+  animations.push(workspace.animate([{transform:'translateX(22px)'},{transform:'none'}],{duration:520,easing:'cubic-bezier(.32,.72,0,1)'}));
   Promise.allSettled(animations.map(a=>a.finished)).then(()=>finish());timer=setTimeout(()=>finish(),740);
  }
  window.addEventListener('resize',cancel);window.addEventListener('pagehide',cancel);document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});

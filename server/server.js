@@ -388,7 +388,7 @@ app.post('/api/reward', async (req, res) => {
         await sendTelegram(`🎁 Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nНаграда: +${days} дней Премиума\nСсылка: ${link}`);
         if (mailer) {
             await mailer.sendMail({
-                from: `Моно <${process.env.MAIL_USER}>`,
+                from: `моно <${process.env.MAIL_USER}>`,
                 to: REWARD_TO,
                 subject: `Награда моно: ${networkName} · код ${code}`,
                 text: `Новая заявка на награду\n\nСоцсеть: ${networkName}\nКод привязки: ${code}\nСсылка: ${link}\nНаграда: +${days} дней Премиума\n`

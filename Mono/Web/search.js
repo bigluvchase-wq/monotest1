@@ -1,9 +1,9 @@
 (function(root){
 'use strict';
-// Глобальный поиск по Моно: смахивание вниз на главной или значок лупы.
+// Глобальный поиск по моно: смахивание вниз на главной или значок лупы.
 const layer=document.createElement('div');
 layer.id='searchLayer';layer.hidden=true;layer.setAttribute('aria-hidden','true');
-layer.innerHTML='<div class="search-backdrop" data-search-close></div><div class="search-top"><label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="globalSearch" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Поиск по моно" aria-label="Поиск по Моно"></label><button type="button" class="search-cancel" data-search-close>Отмена</button></div><div class="search-results" id="searchResults" role="region" aria-live="polite"></div>';
+layer.innerHTML='<div class="search-backdrop" data-search-close></div><div class="search-top"><label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="globalSearch" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Поиск по моно" aria-label="Поиск по моно"></label><button type="button" class="search-cancel" data-search-close>Отмена</button></div><div class="search-results" id="searchResults" role="region" aria-live="polite"></div>';
 document.body.append(layer);
 const input=layer.querySelector('#globalSearch'),results=layer.querySelector('#searchResults');
 let open=false,timer=0;

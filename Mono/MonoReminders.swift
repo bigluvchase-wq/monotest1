@@ -36,7 +36,7 @@ final class MonoReminders {
                 guard let id = item["id"], let raw = item["date"], let time = item["time"],
                       let date = formatter.date(from: raw + " " + time), date > now else { return nil }
                 let content = UNMutableNotificationContent()
-                content.title = "Моно"
+                content.title = "моно"
                 content.body = item["text"] ?? "Проверьте платёж"
                 content.sound = .default
                 let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)

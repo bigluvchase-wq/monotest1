@@ -34,5 +34,8 @@ for(const dialog of document.querySelectorAll('dialog:not(#onboarding):not(#char
  document.fonts?.ready.then(queue);
  new MutationObserver(queue).observe(document.body,{attributes:true,attributeFilter:['data-page']});
  const reminders=document.querySelector('#homeReminders');if(reminders)new MutationObserver(queue).observe(reminders,{childList:true});
+ // высота блока напоминаний меняется после построения карусели — тоже пересчитываем
+ if(reminders&&typeof ResizeObserver==='function')new ResizeObserver(queue).observe(reminders);
+ setTimeout(queue,400);setTimeout(queue,1200);setTimeout(queue,2200);
  queue();
 })();
