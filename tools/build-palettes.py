@@ -50,7 +50,19 @@ PALETTES = {
     'purple': None,
     'green': (152, 0.62, 0.66, 0.5),
     'burgundy': (343, 0.6, 0.58, 0.42),
+    'blue': (210, 0.72, 0.8, 0.55),
 }
+# Чёрная тема — монохром: фиолетовые оттенки становятся серыми, акцент белый
+MONO_ACCENT = {
+    '--accent': '#f2f2f4', '--accent-2': '#ffffff', '--glow': 'rgba(255,255,255,.18)',
+    '--btn-grad': 'linear-gradient(135deg,#ffffff,#cfcfd4)',
+    '--sphere': 'radial-gradient(circle at 34% 28%,#ffffff 0%,#dcdce0 45%,#9c9ca3 100%)',
+}
+# на белых кнопках и плашках — тёмный текст и значки
+MONO_DARK_FG = ['.primary', 'button.primary', 'a.premium-button', '.currency-tabs .active', '.record-button',
+    '.operations-tools .record-button', '.mic', '.segmented .active', '.operations-switch .active',
+    '.chart-seg button[aria-pressed=true]', '.delete-undo button', '.pull-hint.ready', '.is-open .agenda-cal-icon',
+    '.premium-lock-icon', '.premium-status .premium-spark', '.reward-net.on', '.notify-row input:checked']
 BASE_HUE = 250
 
 HEX = re.compile(r'#([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b')
@@ -68,6 +80,14 @@ def is_purple(r, g, b):
 
 
 def shift(r, g, b, palette):
+    if palette == 'black':
+        h, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
+        if 0.4 <= l < 0.78:
+            l = 0.88  # яркие тона акцента — светло-серые
+        elif l < 0.4:
+            l = min(l, 0.2)  # тёмные фиолетовые фоны — почти чёрные
+        v = round(l * 255)
+        return v, v, v
     hue, sat, light, sat_light = PALETTES[palette]
     h, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
     h = ((h * 360 - BASE_HUE + hue) % 360) / 360
@@ -145,7 +165,7 @@ def rules(nodes, palette, out, indent=''):
     for node in nodes:
         if node.type == 'qualified-rule':
             selector = tinycss2.serialize(node.prelude).strip()
-            if re.search(r'data-theme="?dark', selector):
+            if palette != 'black' and re.search(r'data-theme="?dark', selector):
                 continue
             decls = tinycss2.parse_declaration_list(node.content, skip_whitespace=True, skip_comments=True)
             changed = []
@@ -182,7 +202,10 @@ def main():
         out.append(f'html[data-palette={palette}]{{{";".join(lavender)}}}')
         if palette != 'purple':
             rules(sheet, palette, out)
-    out.append('html[data-palette=black][data-theme=dark]{' + ';'.join(f'{k}:{v}' for k, v in BLACK.items()) + '}')
+    rules(sheet, 'black', out)
+    out.append('html[data-palette=black][data-theme=dark]{' + ';'.join(f'{k}:{v}' for k, v in {**BLACK, **MONO_ACCENT}.items()) + '}')
+    out.append(','.join(f'html[data-palette=black] {s}' for s in MONO_DARK_FG) + '{color:#0b0b0c!important}')
+    out.append('html[data-palette=black] .mic .stop-mark{background:#0b0b0c!important}')
     OUT.write_text('\n'.join(out) + '\n')
     print(f'{OUT.relative_to(ROOT)}: {OUT.stat().st_size // 1024} КБ')
 
