@@ -47,6 +47,9 @@ if (!arg) {
     console.log(`Создан: ${fmt(u.created_at)}`);
     console.log(`Последняя синхронизация: ${fmt(u.last_sync)}`);
     if (u.data_deleted_at) console.log(`Данные удалены пользователем: ${fmt(u.data_deleted_at)}`);
+    const pays = db.prepare('SELECT * FROM payments WHERE code = ? ORDER BY created_at DESC').all(u.code);
+    console.log(pays.length ? `\nОплаты Премиума (${pays.length}):` : '\nОплат через сайт не было (Премиум мог быть выдан вручную).');
+    for (const p of pays) console.log(`  ${fmt(p.created_at)} — ${p.sum} ₽, ${p.months} мес. (счёт ${p.inv_id})`);
     if (!s) { console.log('\nИстория на сервере не сохранена.'); process.exit(0); }
     console.log(`\nНа сервере сохранено:`);
     for (const [k, name] of [['entries', 'операций'], ['accounts', 'счетов'], ['categories', 'категорий расходов'], ['goals', 'целей'], ['limits', 'лимитов'], ['payments', 'платежей'], ['deposits', 'вкладов'], ['reminders', 'напоминаний']]) {
