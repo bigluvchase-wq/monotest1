@@ -8,6 +8,8 @@ function closeShell(shell=openShell){if(!shell)return;shell.classList.remove('sw
 function openSwipe(shell){if(openShell&&openShell!==shell)closeShell();openShell=shell;shell.classList.add('swipe-open');shell.classList.remove('swipe-moving');shell.querySelector('.swipe-content').style.transform='';const b=shell.querySelector('.swipe-delete');b.inert=false;b.removeAttribute('aria-hidden');}
 function attach(element,info,existingButton){
  if(!element||element.closest('.swipe-shell')||element.classList.contains('swipe-shell'))return;
+ // Категории расходов и доходов удаляются только крестиком, без свайпа
+ if(info.kind==='category'){if(element.querySelector(':scope>.entity-x'))return;const x=document.createElement('button');x.type='button';x.textContent='×';x.className='entity-x';x.dataset.entityDelete='true';setMeta(x,info);x.setAttribute('aria-label','Удалить категорию');x.title='Удалить категорию';element.classList.add('entity-has-x');element.append(x);return;}
  if(info.kind==='entry'&&(page==='history'||element.closest('#chartDialog'))){if(existingButton){existingButton.dataset.entityDelete='true';setMeta(existingButton,info);}return;}
  const shell=document.createElement('div');shell.className='swipe-shell'+(element.classList.contains('card')?' swipe-card':'');setMeta(shell,info);
  const content=document.createElement('div');content.className='swipe-content';

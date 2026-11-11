@@ -1519,3 +1519,6 @@ html.motion-busy .bg-float i,html.motion-busy .orbit{animation-play-state:paused
 .voice-caption{position:absolute!important;width:1px!important;height:1px!important;margin:0!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap}
 /* Лимиты: «Удалить все лимиты» */
 .limits-clear{width:100%;margin-top:10px}
+/* Соцсети в поддержке — ссылки в том же виде, что и кнопки */
+.support-socials a{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--accent)}
+.support-socials a:active{transform:scale(.94)}
