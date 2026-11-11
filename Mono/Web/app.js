@@ -77,7 +77,7 @@ const reducedMotion=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
 // Копия страницы для анимации перехода: выкидываем то, что ниже экрана — меньше работы телефону
 function trimOffscreen(orig,clone){const sel='.entry-day,.entry,#pageBody>*,.card';const a=orig.querySelectorAll(sel),b=clone.querySelectorAll(sel);if(a.length!==b.length)return;const limit=innerHeight*1.15;const drop=[];for(let i=0;i<a.length;i++){if(a[i].getBoundingClientRect().top>limit)drop.push(b[i]);}drop.forEach(el=>el.remove());}
 function navigate(p,options={}){
- if(!options.noPageMotion&&!tourActive&&rootPages.includes(page)&&rootPages.includes(p)&&page!==p&&window.MonoPageMotion&&!window.MonoNativeMotion?.available)return MonoPageMotion.go(p,options);
+ if(!options.noPageMotion&&!tourActive&&rootPages.includes(page)&&rootPages.includes(p)&&page!==p&&window.MonoPageMotion)return MonoPageMotion.go(p,options);
  window.MonoGoalDrag?.cancel();
  window.MonoCategoryDrag?.cancel();
  if(holding||listening)cancelVoice();
@@ -103,7 +103,6 @@ function navigate(p,options={}){
  window.scrollTo(0,0);translateUI();
  app.style.transform='';app.style.opacity='';
  if(ghost){
-  const jsAnim=()=>{
   const duration=options.duration||600,easing='cubic-bezier(.32,.72,0,1)';
   if(options.dive&&!reducedMotion()){
    // Погружение внутрь кнопки: новая страница раскрывается из кнопки, старая уходит вглубь
@@ -127,17 +126,7 @@ function navigate(p,options={}){
   ghost.animate([{transform:`translateX(${options.dragOffset||0}px)`},{transform:`translateX(${-direction*100}%)`}],{duration,easing}).finished.catch(()=>{}).finally(()=>ghost.remove());
   app.animate([{transform:`translateX(${direction*100}%)`},{transform:'translateX(0)'}],{duration,easing});
   }
-  };
-  // В приложении переходы проигрывает iOS: так плавнее, особенно на старых iPhone
-  const NM=window.MonoNativeMotion;
-  if(NM?.available&&!options.dragOffset&&!reducedMotion()){
-   const bothRoot=rootPages.includes(previous)&&rootPages.includes(p);
-   const kind=options.dive?'dive':zoomFrom?'zoom':profileMotion?'fade':bothRoot?'slide':'push';
-   const rect=options.dive||zoomFrom||null;
-   NM.play(kind,direction,rect,ghost,jsAnim,rootPages.includes(previous)?previous:'');
-  }else jsAnim();
  }
- if(rootPages.includes(p))window.MonoNativeMotion?.scheduleCache?.();
  if(menuMotion)window.MonoMenuMotion.play(menuMotion);
  window.MonoPageMotion?.sync();
  if(tourActive)requestAnimationFrame(positionTour);

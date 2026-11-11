@@ -10,7 +10,6 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         self?.send("speechEvent", [id, event, info])
     }
     private let reminders = MonoReminders()
-    private var transitions: MonoTransitions?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -41,7 +40,6 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         web.frame = view.bounds
         web.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(web)
-        transitions = MonoTransitions(web: web, host: view) { [weak self] name, args in self?.send(name, args) }
         if let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "Web") {
             web.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         }
@@ -116,27 +114,6 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
                 guard UserDefaults.standard.bool(forKey: Self.darkKey) == dark else { return }
                 self?.applyThemeBackground(dark: dark)
             }
-        case "transitionBegin":
-            guard let id = (body["id"] as? NSNumber)?.intValue else { return }
-            let kind = body["kind"] as? String ?? "fade"
-            let dir = CGFloat((body["dir"] as? NSNumber)?.doubleValue ?? 1)
-            var rect: CGRect?
-            if let r = body["rect"] as? [String: Any],
-               let x = (r["x"] as? NSNumber)?.doubleValue, let y = (r["y"] as? NSNumber)?.doubleValue,
-               let w = (r["w"] as? NSNumber)?.doubleValue, let h = (r["h"] as? NSNumber)?.doubleValue {
-                rect = CGRect(x: x, y: y, width: w, height: h)
-            }
-            transitions?.begin(id: id, kind: kind, dir: dir, rect: rect, from: body["from"] as? String ?? "")
-        case "transitionGo":
-            guard let id = (body["id"] as? NSNumber)?.intValue else { return }
-            transitions?.go(id: id)
-        case "pageDrag":
-            guard let from = body["from"] as? String, let to = body["to"] as? String else { return }
-            let dir = CGFloat((body["dir"] as? NSNumber)?.doubleValue ?? 1)
-            transitions?.beginDrag(from: from, to: to, dir: dir)
-        case "cachePage":
-            guard let page = body["page"] as? String else { return }
-            transitions?.cachePage(page)
         default: break
         }
     }
