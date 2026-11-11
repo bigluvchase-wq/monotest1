@@ -8,7 +8,7 @@ document.body.append(layer);
 const input=layer.querySelector('#globalSearch'),results=layer.querySelector('#searchResults');
 let open=false,timer=0;
 const norm=s=>String(s||'').toLowerCase().replace(/ё/g,'е');
-const sections=[['accounts','Счета','Кошельки и валюты'],['goals','Цели','Копите на мечты'],['deposits','Вклады','Проценты в доход'],['limits','Лимиты','Контроль расходов'],['payments','Платежи','Даты и напоминания'],['reminders','Напоминания','Не забыть важное'],['rewards','Награды','Премиум за пост о моно'],['categories','Категории','Порядок в операциях'],['settings','Настройки','Тема, язык, копии'],['support','Поддержка','Вопросы и идеи'],['profile','Профиль','Доступ и код']];
+const sections=[['accounts','Счета','Кошельки и валюты'],['goals','Цели','Копите на мечты'],['deposits','Вклады','Проценты в доход'],['limits','Лимиты','Контроль расходов'],['payments','Платежи','Даты и напоминания'],['reminders','Напоминания','Не забыть важное'],['categories','Категории','Порядок в операциях'],['settings','Настройки','Тема, язык, копии'],['support','Поддержка','Вопросы и идеи'],['profile','Профиль','Доступ и код']];
 const chevron='<svg class="search-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
 const row=(kind,key,title,meta)=>`<button type="button" class="search-row" data-search-go="${kind}" data-search-key="${esc(key)}"><span class="search-row-text"><b>${esc(title)}</b>${meta?`<small>${esc(meta)}</small>`:''}</span>${chevron}</button>`;
 const block=(title,html)=>html?`<section class="search-block"><h3>${esc(title)}</h3>${html}</section>`:'';
