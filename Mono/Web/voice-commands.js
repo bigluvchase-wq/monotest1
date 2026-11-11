@@ -75,7 +75,26 @@ const stripLead=t=>t.replace(/\s+(?:на|в|во|за|по|с|со|для|к|и)
 const stem=w=>{w=norm(w);const r=w.replace(/(?:ами|ями|ого|ему|ому|ыми|ими|ая|яя|ую|юю|ое|ее|ий|ый|ой|ов|ев|ам|ям|ах|ях|ом|ем|ы|и|а|я|у|ю|е)$/u,'');return r.length>=3?r:w;};
 function matchCategory(text,list){const words=norm(text).split(/[^\p{L}]+/u).filter(Boolean).map(stem);let best=null;for(const c of list){const cw=norm(c).split(/[^\p{L}]+/u).filter(Boolean).map(stem);if(cw.length&&cw.every(w=>words.some(x=>x.startsWith(w)||w.startsWith(x)&&x.length>=4))&&(!best||c.length>best.length))best=c;}return best;}
 const CREATE='(?:создай(?:те)?|добавь(?:те)?|заведи(?:те)?|открой(?:те)?|сделай(?:те)?|запиши|новый|новая|новое|хочу)';
+// Удаление голосом: «убери лимит на кафе», «удали цель отпуск», «удали последнюю операцию»
+const REMOVE_VERB=/^(?:пожалуйста\s+)?(?:убери|удали|сними|отмени|убрать|удалить|снять|отменить)(?:те)?\s+/;
+const REMOVE_KINDS=[
+ ['limit',/^(?:лимит|бюджет|ограничени)\S*/],
+ ['goal',/^цел[ьи]\S*/],
+ ['deposit',/^(?:вклад|депозит)\S*/],
+ ['payment',/^(?:(?:обязательн|ежемесячн|регулярн)\S*\s+)?платеж\S*/],
+ ['reminder',/^напоминани\S*/],
+ ['account',/^(?:сч[её]т|кошел[её]к|карт[уаыe])\S*/],
+ ['category',/^категори\S*/],
+ ['entry',/^(?:(?:последн|сегодняшн|вчерашн)\S*\s+)?(?:операци|трат|запис|расход|доход|покупк)\S*/]
+];
 const commands=[
+ {kind:'remove',re:REMOVE_VERB,parse(ctx){
+  let text=ctx.text.replace(REMOVE_VERB,'');let target=null,last=false;
+  for(const [kind,re] of REMOVE_KINDS){const m=text.match(re);if(m){target=kind;last=/^последн/.test(m[0]);text=text.slice(m[0].length).trim();break;}}
+  if(!target)throw Error('unknown');
+  const name=stripLead(text.replace(/^(?:на|для|по|под|с|со|в|во|про|с названием|под названием|который|которую|которое)\s+/,'').replace(/^(?:на|для|по)\s+/,''));
+  return {target,name,last};
+ }},
  {kind:'reminder',re:/^(?:(?:поставь|создай|добавь|сделай)\s+)?(?:напомни(?:те)?|напоминани[ея])(?:\s|$)/,parse(ctx){
   ctx.text=ctx.text.replace(/^(?:(?:поставь|создай|добавь|сделай)\s+)?(?:напомни(?:те)?|напоминани[ея])\s*/,'');
   let repeat=null;cut(ctx,/(?:^|\s)(каждый день|ежедневно|каждую неделю|еженедельно|каждые две недели|каждый месяц|ежемесячно)(?=\s|$)/,m=>{const w=m[1];repeat=/день|ежеднев/.test(w)?'daily':/две недели/.test(w)?'fortnightly':/недел/.test(w)?'weekly':'monthly';});
@@ -149,8 +168,41 @@ function limitForm(data){
   if(commit(s=>{s.limits[currency]={...(s.limits[currency]||{}),[category]:amount};},'Лимит сохранён'))$('#actionDialog').close();
  });
 }
+const REMOVE_NAMES={limit:'лимит',goal:'цель',deposit:'вклад',payment:'платёж',reminder:'напоминание',account:'счёт',category:'категорию',entry:'операцию'};
+// Ищем запись по словам из фразы: лучшее совпадение по основам слов
+function bestMatch(items,nameOf,query){
+ const q=norm(query).split(/[^\p{L}\d]+/u).filter(w=>w.length>1).map(stem);if(!q.length)return null;
+ let best=null,score=0;
+ for(const item of items){const words=norm(nameOf(item)).split(/[^\p{L}\d]+/u).filter(Boolean).map(stem);const hit=q.filter(w=>words.some(x=>x.startsWith(w)||w.startsWith(x)&&x.length>=3)).length;if(hit>score){score=hit;best=item;}}
+ return best;
+}
+function removeByVoice(d){
+ const what=REMOVE_NAMES[d.target];let info=null,list=[];
+ if(d.target==='limit'){
+  for(const [currency,ls] of Object.entries(state.limits||{}))for(const [cat,v] of Object.entries(ls||{}))if(v>0)list.push({currency,cat});
+  list.sort((a,b)=>(b.currency===selectedCurrency)-(a.currency===selectedCurrency));
+  const hit=d.name?bestMatch(list,x=>x.cat,d.name):list.length===1?list[0]:null;if(hit)info={kind:'limit',id:hit.cat,currency:hit.currency};
+ }else if(d.target==='category'){
+  list=[...state.categories.map(c=>({c,type:'expense'})),...state.incomeCategories.map(c=>({c,type:'income'}))];
+  const hit=d.name?bestMatch(list,x=>x.c,d.name):null;if(hit)info={kind:'category',id:hit.c,type:hit.type};
+ }else if(d.target==='entry'){
+  list=state.entries.filter(e=>['expense','income','transfer'].includes(e.type)).sort((a,b)=>(String(b.date)+(b.createdAt||'')).localeCompare(String(a.date)+(a.createdAt||'')));
+  const hit=d.name&&!d.last?bestMatch(list,e=>(e.title||'')+' '+(e.category||''),d.name):list[0];if(hit)info={kind:'entry',id:hit.id};
+ }else{
+  const src={goal:[state.goals,x=>x.name],deposit:[state.deposits||[],x=>x.name],payment:[state.payments,x=>x.name],reminder:[state.reminders||[],x=>x.title],account:[state.accounts,x=>x.name]}[d.target];
+  list=src[0];const hit=d.name?bestMatch(list,src[1],d.name):list.length===1?list[0]:null;if(hit)info={kind:d.target,id:hit.id};
+ }
+ if(!info){
+  if(!list.length)notify(`Нечего удалять: ${what==='лимит'?'лимитов':what==='цель'?'целей':what==='вклад'?'вкладов':what==='платёж'?'платежей':what==='напоминание'?'напоминаний':what==='счёт'?'счетов':what==='категорию'?'категорий':'операций'} нет.`);
+  else if(!d.name)notify(`Скажите, какой именно: например, «удали ${what} ${d.target==='limit'?'на кафе':'…'}».`);
+  else notify(`Не нашёл ${what} «${d.name}».`);
+  return true;
+ }
+ root.MonoDeleteUI?.remove(info);return true;
+}
 function run(cmd){
  const d=cmd.data;
+ if(cmd.kind==='remove')return removeByVoice(d);
  if(cmd.kind==='reminder'){root.MonoReminders.form(null,{title:d.title,text:d.text,date:d.date,time:d.time,repeat:d.repeat||undefined});return true;}
  if(cmd.kind==='goal'){goalForm();if(!$('#actionDialog').open)return true;fill({name:d.name,target:d.target?d.target/100:null,currency:d.currency});return true;}
  if(cmd.kind==='account'){accountForm();if(!$('#actionDialog').open)return true;fill({name:d.name,currency:d.currency,initial:d.initial?d.initial/100:null});return true;}
@@ -167,7 +219,8 @@ const phrases=[
  ['Счета',['Добавь счёт наличные 5000','Создай счёт в долларах','Новый счёт карта Т-Банк с остатком 20 тысяч']],
  ['Лимиты',['Лимит на кафе 10 тысяч','Поставь лимит на продукты 25 тысяч']],
  ['Платежи',['Добавь платёж аренда 40 тысяч 5 числа каждый месяц','Платёж интернет 700 рублей 20 ноября']],
- ['Вклады',['Открой вклад 100 тысяч под 16% на год','Вклад в Сбере 50 тысяч под 15 процентов на 6 месяцев']]
+ ['Вклады',['Открой вклад 100 тысяч под 16% на год','Вклад в Сбере 50 тысяч под 15 процентов на 6 месяцев']],
+ ['Удаление',['Убери лимит на кафе','Удали цель отпуск','Удали напоминание позвонить маме','Удали последнюю операцию']]
 ];
 function phrasesHTML(){return `<div class="voice-phrases">${phrases.map(([title,list])=>`<section><h3>${esc(title)}</h3><ul>${list.map(p=>`<li><button type="button" data-try-phrase="${esc(p)}">«${esc(p)}»</button></li>`).join('')}</ul></section>`).join('')}</div>`;}
 function showPhrases(){

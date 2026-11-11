@@ -366,6 +366,7 @@ try {
             host: process.env.SMTP_HOST || 'smtp.yandex.ru',
             port: Number(process.env.SMTP_PORT || 465),
             secure: Number(process.env.SMTP_PORT || 465) === 465,
+            requireTLS: Number(process.env.SMTP_PORT || 465) !== 465, // на 587/2525 — только с шифрованием, пароль не уйдёт открытым
             auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
             connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 20000
         });
@@ -379,7 +380,8 @@ const SUPPORT_TO = process.env.SUPPORT_MAIL_TO || process.env.MAIL_USER;
 async function sendMail(subject, text, replyTo) {
     if (!mailer || !SUPPORT_TO) return;
     try {
-        await mailer.sendMail({ from: `моно <${process.env.MAIL_USER}>`, to: SUPPORT_TO, subject, text, ...(replyTo ? { replyTo } : {}) });
+        const html = '<div style="font:15px/1.5 -apple-system,Segoe UI,Arial,sans-serif;white-space:pre-wrap">' + String(text).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '</div>';
+        await mailer.sendMail({ from: `моно <${process.env.MAIL_USER}>`, to: SUPPORT_TO, subject, text, html, ...(replyTo ? { replyTo } : {}) });
     } catch (e) {
         console.error('Письмо не отправлено:', e.message);
     }

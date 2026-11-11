@@ -1503,3 +1503,12 @@ html.ops-search-lock,html.ops-search-lock body{overscroll-behavior:none}
 .nav-ghost *,.root-preview *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 .nav-ghost,.root-preview{contain:layout paint}
 .premium-status small{font-size:13px}
+/* Платежи: список «сегодня» прикреплён под календарём и опускается вместе с ним */
+.payments-agenda.is-open .agenda-today{grid-template-rows:1fr!important;opacity:1!important;margin-top:12px!important;pointer-events:auto!important}
+.payments-agenda.other-day .agenda-today{grid-template-rows:0fr!important;opacity:0!important;margin-top:0!important;pointer-events:none!important}
+.payments-agenda .agenda-day-details[hidden]{display:none!important}
+/* Динамика: масштаб только в режиме «Дни» */
+.chart-zoom[hidden]{display:none!important}
+/* Производительность: дни истории за пределами экрана не отрисовываются, пока до них не долистали */
+#historyList .entry-day,.search-entries .entry,.monthly-ops .entry-day{content-visibility:auto;contain-intrinsic-size:auto 220px}
+.search-entries .entry{contain-intrinsic-size:auto 64px}
