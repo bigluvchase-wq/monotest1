@@ -457,5 +457,35 @@ app.post('/api/support', async (req, res) => {
     }
 });
 
+// ==========================================
+// 11. Удаление данных пользователя («Удалить мои данные» в настройках)
+// Удаляется: копия истории (части syncChunks и старое поле userData), обращения в поддержку.
+// Из заявки на награду убирается ссылка (сама отметка остаётся, чтобы награду нельзя было получить повторно).
+// Остаётся: код привязки и Премиум (premium, premiumUntil), отметки кода друга — они нужны для подписки и защиты от повторов.
+// ==========================================
+app.post('/api/deleteData', async (req, res) => {
+    const code = cleanCode(req.body.code);
+    if (code.length !== 6) return res.status(400).json({ ok: false, error: 'bad_code' });
+    try {
+        const docs = await findUserDocs(code);
+        for (const doc of docs) {
+            const chunks = await usersRef.doc(doc.id).collection('syncChunks').get();
+            const batch = db.batch();
+            chunks.docs.forEach(d => batch.delete(d.ref));
+            batch.update(doc.ref, { userData: FieldValue.delete(), syncParts: FieldValue.delete(), lastSync: FieldValue.delete(), dataDeletedAt: new Date().toISOString() });
+            await batch.commit();
+        }
+        const tickets = await db.collection('supportTickets').where('code', '==', code).get();
+        await Promise.all(tickets.docs.map(d => d.ref.delete()));
+        const reward = db.collection('rewardRequests').doc(code);
+        const rewardDoc = await reward.get();
+        if (rewardDoc.exists) await reward.update({ link: FieldValue.delete(), dataDeletedAt: new Date().toISOString() });
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('Ошибка удаления данных:', err);
+        res.status(500).json({ ok: false, error: 'server' });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

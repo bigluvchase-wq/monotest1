@@ -292,6 +292,44 @@ async function reconcile(){
 // Перед уходом приложения в фон отправляем несохранённые изменения
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&unsynced()&&isPremium()){clearTimeout(syncTimer);push({keepalive:true});}else if(!document.hidden&&isPremium())setTimeout(reconcile,1200);});
 
+// ---------- Удаление данных пользователя ----------
+// Сначала сервер (копия истории, обращения, заявки), потом телефон. Код и Премиум остаются.
+const DELETE_URL='https://api.monoapp.ru/api/deleteData';
+function confirmDeleteData(){
+ actionDialog('Удалить мои данные?',`<div class="delete-data-sheet"><p>Будут удалены <b>все операции, счета, цели, лимиты, платежи, вклады, напоминания, свои категории, обращения в поддержку, имя и аватар</b> — на этом телефоне и на сервере.</p><p class="muted">Код привязки и оплаченный Премиум сохранятся. Отменить удаление нельзя.</p><p class="form-error delete-data-error" role="alert" hidden></p><button type="button" class="primary danger-primary" id="deleteDataConfirm">Удалить навсегда</button><button type="button" class="secondary full" id="deleteDataCancel">Отмена</button></div>`);
+ document.querySelector('#deleteDataCancel').onclick=()=>document.querySelector('#actionDialog').close();
+ document.querySelector('#deleteDataConfirm').onclick=deleteMyData;
+}
+async function deleteMyData(){
+ const btn=document.querySelector('#deleteDataConfirm'),err=document.querySelector('.delete-data-error');
+ btn.disabled=true;btn.textContent='Удаляем…';err.hidden=true;
+ const m=syncMeta(),onServer=!!m.syncedAt||isPremium();
+ clearTimeout(syncTimer);
+ if(acc.code&&onServer){
+  try{
+   const r=await fetch(DELETE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:acc.code})});
+   const j=await r.json().catch(()=>({}));
+   if(!r.ok||j.ok===false)throw Error();
+  }catch{
+   btn.disabled=false;btn.textContent='Удалить навсегда';
+   err.textContent='Нет связи с сервером — данные не удалены. Попробуйте ещё раз, когда появится интернет.';err.hidden=false;
+   return;
+  }
+ }else if(acc.code){
+  // без Премиума на сервере только обращения и заявки — удаляем, но не ждём
+  fetch(DELETE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:acc.code})}).catch(()=>{});
+ }
+ // телефон: чистые данные, без повторного обучения и запроса уведомлений
+ const fresh=E.initialState();fresh.reminders=[];fresh.deposits=[];
+ for(const k of ['onboarded','notifyAsked','notifyGranted','theme'])if(state.settings[k]!==undefined)fresh.settings[k]=state.settings[k];
+ fresh.settings.onboarded=true;
+ const wasProblem=storageProblem;storageProblem=false;
+ if(!persist(fresh,{remote:true})){storageProblem=wasProblem;btn.disabled=false;btn.textContent='Удалить навсегда';return;}
+ for(const key of ['mono-sync','mono-notes-seen','mono-reminders-seen','mono-sub-notice','mono-backup-before-v2','mono-backup-before-sync'])try{localStorage.removeItem(key);}catch{}
+ document.querySelector('#actionDialog').close();
+ refreshAccounts();applyTheme();decorate();renderHomeReminders();
+ setTimeout(()=>{navigate('home');notify('Данные удалены',true);},320);
+}
 async function copyCode(){
  const c=acc.code;if(!c)return;
  try{await navigator.clipboard.writeText(c);}catch{const t=document.createElement('textarea');t.value=c;t.setAttribute('readonly','');t.style.cssText='position:fixed;opacity:0;top:0';document.body.append(t);t.select();try{document.execCommand('copy');}catch{}t.remove();}
@@ -305,7 +343,7 @@ root.MonoAccess={
  isPremium,
  canUse:()=>isPremium()||daysLeft(acc.trialUntil)>0,
  codeText:()=>acc.code?acc.code.slice(0,3)+' '+acc.code.slice(3):'',
- copyCode,queueSync,refresh,nativeItems,daysUntilEnd,
+ copyCode,queueSync,refresh,confirmDeleteData,nativeItems,daysUntilEnd,
  devGrant:days=>{if(!CFG.devMode)return false;acc.devUntil=Date.now()+days*864e5;save();refresh();return true;}
 };
 root.MonoProfile={render:renderProfile,renderPremium,startTrial,socials,decorate,safeAvatar,profileName,premiumDialog};decorate();
