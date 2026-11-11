@@ -64,7 +64,8 @@ const PREMIUM_FEATURES=[
  ['limits','Лимиты','Контроль расходов по категориям'],
  ['payments','Обязательные платежи','Даты, календарь и напоминания о платежах'],
  ['reminders','Напоминания','Свои напоминания с повтором'],
- ['deposits','Вклады','Проценты сами попадают в доходы']
+ ['deposits','Вклады','Проценты сами попадают в доходы'],
+ ['themes','Различные темы','Чёрная, фиолетовая, зелёная и бургунди']
 ];
 const dayWord=n=>{const a=n%10,b=n%100;return a===1&&b!==11?'день':a>=2&&a<=4&&(b<10||b>=20)?'дня':'дней';};
 // Активный Премиум: до какого числа и сколько дней осталось
@@ -208,6 +209,8 @@ async function refreshAccess(force){
  }
 
  if(isPremium()&&!was)reconcile();
+ // цветные темы — с Премиумом: если доступ закончился, вернётся обычная тема
+ root.applyTheme?.();
  if(page==='profile'||page==='premium'||isPremium()!==was)render();
  root.MonoNative?.refreshReminders?.();
  subscriptionNotice();

@@ -33,6 +33,18 @@ LAVENDER = {
     '--chip-bg': 'linear-gradient(150deg,#ffffff,#ebe6fb)',
 }
 
+# Чёрная тема (на основе тёмной): настоящий чёрный фон для OLED-экранов, акцент фирменный
+BLACK = {
+    '--paper': '#000000', '--ink': '#f2f2f5', '--muted': '#9a9aa6', '--line': 'rgba(255,255,255,.1)',
+    '--soft': '#1a1a1d', '--bar': '#2a2a2f', '--card-solid': '#111113', '--card-edge': 'rgba(255,255,255,.1)',
+    '--glass': 'rgba(16,16,18,.84)', '--surface': 'rgba(255,255,255,.04)', '--input': 'rgba(255,255,255,.07)',
+    '--shadow': 'rgba(0,0,0,.6)', '--bg1': '#0a0a0b', '--bg2': '#000000', '--bg3': '#000000',
+    '--blob-a': 'rgba(255,255,255,.05)', '--blob-b': 'rgba(255,255,255,.03)', '--blob-c': 'rgba(255,255,255,.04)',
+    '--wave': 'rgba(255,255,255,.05)',
+    '--depth-bg': 'linear-gradient(160deg,rgba(30,30,33,.92) 0%,rgba(17,17,19,.92) 48%,rgba(8,8,9,.94) 100%)',
+    '--depth-edge': 'rgba(255,255,255,.08)', '--chip-bg': 'linear-gradient(150deg,#26262a,#141416)',
+}
+
 PALETTES = {
     # имя: (оттенок в градусах, насыщенность средних тонов, яркость средних тонов, насыщенность светлых тонов фона)
     'purple': None,
@@ -170,6 +182,7 @@ def main():
         out.append(f'html[data-palette={palette}]{{{";".join(lavender)}}}')
         if palette != 'purple':
             rules(sheet, palette, out)
+    out.append('html[data-palette=black][data-theme=dark]{' + ';'.join(f'{k}:{v}' for k, v in BLACK.items()) + '}')
     OUT.write_text('\n'.join(out) + '\n')
     print(f'{OUT.relative_to(ROOT)}: {OUT.stat().st_size // 1024} КБ')
 
