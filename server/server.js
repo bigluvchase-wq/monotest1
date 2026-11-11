@@ -366,6 +366,7 @@ try {
             host: process.env.SMTP_HOST || 'smtp.yandex.ru',
             port: Number(process.env.SMTP_PORT || 465),
             secure: Number(process.env.SMTP_PORT || 465) === 465,
+            requireTLS: Number(process.env.SMTP_PORT || 465) !== 465, // на 587/2525 — только с шифрованием, пароль не уйдёт открытым
             auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
             connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 20000
         });
