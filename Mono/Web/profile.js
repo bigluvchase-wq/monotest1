@@ -78,15 +78,24 @@ const PREMIUM_FEATURES=[
  ['deposits','Вклады','Проценты сами попадают в доходы']
 ];
 function payUrl(){const c=acc.code?acc.code.replace(/\s+/g,''):'';return c?`http://monoapp.ru/?code=${c}`:'http://monoapp.ru/';}
+const dayWord=n=>{const a=n%10,b=n%100;return a===1&&b!==11?'день':a>=2&&a<=4&&(b<10||b>=20)?'дня':'дней';};
+// Активный Премиум: до какого числа и сколько дней осталось
+function premiumStatus(){
+ if(!isPremium())return '';
+ if(!paidUntil)return `<section class="card premium-status"><span class="premium-spark" aria-hidden="true">✦</span><div><b>Премиум активен</b></div></section>`;
+ const left=Math.max(0,daysUntilEnd()??0),date=new Date(paidUntil).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}).replace(/ г\.$/,'');
+ return `<section class="card premium-status"><span class="premium-spark" aria-hidden="true">✦</span><div><b>Премиум активен</b><small>Осталось ${left} ${dayWord(left)} · до ${esc(date)}</small></div></section>`;
+}
 function renderPremium(){
  const trial=!isPremium()&&daysLeft(acc.trialUntil)>0?daysLeft(acc.trialUntil):0;
  const icon=k=>`<span class="menu-symbol"><svg viewBox="0 0 24 24" aria-hidden="true">${(window.MonoMenuMarks||{})[k]||''}</svg></span>`;
  return `<div class="premium-page">
-  <p class="premium-lead">Всё, чем вы пользуетесь сейчас, останется бесплатным. С Премиумом откроются:</p>
+  ${premiumStatus()}
+  <p class="premium-lead">${isPremium()?'С Премиумом вам доступны:':'Всё, чем вы пользуетесь сейчас, останется бесплатным. С Премиумом откроются:'}</p>
   ${trial?`<p class="premium-trial">Пробный доступ ко всем функциям: осталось ${trial} ${trial===1?'день':trial<5?'дня':'дней'}.</p>`:''}
   <section class="card premium-features">${PREMIUM_FEATURES.map(([k,t,d])=>`<div class="premium-feature">${icon(k)}<span><b>${t}</b><small>${d}</small></span></div>`).join('')}</section>
   ${codeBlock()}
-  <p class="premium-site">Оформить Премиум можно на <a href="${payUrl()}">monoapp.ru</a>. Премиум включится сам, перезапускать приложение не нужно.</p>
+  <p class="premium-site">${isPremium()?'Продлить':'Оформить'} Премиум можно на <a href="${payUrl()}">monoapp.ru</a>. ${isPremium()?'Новый срок прибавится к оставшемуся.':'Премиум включится сам, перезапускать приложение не нужно.'}</p>
  </div>`;
 }
 function inviteText(){return 'Попробуй моно — учёт денег голосом. Просто скажи, сколько потратил.';}
@@ -96,7 +105,7 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-profile-edit]'))editProfile();
  if(e.target.closest('[data-profile-copy]'))MonoAccess.copyCode();
  if(e.target.closest('[data-profile-invite]'))invite();
- if(e.target.closest('[data-go-premium]'))navigate('premium');
+ const goPremium=e.target.closest('[data-go-premium]');if(goPremium)navigate('premium',{dive:goPremium.getBoundingClientRect()});
 });
 
 const person='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3"/><path d="M5 20a7 6 0 0 1 14 0"/></svg>';
@@ -104,7 +113,7 @@ function profileName(){return typeof state.settings.profileName==='string'?Array
 function safeAvatar(value){return typeof value==='string'&&value.length<180000&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value)?value:'';}
 function avatar(){const src=safeAvatar(state.settings.profileAvatar);return src?`<img src="${src}" alt="Аватарка">`:person;}
 function decorate(){const button=document.querySelector('#helpButton');if(button)button.innerHTML=avatar();}
-function resizeAvatar(file){return new Promise((resolve,reject)=>{if(!file||!file.type.startsWith('image/')||file.size>20*1024*1024){reject(Error('Фото слишком большое — выберите изображение до 20 МБ.'));return;}const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{try{const size=Math.min(img.naturalWidth,img.naturalHeight);if(!size)throw Error();const canvas=document.createElement('canvas');canvas.width=canvas.height=256;canvas.getContext('2d').drawImage(img,(img.naturalWidth-size)/2,(img.naturalHeight-size)/2,size,size,0,0,256,256);const value=canvas.toDataURL('image/jpeg',.85);if(!safeAvatar(value))throw Error();resolve(value);}catch{reject(Error('Не удалось прочитать фото. Попробуйте JPG মাতৃчасть или PNG.'));}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);reject(Error('Не удалось открыть фото. Попробуйте JPG или PNG.'));};img.src=url;});}
+function resizeAvatar(file){return new Promise((resolve,reject)=>{if(!file||!file.type.startsWith('image/')||file.size>20*1024*1024){reject(Error('Фото слишком большое — выберите изображение до 20 МБ.'));return;}const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{try{const size=Math.min(img.naturalWidth,img.naturalHeight);if(!size)throw Error();const canvas=document.createElement('canvas');canvas.width=canvas.height=256;canvas.getContext('2d').drawImage(img,(img.naturalWidth-size)/2,(img.naturalHeight-size)/2,size,size,0,0,256,256);const value=canvas.toDataURL('image/jpeg',.85);if(!safeAvatar(value))throw Error();resolve(value);}catch{reject(Error('Не удалось прочитать фото. Попробуйте JPG или PNG.'));}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);reject(Error('Не удалось открыть фото. Попробуйте JPG или PNG.'));};img.src=url;});}
 function editProfile(){let image=safeAvatar(state.settings.profileAvatar);actionDialog('Ваш профиль',`<form class="profile-edit-form"><div class="profile-avatar profile-avatar-preview">${avatar()}</div><label class="secondary avatar-upload">Выбрать фото<input type="file" accept="image/*" class="sr-only" name="avatar"></label><button type="button" class="secondary" data-avatar-reset>Убрать фото</button><label class="field">Имя · до 20 символов<input name="name" maxlength="20" required value="${esc(profileName())}" autocomplete="nickname"></label><p class="form-error" role="alert" hidden></p><button type="submit" class="primary">Сохранить</button></form>`,(f,form)=>{const name=f.get('name').trim();if(!name||Array.from(name).length>20)throw Error('Введите имя — до 20 символов.');if(commit(s=>{s.settings.profileName=name;s.settings.profileAvatar=image;},'Профиль сохранён')){decorate();document.querySelector('#actionDialog').close();}});
  const form=document.querySelector('.profile-edit-form'),button=form.querySelector('[type=submit]'),error=form.querySelector('.form-error');let revision=0;
  form.querySelector('[name=avatar]').onchange=async event=>{const ticket=++revision;button.disabled=true;error.hidden=true;try{const result=await resizeAvatar(event.target.files[0]);if(ticket!==revision)return;image=result;form.querySelector('.profile-avatar-preview').innerHTML=`<img src="${result}" alt="Аватарка">`;}catch(e){if(ticket===revision){error.textContent=e.message;error.hidden=false;}}finally{if(ticket===revision)button.disabled=false;}};

@@ -1486,3 +1486,20 @@ html[data-theme] .settings-section .delete-data{color:var(--red)!important;borde
 .delete-data-sheet{display:grid;gap:10px}
 .delete-data-sheet p{margin:0;font-size:14.5px;line-height:1.5}
 html[data-theme] .danger-primary{background:linear-gradient(135deg,#e06173,#c9445a)!important;box-shadow:0 10px 24px rgba(201,68,90,.3)!important;margin-top:6px}
+/* Поиск в «Операциях»: пока открыта клавиатура, страница стоит на месте */
+html.ops-search-lock,html.ops-search-lock body{overscroll-behavior:none}
+/* Глобальный поиск: поле появляется сразу, без долгого проявления */
+#searchLayer .search-top{opacity:0;transform:translateY(-10px)!important;transition:transform .26s cubic-bezier(.32,.72,0,1),opacity .12s linear!important}
+#searchLayer.on .search-top{opacity:1;transform:none!important}
+#searchLayer:not(.on) .search-top{transition-duration:.2s!important}
+/* Экран «Премиум»: статус активного Премиума */
+.premium-status{display:flex;align-items:center;gap:12px;padding:14px 16px;margin:0 0 12px}
+.premium-status .premium-spark{display:grid;place-items:center;width:36px;height:36px;border-radius:12px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font-size:16px;flex:none}
+.premium-status b{display:block;font-size:16px}
+.premium-status small{display:block;margin-top:2px;color:var(--muted);font-size:13.5px}
+/* Плавность: одна кривая движения для всего приложения (как у прокрутки напоминаний) */
+:root{--motion-ease:cubic-bezier(.32,.72,0,1)}
+/* Копии страниц во время перехода не пересчитывают размытие стекла — это главный источник рывков */
+.nav-ghost *,.root-preview *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.nav-ghost,.root-preview{contain:layout paint}
+.premium-status small{font-size:13px}
