@@ -78,9 +78,10 @@ const CREATE='(?:создай(?:те)?|добавь(?:те)?|заведи(?:те
 const commands=[
  {kind:'reminder',re:/^(?:(?:поставь|создай|добавь|сделай)\s+)?(?:напомни(?:те)?|напоминани[ея])(?:\s|$)/,parse(ctx){
   ctx.text=ctx.text.replace(/^(?:(?:поставь|создай|добавь|сделай)\s+)?(?:напомни(?:те)?|напоминани[ея])\s*/,'');
+  let repeat=null;cut(ctx,/(?:^|\s)(каждый день|ежедневно|каждую неделю|еженедельно|каждые две недели|каждый месяц|ежемесячно)(?=\s|$)/,m=>{const w=m[1];repeat=/день|ежеднев/.test(w)?'daily':/две недели/.test(w)?'fortnightly':/недел/.test(w)?'weekly':'monthly';});
   const when=parseWhen(ctx);let rest=stripLead(ctx.text),text='';
   const split=rest.match(/^(.*?)\s*(?:[:—–-]|\bтекст\b)\s*(.+)$/);if(split&&split[1]){rest=split[1];text=cap(split[2]);}
-  return {title:cap(stripLead(rest)),text,...when};
+  return {title:cap(stripLead(rest)),text,repeat,...when};
  }},
  {kind:'deposit',re:new RegExp('^(?:'+CREATE+'\\s+|открыл[аи]?\\s+|положил[аи]?\\s+)?(?:вклад|депозит)(?:\\s|$)'),parse(ctx){
   ctx.text=ctx.text.replace(new RegExp('^(?:'+CREATE+'\\s+|открыл[аи]?\\s+|положил[аи]?\\s+)?(?:вклад|депозит)\\s*'),'');
@@ -150,7 +151,7 @@ function limitForm(data){
 }
 function run(cmd){
  const d=cmd.data;
- if(cmd.kind==='reminder'){root.MonoReminders.form(null,{title:d.title,text:d.text,date:d.date,time:d.time});return true;}
+ if(cmd.kind==='reminder'){root.MonoReminders.form(null,{title:d.title,text:d.text,date:d.date,time:d.time,repeat:d.repeat||undefined});return true;}
  if(cmd.kind==='goal'){goalForm();if(!$('#actionDialog').open)return true;fill({name:d.name,target:d.target?d.target/100:null,currency:d.currency});return true;}
  if(cmd.kind==='account'){accountForm();if(!$('#actionDialog').open)return true;fill({name:d.name,currency:d.currency,initial:d.initial?d.initial/100:null});return true;}
  if(cmd.kind==='payment'){paymentForm();if(!$('#actionDialog').open)return true;fill({name:d.name,amount:d.amount?d.amount/100:null,date:d.date,repeat:d.repeat,category:d.category,reminderTime:d.time});return true;}
@@ -170,7 +171,7 @@ const phrases=[
 ];
 function phrasesHTML(){return `<div class="voice-phrases">${phrases.map(([title,list])=>`<section><h3>${esc(title)}</h3><ul>${list.map(p=>`<li><button type="button" data-try-phrase="${esc(p)}">«${esc(p)}»</button></li>`).join('')}</ul></section>`).join('')}</div>`;}
 function showPhrases(){
- actionDialog('Что можно сказать',`<p class="muted">Зажмите микрофон и скажите фразу. Моно сам откроет нужное окно и заполнит поля — останется проверить и сохранить.</p>${phrasesHTML()}<p class="tiny muted">Нажмите на фразу, чтобы попробовать без голоса.</p>`);
+ actionDialog('Что можно сказать',`<p class="muted">Зажмите микрофон и скажите фразу. моно сам откроет нужное окно и заполнит поля — останется проверить и сохранить.</p>${phrasesHTML()}<p class="tiny muted">Нажмите на фразу, чтобы попробовать без голоса.</p>`);
 }
 document.addEventListener('click',e=>{
  const b=e.target.closest('[data-try-phrase]');if(b){const text=b.dataset.tryPhrase;$('#actionDialog').close();setTimeout(()=>openEntry(text.replace(/ — .*$/,'')),280);return;}

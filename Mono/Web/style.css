@@ -1328,11 +1328,73 @@ html[data-theme] .category-items>.swipe-shell .swipe-content,html[data-theme] .c
 html[data-theme] .category-items .category-item{border-bottom:0!important;padding:14px 40px 14px 14px!important;min-height:54px}
 :root[data-theme=dark] .category-items>.swipe-shell,:root[data-theme=dark] .category-items>.category-item{border-color:rgba(255,255,255,.1)!important;box-shadow:0 6px 14px rgba(0,0,0,.3)!important}
 
-/* ===== Меню: 10 квадратных блоков, по 5 с каждой стороны; страница листается ===== */
-body[data-page=menu] .app,.root-preview[data-page="menu"] .app{height:auto!important;min-height:calc(100svh - var(--main-nav-space))}
-body[data-page=menu] #pageBody,.root-preview[data-page="menu"] [data-preview-id="pageBody"]{display:block;flex:none}
-body[data-page=menu] .menu-grid,.root-preview[data-page="menu"] .menu-grid{height:auto!important;flex:none!important;grid-template-rows:none!important;grid-auto-rows:auto;gap:11px;padding-bottom:calc(var(--main-nav-space,110px) + 8px)}
-body[data-page=menu] .menu-tile,.root-preview[data-page="menu"] .menu-tile{height:auto!important;aspect-ratio:1/.86;flex-direction:column!important;align-items:flex-start!important;justify-content:space-between!important}
-body[data-page=menu] .menu-tile .menu-symbol,.root-preview[data-page="menu"] .menu-tile .menu-symbol{width:42px!important;height:42px!important}
-.support-limit{margin:0;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink);font-size:13px;line-height:1.4}
-.support-form+.support-socials,.support-form~.support-socials{margin-top:18px}
+/* ===== Меню: 10 блоков, по 5 с каждой стороны, ровно на весь экран без прокрутки ===== */
+body[data-page=menu]{overflow:hidden;overscroll-behavior:none}
+body[data-page=menu] .menu-grid,.root-preview[data-page="menu"] .menu-grid{grid-template-rows:repeat(5,minmax(0,1fr))!important;gap:9px!important;height:100%!important;padding-bottom:0}
+body[data-page=menu] .menu-tile,.root-preview[data-page="menu"] .menu-tile{height:100%!important;min-height:0;aspect-ratio:auto;padding:12px 14px!important;gap:4px!important;border-radius:20px!important;flex-direction:column!important;align-items:flex-start!important;justify-content:space-between!important}
+body[data-page=menu] .menu-tile .menu-symbol,.root-preview[data-page="menu"] .menu-tile .menu-symbol{width:34px!important;height:34px!important;border-radius:11px!important}
+body[data-page=menu] .menu-tile .menu-symbol svg,.root-preview[data-page="menu"] .menu-tile .menu-symbol svg{width:19px!important;height:19px!important}
+body[data-page=menu] .menu-tile strong,.root-preview[data-page="menu"] .menu-tile strong{font-size:14px!important;line-height:1.2}
+body[data-page=menu] .menu-tile .menu-copy small,.root-preview[data-page="menu"] .menu-tile .menu-copy small{font-size:10.5px!important;margin-top:2px!important;line-height:1.3}
+@media(max-height:700px){body[data-page=menu] .menu-tile .menu-copy small,.root-preview[data-page="menu"] .menu-tile .menu-copy small{display:none!important}
+ body[data-page=menu] .menu-tile,.root-preview[data-page="menu"] .menu-tile{padding:10px 12px!important}
+ body[data-page=menu] .menu-tile .menu-symbol,.root-preview[data-page="menu"] .menu-tile .menu-symbol{width:30px!important;height:30px!important}}
+
+/* Календарь открыт — платежи «сегодня» сверху прячутся, выбранный день показывается под календарём */
+.payments-agenda.is-open .agenda-today{display:none!important}
+
+/* Открыто окно — страница под ним не листается, листается только содержимое окна */
+html:has(dialog[open]),html:has(dialog[open]) body{overflow:hidden!important;overscroll-behavior:none}
+dialog{overscroll-behavior:contain}
+
+/* ===== Плавнее: единая мягкая кривая для переходов ===== */
+:root{--motion-ease:cubic-bezier(.32,.72,0,1)}
+@media(prefers-reduced-motion:no-preference){
+ dialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog){animation-duration:.6s!important;animation-timing-function:cubic-bezier(.32,.72,0,1)!important}
+ .menu-tile,.secondary,.primary,button.small-link,.reminder,.operation-card{transition:transform .35s cubic-bezier(.32,.72,0,1),background .3s ease,box-shadow .3s ease!important}
+ .nav-slider{transition-timing-function:cubic-bezier(.32,.72,0,1)!important}
+ .agenda-calendar-reveal{transition:grid-template-rows .6s cubic-bezier(.32,.72,0,1),opacity .45s ease!important}
+ .settings-reveal{transition-timing-function:cubic-bezier(.32,.72,0,1)!important}
+}
+.app,.root-preview{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+
+/* ===== Профиль: всё на одном экране ===== */
+body[data-page=profile] .page-head h1{margin-bottom:12px}
+body[data-page=profile] .page-head #backToMenu{margin-bottom:10px}
+.profile-layout{gap:9px!important}
+.profile-layout>.card{padding:13px 16px!important;margin:0!important;border-radius:22px!important}
+.profile-layout h3{margin:0 0 6px!important;font-size:13px!important;font-weight:600;color:var(--muted)}
+.profile-intro{padding:10px 14px!important}
+.profile-intro .profile-avatar{width:44px!important;height:44px!important}
+.profile-intro h2{font-size:18px!important}
+.profile-access-status{margin:0!important;font-size:18px!important}
+.profile-subscription .tiny{margin:2px 0 0!important}
+.profile-layout a.premium-button{min-height:42px!important;margin-top:10px!important;padding:0 16px!important}
+.profile-code .code-row{margin:0}
+.profile-code-value{font-size:22px!important}
+.profile-code .tiny{margin:4px 0 0!important}
+.profile-code .secondary{min-height:38px;padding:0 14px}
+.profile-friend .friend-row input,.profile-friend .friend-check{height:42px!important;min-height:42px!important}
+.profile-friend .friend-row input{font-size:18px}
+.profile-friend .friend-check{width:42px!important}
+.friend-hint{margin:6px 0 0!important}
+.profile-invite-card p{margin:0 0 8px!important;font-size:13px!important}
+.profile-invite-card .profile-invite{min-height:40px}
+@media(max-height:720px){
+ body[data-page=profile] .page-head h1{display:none}
+ .profile-code .tiny,.friend-hint,.profile-invite-card p{display:none!important}
+ .profile-layout a.premium-button{margin-top:8px!important}
+}
+
+/* Лимиты: строка с лимитом выглядит так же, как без него (крестика больше нет) */
+html[data-theme] .limit-items [data-entity-kind] .limit-row{padding-right:0!important;grid-template-columns:minmax(0,1fr) 118px!important}
+html[data-theme] .limit-items.card{background:var(--card-solid)!important}
+html[data-theme] .limit-items .swipe-shell,html[data-theme] .limit-items .swipe-content{background:var(--card-solid)!important;box-shadow:none!important;border:0!important}
+html[data-theme] .limit-items .swipe-shell.swipe-open,html[data-theme] .limit-items .swipe-shell.swipe-moving{background:linear-gradient(90deg,transparent 50%,var(--red) 50%)!important}
+.limits-add-category{margin:4px 0 12px}
+
+/* Лимиты: фон строки с лимитом скруглён, без острых углов */
+html[data-theme] .limit-items .swipe-shell{border-radius:18px!important;overflow:hidden}
+html[data-theme] .limit-items .swipe-content{border-radius:inherit!important}
+html[data-theme] .limit-items .swipe-shell .limit-item{padding-left:8px;padding-right:8px}
+html[data-theme] .limit-items .swipe-shell{margin:0 -8px}

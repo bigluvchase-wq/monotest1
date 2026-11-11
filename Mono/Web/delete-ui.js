@@ -14,6 +14,7 @@ function attach(element,info,existingButton){
  const action=document.createElement('button');action.type='button';action.className='swipe-delete';action.textContent='Удалить';action.setAttribute('aria-label','Удалить запись');action.setAttribute('aria-hidden','true');action.inert=true;setMeta(action,info);action.dataset.entityDelete='true';
  element.replaceWith(shell);content.append(element);shell.append(action,content);
  let x=existingButton;
+ if(info.kind==='limit'&&!x)return;
  if(!x){x=document.createElement('button');x.type='button';x.textContent='×';x.className='entity-x';element.classList.add('entity-has-x');element.append(x);}
  x.dataset.entityDelete='true';setMeta(x,info);x.setAttribute('aria-label',x.getAttribute('aria-label')||'Удалить '+({entry:'операцию',payment:'платёж',goal:'цель',reminder:'напоминание',deposit:'вклад',account:'счёт',category:'категорию',limit:'лимит',ticket:'черновик'}[info.kind]||'запись'));x.title=x.getAttribute('aria-label');
  if(info.kind==='payment'){x.textContent='×';x.className='entity-x';element.classList.add('entity-has-x');}

@@ -13,7 +13,7 @@ const META_NOTE='* Instagram и Threads принадлежат компании 
 function socials(){const names={telegram:'Telegram',vk:'VK',instagram:'Instagram*'};return `<div class="support-socials">${Object.entries(socialPaths).map(([key,path])=>`<span class="support-social"><button type="button" disabled aria-label="${names[key]} — ссылка пока не добавлена" title="Ссылка пока не добавлена"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg></button><small>${names[key]}</small></span>`).join('')}</div><p class="tiny muted">Ссылки на соцсети скоро появятся.</p><p class="meta-note">* Instagram принадлежит компании Meta Platforms Inc., которая признана экстремистской организацией, её деятельность запрещена на территории Российской Федерации.</p>`;}
 function codeBlock(){
  const code=MonoAccess.codeText();
- const hint=code?'Это твой личный код. А также код приглашения.':accessAvailable?'Код появится, когда приложение подключится к серверу.':'Откройте Моно снова, чтобы загрузить ваш код.';
+ const hint=code?'Это твой личный код. А также код приглашения.':accessAvailable?'Код появится, когда приложение подключится к серверу.':'Откройте моно снова, чтобы загрузить ваш код.';
  return `<section class="card profile-code"><h3>Код привязки</h3><div class="code-row"><strong class="profile-code-value">${esc(code||'··· ···')}</strong><button type="button" class="secondary" data-profile-copy ${code?'':'disabled'}>Копировать</button></div><p class="tiny muted">${hint}</p></section>`;
 }
 
@@ -26,7 +26,7 @@ let friendStatus=null,friendDraft='';
 function friendBlock(){
  const used=acc.referralUsed;
  const status=used?'ok':friendStatus?.kind||'';
- return `<section class="card profile-friend"><h3>Код привязки друга</h3><form class="friend-row" data-friend-form novalidate><input name="friend" inputmode="numeric" maxlength="7" size="7" autocomplete="off" placeholder="000 000" aria-label="Код друга, 6 цифр" value="${esc(used?used.slice(0,3)+' '+used.slice(3):friendDraft)}" ${used?'disabled':''}><button type="submit" class="friend-check ${status==='ok'?'is-ok':status==='bad'?'is-bad':''}" aria-label="Проверить код друга" ${used?'disabled':''}>${status==='bad'?'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>':'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>'}</button></form><p class="tiny muted friend-hint">${used?'Код друга применён — вам обоим начислено 7 дней Премиума.':friendStatus?.text?esc(friendStatus.text):'Введите 6 цифр кода друга — вы оба получите 7 дней Премиума.'}</p></section>`;
+ return `<section class="card profile-friend"><h3>Код привязки друга</h3><form class="friend-row" data-friend-form novalidate><input name="friend" inputmode="numeric" maxlength="7" size="7" autocomplete="off" placeholder="000 000" aria-label="Код друга, 6 цифр" value="${esc(used?used.slice(0,3)+' '+used.slice(3):friendDraft)}" ${used?'disabled':''}><button type="submit" class="friend-check ${status==='ok'?'is-ok':status==='bad'?'is-bad':''}" aria-label="Проверить код друга" ${used?'disabled':''}>${status==='bad'?'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>':'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>'}</button></form><p class="tiny muted friend-hint">${used?'Код друга применён — вам обоим начислено 7 дней Премиума.':friendStatus?.text?esc(friendStatus.text):'Введите код друга — вы оба получите 7 дней Премиума.'}</p></section>`;
 }
 async function applyFriendCode(raw){
  const friendCode=String(raw||'').replace(/\D/g,'');
@@ -48,7 +48,7 @@ async function applyFriendCode(raw){
  }catch{friendStatus={kind:'bad',text:'Нет связи с сервером. Попробуйте ещё раз.'};redraw();}
 }
 document.addEventListener('submit',e=>{const f=e.target.closest('[data-friend-form]');if(!f)return;e.preventDefault();f.querySelector('input').blur();applyFriendCode(f.elements.friend.value);});
-document.addEventListener('input',e=>{const i=e.target.closest('[data-friend-form] input');if(!i)return;const d=i.value.replace(/\D/g,'').slice(0,6);i.value=d.length>3?d.slice(0,3)+' '+d.slice(3):d;friendDraft=i.value;if(friendStatus?.kind==='bad'){friendStatus=null;const b=i.form.querySelector('.friend-check');b.classList.remove('is-bad');b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';i.form.parentElement.querySelector('.friend-hint').textContent='Введите 6 цифр кода друга — вы оба получите 7 дней Премиума.';}});
+document.addEventListener('input',e=>{const i=e.target.closest('[data-friend-form] input');if(!i)return;const d=i.value.replace(/\D/g,'').slice(0,6);i.value=d.length>3?d.slice(0,3)+' '+d.slice(3):d;friendDraft=i.value;if(friendStatus?.kind==='bad'){friendStatus=null;const b=i.form.querySelector('.friend-check');b.classList.remove('is-bad');b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';i.form.parentElement.querySelector('.friend-hint').textContent='Введите код друга — вы оба получите 7 дней Премиума.';}});
 
 function premiumLink(){
  const isPrem = MonoAccess.isPremium();
@@ -74,10 +74,10 @@ function renderProfile(){
   </section>
   ${codeBlock()}
   ${friendBlock()}
-  <section class="card profile-invite-card"><h3>Пригласите друга</h3><p class="muted">Отправьте другу свой код приглашения. Когда он введёт его в профиле, <b>вам обоим дадут по 7 дней Премиума бесплатно</b>.</p><button type="button" class="secondary profile-invite" data-profile-invite>Пригласить друга <span aria-hidden="true">↗</span></button></section>
+  <section class="card profile-invite-card"><h3>Пригласите друга</h3><p class="muted">Отправьте другу свой код — <b>вам обоим дадут по 7 дней Премиума бесплатно</b>.</p><button type="button" class="secondary profile-invite" data-profile-invite>Пригласить друга <span aria-hidden="true">↗</span></button></section>
  </div>`;
 }
-function inviteText(){return 'Попробуй моно — учёт денег голосом.'+(acc.code?` Мой код приглашения: ${acc.code}. Введи его в профиле Моно — и мы оба получим 7 дней Премиума.`:'');}
+function inviteText(){return 'Попробуй моно — учёт денег голосом.'+(acc.code?` Мой код приглашения: ${acc.code}. Введи его в профиле моно — и мы оба получим 7 дней Премиума.`:'');}
 async function invite(){if(window.MonoNative){MonoNative.invite(inviteText());return;}const url=location.origin;try{if(navigator.share){await navigator.share({title:'моно',text:inviteText(),url});return;}if(navigator.clipboard){await navigator.clipboard.writeText(url);notify('Ссылка на моно скопирована');return;}}catch(e){if(e.name==='AbortError')return;}actionDialog('Пригласить друга',`<p class="muted">Поделитесь ссылкой на моно:</p><label class="field">Ссылка<input readonly value="${esc(url)}"></label>`);}
 
 document.addEventListener('click',e=>{
