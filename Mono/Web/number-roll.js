@@ -7,7 +7,7 @@ const seen=new Map();
 function key(el,i){return (document.body.dataset.page||'')+'|'+el.className+'|'+i;}
 function roll(el){
  if(reducedMotion())return;
- el.animate([{transform:'translateY(.45em)',opacity:0,clipPath:'inset(0 0 0 0)'},{transform:'none',opacity:1,clipPath:'inset(0 0 0 0)'}],{duration:420,easing:'cubic-bezier(.32,.72,0,1)'});
+ el.animate([{transform:'translateY(.45em)',opacity:0},{transform:'none',opacity:1}],{duration:420,easing:'cubic-bezier(.32,.72,0,1)'});
 }
 function scan(){
  const els=[...document.querySelectorAll(SELECTOR)].filter(el=>!el.closest('.root-preview,.nav-ghost'));

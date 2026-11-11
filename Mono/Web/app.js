@@ -428,7 +428,7 @@ window.MonoNative?.refreshReminders();
 
 // Видимая область над клавиатурой: окна не уходят под клавиатуру на любых iPhone
 (()=>{const vv=window.visualViewport,root=document.documentElement;if(!vv)return;
- const sync=()=>{root.style.setProperty('--vv-h',vv.height+'px');root.style.setProperty('--vv-top',vv.offsetTop+'px');root.classList.toggle('kb',innerHeight-vv.height>120);};
+ let lastH=-1,lastTop=-1;const sync=()=>{const h=Math.round(vv.height),t=Math.round(vv.offsetTop);if(h===lastH&&t===lastTop)return;lastH=h;lastTop=t;root.style.setProperty('--vv-h',h+'px');root.style.setProperty('--vv-top',t+'px');root.classList.toggle('kb',innerHeight-h>120);};
  vv.addEventListener('resize',sync);vv.addEventListener('scroll',sync);addEventListener('orientationchange',()=>setTimeout(sync,250));sync();})();
 // Смахивание вверх на главной открывает ввод текстом
 (()=>{const home=$('#home');let g=null;
