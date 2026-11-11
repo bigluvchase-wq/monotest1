@@ -1516,6 +1516,3 @@ html.ops-search-lock,html.ops-search-lock body{overscroll-behavior:none}
 /* Производительность: пока пользователь касается экрана или листает, медленный фон стоит — стеклу не нужно пересчитывать размытие каждый кадр */
 html.motion-busy .bg-float i,html.motion-busy .orbit{animation-play-state:paused!important}
 .root-preview{will-change:transform,opacity}
-/* Лимиты: полоска заполнения начинается под названием категории, а не под иконкой — короче и ровнее */
-.limit-item .bar{margin-left:44px!important;width:auto!important}
-.limit-item .warn{margin-left:44px}

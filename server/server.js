@@ -35,6 +35,12 @@ CREATE TABLE IF NOT EXISTS payments (
     months INTEGER NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS invoices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL,
+    price INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS support_tickets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT,
@@ -56,9 +62,12 @@ CREATE TABLE IF NOT EXISTS reward_requests (
     data_deleted_at TEXT
 );
 `);
+// номера счетов начинаем выше старых случайных номеров (до 1 000 000), чтобы не совпасть с прошлыми оплатами
+db.prepare("INSERT INTO sqlite_sequence (name, seq) SELECT 'invoices', 1000000 WHERE NOT EXISTS (SELECT 1 FROM sqlite_sequence WHERE name = 'invoices')").run();
 const now = () => new Date().toISOString();
 const q = {
     user: db.prepare('SELECT * FROM users WHERE code = ?'),
+    addInvoice: db.prepare('INSERT INTO invoices (code, price, created_at) VALUES (?, ?, ?)'),
     addUser: db.prepare('INSERT OR IGNORE INTO users (code, created_at, key_hash, key_set_at) VALUES (?, ?, ?, ?)'),
     setKey: db.prepare('UPDATE users SET key_hash = ?, key_set_at = ? WHERE code = ? AND key_hash IS NULL'),
     setPremium: db.prepare('UPDATE users SET premium = ?, premium_until = ? WHERE code = ?'),
@@ -147,62 +156,16 @@ setInterval(() => { const t = Date.now(); for (const m of [failures, hits]) for 
 const PLAN_MONTHS = { 129: 1, 649: 6, 1299: 12, 199: 1, 999: 6, 1799: 12 };
 
 // ==========================================
-// 1. Страница выбора тарифов (открывается из приложения)
-// ==========================================
-app.get('/pay', (req, res) => {
-    const code = cleanCode(req.query.code);
-    if (!code) return res.send('Ошибка: не указан код устройства');
-
-    const html = `
-    <!DOCTYPE html>
-    <html lang="ru">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Оплата Премиум</title>
-        <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #1c1c1e; color: white; padding: 20px; text-align: center; }
-            .card { background: #2c2c2e; border-radius: 16px; padding: 24px; max-width: 400px; margin: 40px auto; }
-            h2 { margin-top: 0; }
-            .code { color: #f2c94c; font-weight: bold; font-size: 20px; margin-bottom: 24px; }
-            button { background: #4a4a55; color: white; border: none; padding: 16px; border-radius: 12px; width: 100%; font-size: 16px; font-weight: bold; margin-bottom: 12px; cursor: pointer; transition: 0.2s; }
-            button:hover { background: #5a5a65; }
-            .best-choice { background: #5e5ce6; }
-            .best-choice:hover { background: #6e6cf6; }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <h2>Выберите тариф</h2>
-            <p>Ваш код привязки:</p>
-            <div class="code">${code}</div>
-            <form action="/api/pay" method="POST">
-                <input type="hidden" name="code" value="${code}">
-                <button type="submit" name="price" value="129">1 месяц — 129 ₽</button>
-                <button type="submit" name="price" value="649">6 месяцев — 649 ₽</button>
-                <button type="submit" name="price" value="1299" class="best-choice">1 год — 1299 ₽</button>
-            </form>
-        </div>
-    </body>
-    </html>
-    `;
-    res.send(html);
-});
-
-// ==========================================
 // 2. Создание ссылки на оплату и редирект в Робокассу
 // ==========================================
-app.post('/api/pay', (req, res) => {
+// Оплатить можно только по текущим ценам (старые цены остались в PLAN_MONTHS только для прошлых оплат)
+const CURRENT_PLANS = { 199: '1 месяц', 999: '6 месяцев', 1799: '1 год' };
+app.post('/api/pay', rateLimit, (req, res) => {
     const code = cleanCode(req.body.code);
     const price = String(req.body.price || '');
-    if (!code || !PLAN_MONTHS[price]) return res.status(400).send('Не указан код или цена');
-
-    let planTitle = 'Премиум';
-    if (price == 129) planTitle = '1 месяц';
-    if (price == 649) planTitle = '6 месяцев';
-    if (price == 1299) planTitle = '1 год';
-
-    const invId = Math.floor(Math.random() * 1000000);
+    if (code.length !== 6 || !CURRENT_PLANS[price]) return res.status(400).send('Не указан код или цена');
+    const planTitle = CURRENT_PLANS[price];
+    const invId = Number(q.addInvoice.run(code, Number(price), now()).lastInsertRowid);
     const outSum = price;
     const signature = md5(`${ROBOKASSA_MERCHANT_LOGIN}:${outSum}:${invId}:${pass1}:Shp_code=${code}`);
 
@@ -265,14 +228,18 @@ app.get('/api/check', rateLimit, (req, res) => {
 // ==========================================
 // 5. Авторегистрация нового устройства
 // ==========================================
-app.post('/api/registerUser', (req, res) => {
+app.post('/api/registerUser', rateLimit, (req, res) => {
     const code = cleanCode(req.body.code);
-    if (!code) return res.status(400).json({ error: 'Код не передан' });
+    if (code.length !== 6) return res.status(400).json({ error: 'Код не передан' });
     try {
         const key = keyOf(req), ok = validKey(key);
-        q.addUser.run(code, now(), ok ? hashKey(key) : null, ok ? now() : null);
-        if (ok) q.setKey.run(hashKey(key), now(), code);
-        res.json({ success: true });
+        if (!ok) { noteFailure(req); return res.status(401).json({ ok: false, error: 'no_key' }); }
+        const existing = q.user.get(code);
+        // код уже занят другим устройством — приложение возьмёт другой
+        if (existing && existing.key_hash && !sameHash(existing.key_hash, hashKey(key))) return res.status(409).json({ ok: false, error: 'taken' });
+        q.addUser.run(code, now(), hashKey(key), now());
+        q.setKey.run(hashKey(key), now(), code);
+        res.json({ success: true, ok: true });
     } catch (err) {
         res.status(500).json({ error: 'Ошибка сервера' });
     }
@@ -287,13 +254,11 @@ app.post('/api/sync', rateLimit, (req, res) => {
     const { state } = req.body;
     if (!code || !state || typeof state !== 'object') return res.status(400).json({ error: 'Нет данных для синхронизации' });
     try {
-        let user = q.user.get(code);
-        if (!user) {
-            const key = keyOf(req);
-            if (!validKey(key)) { noteFailure(req); return res.status(401).json({ ok: false, error: 'no_key' }); }
-            q.addUser.run(code, now(), hashKey(key), now());
-            user = q.user.get(code);
-        } else if (!checkKey(req, res, user)) return;
+        const user = q.user.get(code);
+        if (!user) { noteFailure(req); return res.status(404).json({ ok: false, error: 'not_found' }); }
+        if (!checkKey(req, res, user)) return;
+        // хранение истории на сервере — функция Премиума
+        if (!user.premium || (user.premium_until && new Date(user.premium_until) < new Date())) return res.status(402).json({ ok: false, error: 'no_premium' });
         const updatedAt = now();
         q.saveState.run(JSON.stringify(state), updatedAt, code);
         return res.json({ success: true, ok: true, updatedAt });
@@ -327,6 +292,10 @@ function extendIso(currentIso, from) {
     const current = currentIso ? new Date(currentIso).getTime() : 0;
     return new Date(Math.max(from, Number.isFinite(current) ? current : 0) + 7 * DAY).toISOString();
 }
+// Код друга и награды в приложении скрыты — на сервере они тоже закрыты:
+// иначе новыми кодами можно было бы бесконечно начислять себе дни Премиума.
+// Включить обратно: FEATURE_REFERRALS=1 в .env.
+app.post(['/api/referral', '/api/reward'], (req, res, next) => process.env.FEATURE_REFERRALS === '1' ? next() : res.status(410).json({ ok: false, error: 'disabled' }));
 app.post('/api/referral', rateLimit, (req, res) => {
     const code = cleanCode(req.body.code);
     const friendCode = cleanCode(req.body.friendCode);
@@ -467,4 +436,8 @@ app.post('/api/deleteData', rateLimit, (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Слушаем только эту машину: снаружи сервер доступен лишь через nginx по https.
+// HOST=0.0.0.0 в .env вернёт прежнее поведение.
+const HOST = process.env.HOST || '127.0.0.1';
+app.listen(PORT, HOST, () => console.log(`Server running on ${HOST}:${PORT}`));
+if (!process.env.HOST) app.listen(PORT, '::1').on('error', () => {});
