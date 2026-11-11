@@ -2,7 +2,7 @@
 'use strict';
 // Награды: пост или видео о моно в соцсетях — дни Премиума в благодарность.
 // Заявка уходит на сервер (он пересылает её на почту); без связи — открывается письмо на почту.
-const MAIL='monofinapp@gmail.com';
+const MAIL='monoapp@mail.ru';
 const REWARD_URL='https://api.monoapp.ru/api/reward';
 const icons={
  threads:'<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 3.5V17A2.5 2.5 0 0 1 4 14.5z"/><path d="M8 9h8M8 12.5h5"/>',

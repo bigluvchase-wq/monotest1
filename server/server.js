@@ -356,8 +356,8 @@ app.post('/api/referral', rateLimit, (req, res) => {
 // ==========================================
 // 9. Награды (в приложении сейчас скрыты): одна заявка на код → база + письмо
 // ==========================================
-// Почта: письма уходят через SMTP почтового ящика в России (по умолчанию Яндекс Почта).
-// В .env: MAIL_USER=ящик@yandex.ru, MAIL_PASS=пароль приложения, SUPPORT_MAIL_TO=куда присылать (по умолчанию MAIL_USER)
+// Почта: письма уходят через SMTP почтового ящика в России (Mail.ru: SMTP_HOST=smtp.mail.ru; по умолчанию smtp.yandex.ru).
+// В .env: MAIL_USER=monoapp@mail.ru, SMTP_HOST=smtp.mail.ru, MAIL_PASS=пароль приложения, SUPPORT_MAIL_TO=куда присылать (по умолчанию MAIL_USER)
 let mailer = null;
 try {
     if (process.env.MAIL_USER && process.env.MAIL_PASS) {
