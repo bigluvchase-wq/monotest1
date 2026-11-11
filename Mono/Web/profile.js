@@ -205,7 +205,7 @@ async function refreshAccess(force){
  }
 
  if(isPremium()&&!was)reconcile();
- if(page==='profile')render();
+ if(page==='profile'||page==='premium'||isPremium()!==was)render();
  root.MonoNative?.refreshReminders?.();
  subscriptionNotice();
  if(pendingPush&&isPremium()){pendingPush=false;push();}
@@ -292,7 +292,7 @@ async function reconcile(){
  }catch(e){console.error('Ошибка синхронизации',e);}
 }
 // Перед уходом приложения в фон отправляем несохранённые изменения
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&unsynced()&&isPremium()){clearTimeout(syncTimer);push({keepalive:true});}else if(!document.hidden&&isPremium())setTimeout(reconcile,1200);});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&unsynced()&&isPremium()){clearTimeout(syncTimer);push({keepalive:true});}else if(!document.hidden){refresh(true);if(isPremium())setTimeout(reconcile,1200);}});
 
 // ---------- Удаление данных пользователя ----------
 // Сначала сервер (копия истории, обращения, заявки), потом телефон. Код и Премиум остаются.
