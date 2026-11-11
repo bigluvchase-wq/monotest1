@@ -140,13 +140,18 @@ async function ensureCode(){
   saveIdentity();
   redraw();
   
-  try {
-   await fetch('https://api.monoapp.ru/api/registerUser', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Mono-Key': acc.secret || '' },
-    body: JSON.stringify({ code: acc.code })
-   });
-  } catch(e) {}
+  // Регистрируем код на сервере. Если такой код уже занят другим устройством — берём другой.
+  for(let attempt=0;attempt<4;attempt++){
+   try {
+    const r=await fetch('https://api.monoapp.ru/api/registerUser', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json', 'X-Mono-Key': acc.secret || '' },
+     body: JSON.stringify({ code: acc.code })
+    });
+    if(r.status!==409)break;
+    acc.code=localCode();saveIdentity();redraw();
+   } catch(e) {break;}
+  }
  }
 }
 
