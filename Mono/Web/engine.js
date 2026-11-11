@@ -102,7 +102,7 @@ if(e.type==='transfer'){const to=s.accounts.find(a=>a.id===e.toAccount);return !
 return [...s.categories,...s.incomeCategories].includes(e.category)&&(e.categoryChosen===undefined||typeof e.categoryChosen==='boolean');}))return false;
 if(!s.limits||Object.entries(s.limits).some(([c,ls])=>!currencies.includes(c)||!ls||typeof ls!=='object'||Object.entries(ls).some(([k,v])=>!s.categories.includes(k)||!isMoney(v)||v<0)))return false;
 if(!Array.isArray(s.payments)||new Set(s.payments.map(p=>p?.id)).size!==s.payments.length||!s.payments.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&p.name.trim()&&p.name.length<=100&&isMoney(p.amount)&&p.amount>0&&s.accounts.some(a=>a.id===p.account)&&s.categories.includes(p.category)&&validDate(p.date)&&['once','monthly','daily','weekly','fortnightly'].includes(p.repeat)&&(p.reminderTime===undefined||typeof p.reminderTime==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(p.reminderTime))&&Number.isInteger(p.remindDays)&&p.remindDays>=0&&p.remindDays<=30))return false;
-if(!s.settings||!['system','light','dark','black','purple','green','burgundy'].includes(s.settings.theme)||!['ru','en'].includes(s.settings.language))return false;
+if(!s.settings||!['system','light','dark','black','blue','purple','green','burgundy'].includes(s.settings.theme)||!['ru','en'].includes(s.settings.language))return false;
 if(!Array.isArray(s.tickets)||!s.tickets.every(t=>t&&typeof t.id==='string'&&typeof t.text==='string'&&t.text.length<=5000&&typeof t.date==='string'))return false;
 return true;
 }catch{return false;}}
