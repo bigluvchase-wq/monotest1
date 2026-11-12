@@ -434,15 +434,15 @@ html[data-theme=dark] .launch-intro{--lbg:#0d0d10;--lc1:#9b86ff;--lc2:#5b47d6;--
 :root[data-palette=green][data-theme] .launch-intro{--lbg:#06150f;--lc1:#8fe6bd;--lc2:#2f8a5e;--lglass:rgba(255,255,255,.16);--ledge:rgba(255,255,255,.6);--ldot:#3fc08a;--link:#fff;--lshadow:inset 0 1px 0 rgba(255,255,255,.25)}
 :root[data-palette=burgundy][data-theme] .launch-intro{--lbg:#16060b;--lc1:#f0a3b8;--lc2:#8c2a4a;--lglass:rgba(255,255,255,.16);--ledge:rgba(255,255,255,.6);--ldot:#d0567c;--link:#fff;--lshadow:inset 0 1px 0 rgba(255,255,255,.25)}
 :root[data-palette=black][data-theme] .launch-intro{--lbg:#000;--lc1:#fff;--lc2:#9a9aa0;--lglass:rgba(255,255,255,.1);--ledge:rgba(255,255,255,.55);--ldot:#f2f2f4;--link:#fff;--lshadow:inset 0 1px 0 rgba(255,255,255,.25)}
-.launch-wallet{position:absolute;left:50%;top:50%;width:66px;height:51px;margin:-25.5px 0 0 -33px;animation:launch-art .7s cubic-bezier(.22,1,.36,1) both}
-.launch-wallet .lw{position:absolute;left:0;top:0;width:220px;height:170px;transform:scale(.3);transform-origin:0 0}
+.launch-wallet{position:absolute;left:50%;top:50%;width:78px;height:60px;margin:-30px 0 0 -39px;animation:launch-art .7s cubic-bezier(.22,1,.36,1) both}
+.launch-wallet .lw{position:absolute;left:0;top:0;width:220px;height:170px;transform:scale(.355);transform-origin:0 0}
 .launch-wallet i,.launch-wallet b{position:absolute;display:block}
 .lw-card{left:30px;top:-6px;width:150px;height:96px;border-radius:16px;background:linear-gradient(135deg,var(--lc1),var(--lc2));transform:rotate(-9deg) translateY(-70px);opacity:0;animation:launch-card .55s .28s cubic-bezier(.22,1,.36,1) forwards}
 .lw-card::after{content:"";position:absolute;left:16px;top:18px;width:26px;height:20px;border-radius:5px;background:rgba(255,255,255,.55)}
 .lw-body{left:0;right:0;bottom:0;height:136px;border-radius:30px;background:linear-gradient(160deg,rgba(255,255,255,.28),var(--lglass) 45%,rgba(255,255,255,.06));border:1.5px solid var(--ledge);box-shadow:var(--lshadow)}
 .lw-clasp{right:-8px;top:48px;width:68px;height:46px;border-radius:16px;background:linear-gradient(160deg,rgba(255,255,255,.5),rgba(255,255,255,.18));border:1.5px solid var(--ledge)}
 .lw-clasp b{left:20px;top:12px;width:20px;height:20px;border-radius:50%;background:var(--ldot);animation:launch-tap .5s .78s cubic-bezier(.22,1,.36,1) both}
-.launch-name{position:absolute;left:0;right:0;top:calc(50% + 40px);text-align:center;color:var(--link);font-size:17px;font-weight:800;line-height:1;letter-spacing:-.045em;animation:launch-name .5s .9s cubic-bezier(.22,1,.36,1) both}
+.launch-name{position:absolute;left:0;right:0;top:calc(50% + 46px);text-align:center;color:var(--link);font-size:19px;font-weight:800;line-height:1;letter-spacing:-.045em;animation:launch-name .5s .9s cubic-bezier(.22,1,.36,1) both}
 .launch-name span{margin-inline-start:.08em;color:var(--ldot)}
 @keyframes launch-art{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:none}}
 @keyframes launch-card{to{opacity:1;transform:rotate(-9deg) translateY(0)}}
