@@ -20,13 +20,14 @@ function hides(part){if(!hidden)return false;const s=cfg().hideScope;return s===
 
 function html(){
  const c=cur(),t=E.dateString(new Date()),ym=t.slice(0,7);
- const balance=E.totals(state,c).available,delta=I().balanceDelta(c);
+ const balance=E.totals(state,c).available;
  const exp=state.entries.filter(e=>e.type==='expense'&&entryCurrency(e)===c&&e.date.startsWith(ym)).reduce((n,e)=>n+e.amount,0);
  const inc=state.entries.filter(e=>e.type==='income'&&entryCurrency(e)===c&&e.date.startsWith(ym)).reduce((n,e)=>n+e.amount,0);
  const s=I().safeToSpend(c),f=I().forecast(c),over=s.left<0;
  const hb=hides('balance'),hf=hides('flows');
- // при скрытых суммах строка с процентом остаётся на месте (без прыжка), но без цифр
- const deltaHTML=delta&&Math.round(delta.pct)!==0?(hb?`<div class="hd-delta muted">••• %<small>к ${dateText(delta.prev)}</small></div>`:`<div class="hd-delta ${delta.pct>0?'up':'down'}">${delta.pct>0?'▲':'▼'} ${Math.abs(Math.round(delta.pct))}%<small>к ${dateText(delta.prev)}</small></div>`):'';
+ // Под балансом — сколько отложено в этом месяце: доходы минус расходы с 1-го числа
+ const saved=inc-exp,monthName=['январе','феврале','марте','апреле','мае','июне','июле','августе','сентябре','октябре','ноябре','декабре'][new Date().getMonth()];
+ const deltaHTML=(inc||exp)?(hb||hf?`<div class="hd-delta muted">••• ₽<small>отложено в ${monthName}</small></div>`:`<div class="hd-delta ${saved>=0?'up':'down'}">${saved>=0?'+':'−'}${money(Math.abs(saved),c)}<small>${saved>=0?'отложено':'больше, чем заработано'} в ${monthName}</small></div>`):'';
  return `<div class="hd-top"><div class="hd-label">Общий баланс <button type="button" class="hd-eye" data-hd-eye aria-pressed="${hidden}" aria-label="${hidden?'Показать суммы':'Скрыть суммы'}">${hidden?ico.eyeOff:ico.eye}</button></div>
  <div class="hd-balance">${hb?MASK:money(balance,c)}</div>${deltaHTML}</div>
  <div class="hd-row"><button type="button" class="hd-card hd-flow" data-hd-go="expense"><span class="hd-flow-top"><span class="hd-ic out">${ico.down}</span>Расходы</span><b>${hf?MASK:money(exp,c)}</b></button>
