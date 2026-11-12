@@ -1636,10 +1636,10 @@ html:has(#home.home-dash) .app>footer{display:none}
 .hd-track .l{min-width:0;white-space:normal;line-height:1.25}.hd-track .l b{white-space:nowrap}
 .hd-track .r{flex:none;white-space:nowrap}
 .hd-track{align-items:stretch}
-/* Главная «Баланс»: микрофон — аккуратная сфера поменьше, без колец и свечения; кольца появляются только пока слушаем */
-#home.home-dash .voice-zone{scale:1!important;width:120px!important;height:120px!important;margin:26px 0 8px!important}
-#home.home-dash #mic{width:96px!important;height:96px!important;box-shadow:0 8px 18px rgba(30,36,60,.16)!important}
+/* Главная «Баланс»: микрофон поменьше, с лёгким свечением и небольшими кругами */
+#home.home-dash .voice-zone{scale:1!important;width:140px!important;height:140px!important;margin:18px 0 4px!important}
+#home.home-dash #mic{width:96px!important;height:96px!important;box-shadow:0 8px 18px rgba(30,36,60,.14),0 0 26px color-mix(in srgb,var(--accent) 30%,transparent)!important}
 #home.home-dash #mic svg{width:30px!important;height:30px!important}
-body:not(.listening) #home.home-dash .orbit,body:not(.listening) #home.home-dash .voice-ripple{display:none!important}
-#home.home-dash .orbit.one{width:110px!important;height:110px!important}#home.home-dash .orbit.two{width:120px!important;height:120px!important}
-@media (max-height:760px){#home.home-dash .voice-zone{width:100px!important;height:100px!important;margin:14px 0 4px!important}#home.home-dash #mic{width:84px!important;height:84px!important}}
+#home.home-dash .orbit{box-shadow:0 0 0 1px var(--line) inset,0 0 24px var(--glow)!important}
+#home.home-dash .orbit.one{width:118px!important;height:118px!important}#home.home-dash .orbit.two{width:138px!important;height:138px!important}
+@media (max-height:760px){#home.home-dash .voice-zone{width:118px!important;height:118px!important;margin:10px 0 0!important}#home.home-dash #mic{width:82px!important;height:82px!important}#home.home-dash .orbit.one{width:100px!important;height:100px!important}#home.home-dash .orbit.two{width:116px!important;height:116px!important}}
