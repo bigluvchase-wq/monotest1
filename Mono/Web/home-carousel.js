@@ -36,7 +36,7 @@ function mount(box){
   prev.classList.toggle('off',!loop&&cur===0);next.classList.toggle('off',!loop&&cur===n-1);
   [...dots.children].forEach((d,i)=>d.classList.toggle('on',i===cur));
  }
- function measure(){const w=cards[0].offsetWidth||260,h=Math.max(...cards.map(c=>c.offsetHeight));step=w*.8;stage.style.height=h+'px';}
+ function measure(){const w=cards[0].offsetWidth||260,h=Math.max(...cards.map(c=>c.offsetHeight));step=w+12;stage.style.height=h+'px';}
  function go(d){const before=cards.map((_,i)=>rel(i));cur=loop?((cur+d)%n+n)%n:clamp(cur+d,0,n-1);remembered=cur;
   // при переходе через край ленты карточка перескакивает без анимации
   cards.forEach((el,i)=>{if(loop&&Math.abs(rel(i)-before[i])>1.5)el.style.transition='none';});
