@@ -1619,9 +1619,7 @@ html:has(#home.home-dash) .app>footer{display:none}
 }
 
 /* Главная: микрофон и кольца поменьше; если есть напоминания — вместо кнопки клавиатуры напоминания */
-#home.home-dash .voice-zone{scale:.74!important;margin-top:-30px!important;margin-bottom:-38px!important}
 #home.home-dash.has-rem #textEntry{display:none}
-@media (max-height:760px){#home.home-dash .voice-zone{scale:.58!important;margin-top:-60px!important;margin-bottom:-64px!important}}
 /* «Можно потратить сегодня» / «Прогноз» — как карусель напоминаний */
 .hd-track{gap:12px;grid-auto-columns:calc(100% - 18px)!important;padding-right:18px}
 .hd-track>.hd-card{transform-origin:center;will-change:transform,opacity}
@@ -1638,3 +1636,10 @@ html:has(#home.home-dash) .app>footer{display:none}
 .hd-track .l{min-width:0;white-space:normal;line-height:1.25}.hd-track .l b{white-space:nowrap}
 .hd-track .r{flex:none;white-space:nowrap}
 .hd-track{align-items:stretch}
+/* Главная «Баланс»: микрофон — аккуратная сфера поменьше, без колец и свечения; кольца появляются только пока слушаем */
+#home.home-dash .voice-zone{scale:1!important;width:120px!important;height:120px!important;margin:26px 0 8px!important}
+#home.home-dash #mic{width:96px!important;height:96px!important;box-shadow:0 8px 18px rgba(30,36,60,.16)!important}
+#home.home-dash #mic svg{width:30px!important;height:30px!important}
+body:not(.listening) #home.home-dash .orbit,body:not(.listening) #home.home-dash .voice-ripple{display:none!important}
+#home.home-dash .orbit.one{width:110px!important;height:110px!important}#home.home-dash .orbit.two{width:120px!important;height:120px!important}
+@media (max-height:760px){#home.home-dash .voice-zone{width:100px!important;height:100px!important;margin:14px 0 4px!important}#home.home-dash #mic{width:84px!important;height:84px!important}}
