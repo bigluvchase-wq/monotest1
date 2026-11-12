@@ -122,6 +122,8 @@ delete root.monoStoredAccess;
 const accessAvailable=stored!==false;
 if(stored)acc={...(acc.deviceId===stored.deviceId?acc:{}),...stored};
 const save=()=>{try{localStorage.setItem(AK,JSON.stringify(acc));}catch{}};
+// последний срок Премиума, подтверждённый сервером (до ответа сервера при запуске)
+paidUntil=Number(acc.paidUntil)>Date.now()?Number(acc.paidUntil):0;activeWithoutDate=acc.activeWithoutDate===true;
 const saveIdentity=()=>{
  save();
  if(accessAvailable&&acc.trialUntil){
@@ -206,6 +208,8 @@ async function refreshAccess(force){
      paidUntil = 0;
      activeWithoutDate = false;
     }
+    // запоминаем подтверждённый сервером срок: без интернета Премиум (и его темы) не пропадает до этой даты
+    acc.paidUntil = paidUntil; acc.activeWithoutDate = activeWithoutDate; save();
    }
   } catch(e) {}
  }
