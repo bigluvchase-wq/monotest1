@@ -96,7 +96,7 @@ root.MonoNative={
  openSettings:()=>post('settings'),
  enableReminders(silent=false){quiet=silent;post('enableReminders');},
  checkPermission:()=>post('notificationStatus'),
- setTheme:dark=>post('theme',{dark:Boolean(dark)}),
+ setTheme:(dark,bg)=>post('theme',{dark:Boolean(dark),bg:bg||''}),
  reminderPermission(granted){
   savePermission(granted);
   if(granted){refreshReminders();if(!quiet)notify('Уведомления iPhone включены.');}

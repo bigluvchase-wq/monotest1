@@ -33,8 +33,8 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         web.scrollView.contentInsetAdjustmentBehavior = .never
         web.scrollView.bounces = false
         web.isOpaque = false
-        // До и во время заставки фон всегда тёмный, как у заставки, — без белой вспышки при запуске
-        view.backgroundColor = UIColor(named: "LaunchBackground")
+        // Фон до загрузки страницы — цвет заставки выбранной темы (запомнили при прошлом запуске)
+        view.backgroundColor = Self.savedLaunchColor() ?? UIColor(named: "LaunchBackground")
         web.backgroundColor = .clear
         web.scrollView.backgroundColor = .clear
         web.frame = view.bounds
@@ -50,6 +50,20 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
     }
 
     private static let darkKey = "monoDarkTheme"
+    private static let launchColorKey = "monoLaunchColor"
+
+    // Цвет заставки в виде "#rrggbb" → UIColor
+    private static func color(hex: String) -> UIColor? {
+        let h = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
+        guard h.count == 6, let v = UInt32(h, radix: 16) else { return nil }
+        return UIColor(red: CGFloat((v >> 16) & 0xff) / 255, green: CGFloat((v >> 8) & 0xff) / 255,
+                       blue: CGFloat(v & 0xff) / 255, alpha: 1)
+    }
+
+    private static func savedLaunchColor() -> UIColor? {
+        guard let hex = UserDefaults.standard.string(forKey: launchColorKey) else { return nil }
+        return color(hex: hex)
+    }
     private let launchedAt = Date()
 
     // Фон под веб-страницей в цвет темы: без чёрной полосы над клавиатурой в светлой теме
@@ -108,6 +122,9 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         case "theme":
             guard let dark = body["dark"] as? Bool else { return }
             UserDefaults.standard.set(dark, forKey: Self.darkKey)
+            if let bg = body["bg"] as? String, Self.color(hex: bg) != nil {
+                UserDefaults.standard.set(bg, forKey: Self.launchColorKey)
+            }
             // Цвет темы — только после заставки (около 2 секунд)
             let wait = max(0, 2.2 - Date().timeIntervalSince(launchedAt))
             DispatchQueue.main.asyncAfter(deadline: .now() + wait) { [weak self] in
