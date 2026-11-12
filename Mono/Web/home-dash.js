@@ -27,7 +27,7 @@ function html(){
  const hb=hides('balance'),hf=hides('flows');
  // Под балансом — сколько отложено в этом месяце: доходы минус расходы с 1-го числа
  const saved=inc-exp,monthName=['январе','феврале','марте','апреле','мае','июне','июле','августе','сентябре','октябре','ноябре','декабре'][new Date().getMonth()];
- const deltaHTML=(inc||exp)?(hb||hf?`<div class="hd-delta muted">••• ₽<small>отложено в ${monthName}</small></div>`:`<div class="hd-delta ${saved>=0?'up':'down'}">${saved>=0?'+':'−'}${money(Math.abs(saved),c)}<small>${saved>=0?'отложено':'больше, чем заработано'} в ${monthName}</small></div>`):'';
+ const deltaHTML=(inc||exp)?(hb||hf?`<button type="button" class="hd-delta muted" data-hd-explain="saved">••• ₽<small>отложено в ${monthName}</small></button>`:`<button type="button" class="hd-delta ${saved>=0?'up':'down'}" data-hd-explain="saved">${saved>=0?'+':'−'}${money(Math.abs(saved),c)}<small>${saved>=0?'отложено':'больше, чем заработано'} в ${monthName}</small></button>`):'';
  return `<div class="hd-top"><div class="hd-label">Общий баланс <button type="button" class="hd-eye" data-hd-eye aria-pressed="${hidden}" aria-label="${hidden?'Показать суммы':'Скрыть суммы'}">${hidden?ico.eyeOff:ico.eye}</button></div>
  <div class="hd-balance">${hb?MASK:money(balance,c)}</div>${deltaHTML}</div>
  <div class="hd-row"><button type="button" class="hd-card hd-flow" data-hd-go="expense"><span class="hd-flow-top"><span class="hd-ic out">${ico.down}</span>Расходы</span><b>${hf?MASK:money(exp,c)}</b></button>
@@ -64,6 +64,12 @@ function explain(kind){
   <li class="sum${s.left<0?' over':''}"><span>Можно потратить сегодня</span><b>${s.left<0?'−':''}${money(Math.abs(s.left),c)}</b></li></ul>
   <p class="muted tiny">${s.byIncome?`${dateText(s.horizon)} — следующее поступление: по истории вы обычно получаете деньги в эти числа (зарплата, аванс). Подработки и разовые доходы учитываются, когда вы их внесли.`:'Регулярных поступлений пока не видно, поэтому делим до конца месяца. Когда зарплата или аванс придут хотя бы два месяца подряд, начнём считать до следующего поступления.'}</p>
   <p class="muted tiny">Если потратите меньше — завтра сумма будет больше. Если больше — завтрашняя уменьшится.</p></div>`);
+ }else if(kind==='saved'){
+  const ym=E.dateString(new Date()).slice(0,7),sum=t=>state.entries.filter(e=>e.type===t&&entryCurrency(e)===c&&e.date.startsWith(ym)).reduce((n,e)=>n+e.amount,0);
+  const inc=sum('income'),exp=sum('expense'),d=inc-exp,mask=hides('balance')||hides('flows'),m=v=>mask?MASK:money(v,c);
+  actionDialog(d>=0?'Отложено в этом месяце':'Расходы больше доходов',`<div class="hd-explain"><p class="muted">Доходы минус расходы с 1-го числа этого месяца.</p>
+  <ul><li><span>Доходы</span><b>${m(inc)}</b></li><li><span>Расходы</span><b>−${m(exp)}</b></li><li class="sum${d<0?' over':''}"><span>${d>=0?'Отложено':'Не хватило'}</span><b>${d<0?'−':''}${m(Math.abs(d))}</b></li></ul>
+  <p class="muted tiny">${d>=0?'Столько осталось от заработанного в этом месяце.':'В этом месяце потрачено больше, чем пришло, — разница взята из денег, которые были раньше.'} Переводы между счетами и пополнения целей не считаются.</p></div>`);
  }else{
   const f=I().forecast(c);
   actionDialog('Прогноз',`<div class="hd-explain"><p class="muted">Если тратить так же, как последние ${f.span} ${plural(f.span,'день','дня','дней')}, — в среднем ${money(f.daily,c)} в день, без обязательных платежей.</p>

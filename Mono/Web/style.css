@@ -1650,3 +1650,5 @@ html:has(:is(#home,[data-preview-id=home]).home-dash) .app>footer{display:none}
 /* «Можно потратить / Прогноз»: карточка во всю ширину, как «Расходы/Доходы» */
 .hd-track{grid-auto-columns:100%!important;padding-right:0!important;gap:12px}
 .hd-track .l{white-space:nowrap}
+.hd-delta{border:0;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.hd-delta:active{transform:scale(.97)}
