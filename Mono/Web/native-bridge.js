@@ -44,6 +44,8 @@ function refreshReminders(){
  }
  if(want('reminders'))try{items.push(...(root.MonoReminders?.nativeItems()||[]));}catch{}
  if(want('subscription'))try{items.push(...(root.MonoAccess?.nativeItems?.()||[]));}catch{}
+ // Умное напоминание: раз в неделю, в воскресенье в 19:00 — самая заметная перемена в тратах
+ if(want('smart'))try{const tip=root.MonoInsights?.insights(state.accounts[0].currency)?.[0];if(tip){let d=today;for(let k=0;k<8;k++){const day=new Date(d+'T12:00:00').getDay();if(day===0&&!(k===0&&minute>='19:00'))break;d=MonoSchedule.addDays(d,1);}items.push({id:'smart|'+d,date:d,time:'19:00',text:tip.text});}}catch{}
  // Ежедневно в 20:00 — только в дни, когда не внесено ни одной операции
  if(want('daily')){
   const days=new Set(state.entries.map(e=>e.date));

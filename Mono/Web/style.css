@@ -1540,3 +1540,80 @@ html.motion-busy .bg-float i,html.motion-busy .orbit{animation-play-state:paused
 .support-socials a{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--accent)}
 .support-socials a:active{transform:scale(.94)}
 .reminder-more{margin-top:10px}
+
+/* ===== Главный экран: баланс, расходы и доходы, «Можно потратить сегодня» ===== */
+#home.home-dash .intro{display:none}
+html:has(#home.home-dash) .app>footer{display:none}
+.hd{width:100%;max-width:440px;margin:2px auto 0;text-align:left;font-variant-numeric:tabular-nums}
+.hd-label{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)}
+.hd-eye{display:grid;place-items:center;width:30px;height:30px;min-height:30px;padding:0;margin:-6px 0;border:0;background:none;color:var(--muted)}
+.hd-eye svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hd-balance{margin-top:2px;font-size:40px;font-weight:650;letter-spacing:-.04em;color:var(--ink);line-height:1.1}
+.hd-delta{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:3px 9px;border-radius:999px;font-size:12.5px;font-weight:550}
+.hd-delta.up{color:#1f8a57;background:color-mix(in srgb,#2fae6a 14%,transparent)}
+.hd-delta.down{color:#c2413b;background:color-mix(in srgb,#e5484d 14%,transparent)}
+.hd-delta small{font-weight:450;color:var(--muted);margin-left:4px;font-size:12px}
+.hd-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.hd-card{display:block;width:100%;text-align:left;font:inherit;color:inherit;padding:12px 13px;border-radius:18px;background:var(--depth-bg,var(--surface));border:1px solid var(--card-edge);box-shadow:var(--depth-shadow-soft,none);-webkit-tap-highlight-color:transparent}
+.hd-card:active{transform:scale(.98)}
+.hd-flow-top{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+.hd-ic{width:22px;height:22px;border-radius:7px;display:grid;place-items:center}
+.hd-ic svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hd-ic.out{color:#c2413b;background:color-mix(in srgb,#e5484d 13%,transparent)}
+.hd-ic.in{color:#1f8a57;background:color-mix(in srgb,#2fae6a 14%,transparent)}
+.hd-flow b{display:block;margin-top:6px;font-size:19px;font-weight:620;letter-spacing:-.02em;color:var(--ink)}
+.hd-pager{margin-top:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-radius:18px;touch-action:pan-x pan-y}
+.hd-pager::-webkit-scrollbar{display:none}
+.hd-track{display:grid;grid-auto-flow:column;grid-auto-columns:100%;gap:0}
+.hd-track>.hd-card{scroll-snap-align:start;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;min-height:76px}
+.hd-track .l{font-size:12.5px;color:var(--muted)}
+.hd-track .l i{display:inline-grid;vertical-align:-3px;margin-left:2px}
+.hd-track .l i svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.hd-track .l b{display:block;margin-top:3px;font-size:22px;font-weight:650;letter-spacing:-.03em;color:var(--accent)}
+.hd-track .l small{display:block;font-size:11.5px;color:var(--muted)}
+.hd-today.over .l b{color:#c2413b}
+.hd-track .r{text-align:right;font-size:12px;color:var(--muted);line-height:1.45}
+.hd-track .r em{font-style:normal;font-size:15px;font-weight:620;color:var(--ink)}
+.hd-track .r small{display:block;font-size:11px}
+.hd-bar{display:block;height:4px;border-radius:4px;background:var(--bar);margin-top:8px;overflow:hidden;width:110px;margin-left:auto}
+.hd-bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.hd-today.over .hd-bar i{background:#c2413b}
+.hd-dots{display:flex;justify-content:center;gap:5px;margin-top:7px}
+.hd-dots i{width:5px;height:5px;border-radius:3px;background:color-mix(in srgb,var(--accent) 28%,transparent);transition:width .3s var(--motion-ease),background .3s}
+.hd-dots i.on{width:14px;background:var(--accent)}
+.hd-explain ul{list-style:none;margin:14px 0;padding:0;font-variant-numeric:tabular-nums}
+.hd-explain li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.hd-explain li b{white-space:nowrap;font-weight:600}
+.hd-explain li.sum{font-weight:600}
+.hd-explain li.sum b{color:var(--accent)}
+/* Операции: «Итоги» справа от «На счетах» */
+.ops-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.ops-head .balance-top{flex:none}
+.ops-summary{max-width:52%;padding:9px 11px;border-radius:14px;background:var(--depth-bg,var(--surface));border:1px solid var(--card-edge);box-shadow:var(--depth-shadow-soft,none);font-size:12px;line-height:1.35;color:var(--ink)}
+.ops-summary small{display:block;font-size:11px;font-weight:600;color:var(--accent);margin-bottom:2px}
+.ops-summary.up small{color:#c2413b}.ops-summary.down small,.ops-summary.good small{color:#1f8a57}
+/* Цели: срок, план и умная цель */
+.goal-plan-hint.is-plan{color:var(--accent);font-weight:550}
+.goal-smart.on{color:var(--accent);font-weight:600}
+.goal-plan,.goal-tip{margin:10px 0 0;padding:9px 11px;border-radius:12px;font-size:12.5px;line-height:1.4;background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--ink)}
+.goal-tip b{color:var(--accent);font-weight:600}
+.hd-delta.muted{color:var(--muted);background:color-mix(in srgb,var(--muted) 12%,transparent)}
+.hd-track .l{white-space:nowrap}
+/* микрофон в режиме «баланс» чуть меньше — под ним остаётся место для напоминаний */
+#home.home-dash .voice-zone{scale:.84;margin-top:-18px;margin-bottom:-30px}
+.ops-head{align-items:center}
+.ops-summary{max-width:50%;font-size:11.5px;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+/* Невысокие экраны (iPhone SE, mini): компактнее, чтобы микрофон и напоминания помещались */
+@media (max-height:760px){
+ #home.home-dash .hd-balance{font-size:30px}
+ #home.home-dash .hd-delta{margin-top:4px;padding:2px 8px;font-size:12px}
+ #home.home-dash .hd-row{margin-top:8px;gap:8px}
+ #home.home-dash .hd-flow{padding:8px 11px}
+ #home.home-dash .hd-flow b{margin-top:3px;font-size:16px}
+ #home.home-dash .hd-pager{margin-top:8px}
+ #home.home-dash .hd-track>.hd-card{min-height:60px;padding:8px 12px}
+ #home.home-dash .hd-track .l b{font-size:18px;margin-top:1px}
+ #home.home-dash .hd-dots{margin-top:4px}
+ #home.home-dash .voice-zone{scale:.6;margin-top:-58px;margin-bottom:-60px}
+ #home.home-dash .account-picker>span{display:none}
+}
