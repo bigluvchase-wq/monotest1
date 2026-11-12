@@ -425,12 +425,29 @@ a.premium-button:active{background:#5648bb}
 @media(prefers-reduced-motion:reduce){.holding .voice-ripple,.holding .mic::after{animation:none}.holding .ripple-first{opacity:.6}}
 
 /* Short launch transition over the already rendered home screen. */
-.launch-intro{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1c1c21;overflow:hidden;isolation:isolate;animation:launch-exit .44s 1.15s cubic-bezier(.4,0,.2,1) both}
-.launch-wallet{display:block;flex:none;width:clamp(112px,34vw,142px);height:auto;aspect-ratio:1.33;object-fit:cover;object-position:center 43%;-webkit-mask-image:radial-gradient(ellipse 50% 50%,#000 72%,transparent 100%);mask-image:radial-gradient(ellipse 50% 50%,#000 72%,transparent 100%);animation:launch-art .62s cubic-bezier(.22,1,.36,1) both}
-.launch-name{margin-top:2px;text-align:center;color:#fff;font-size:clamp(19px,5.5vw,24px);font-weight:850;line-height:1;letter-spacing:-.045em;text-shadow:0 2px 24px #c6adff60;animation:launch-name .55s .25s cubic-bezier(.22,1,.36,1) both}
-.launch-name span{margin-inline-start:.12em;color:#ae91ff}
-@keyframes launch-art{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
-@keyframes launch-name{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.launch-intro{position:fixed;inset:0;z-index:100;overflow:hidden;isolation:isolate;background:var(--lbg);animation:launch-exit .44s 1.15s cubic-bezier(.4,0,.2,1) both;
+ --lbg:#eceef2;--lc1:#9b86ff;--lc2:#6551dc;--lglass:rgba(255,255,255,.55);--ledge:rgba(255,255,255,.95);--ldot:#6551dc;--link:#16171d;--lshadow:inset 0 1px 0 #fff,0 2px 6px rgba(30,36,60,.08)}
+/* Заставка: стеклянный кошелёк в цветах темы, без свечения. Центр кошелька — там, где после загрузки будет кнопка микрофона */
+html[data-theme=dark] .launch-intro{--lbg:#0d0d10;--lc1:#9b86ff;--lc2:#5b47d6;--lglass:rgba(255,255,255,.1);--ledge:rgba(255,255,255,.4);--ldot:#8b74ff;--link:#fff;--lshadow:inset 0 1px 0 rgba(255,255,255,.25)}
+:root[data-palette=purple][data-theme] .launch-intro{--lbg:#120e26;--lc1:#a58bff;--lc2:#6a4ff0;--lglass:rgba(255,255,255,.16);--ledge:rgba(255,255,255,.6);--ldot:#7c5cff;--link:#fff;--lshadow:inset 0 1px 0 rgba(255,255,255,.25)}
+:root[data-palette=blue][data-theme] .launch-intro{--lbg:#08121f;--lc1:#8cc4ff;--lc2:#2f6fc4;--lglass:rgba(255,255,255,.16);--ledge:rgba(255,255,255,.6);--ldot:#4a9bff;--link:#fff;--lshadow:inset 0 1px 0 rgba(255,255,255,.25)}
+:root[data-palette=green][data-theme] .launch-intro{--lbg:#06150f;--lc1:#8fe6bd;--lc2:#2f8a5e;--lglass:rgba(255,255,255,.16);--ledge:rgba(255,255,255,.6);--ldot:#3fc08a;--link:#fff;--lshadow:inset 0 1px 0 rgba(255,255,255,.25)}
+:root[data-palette=burgundy][data-theme] .launch-intro{--lbg:#16060b;--lc1:#f0a3b8;--lc2:#8c2a4a;--lglass:rgba(255,255,255,.16);--ledge:rgba(255,255,255,.6);--ldot:#d0567c;--link:#fff;--lshadow:inset 0 1px 0 rgba(255,255,255,.25)}
+:root[data-palette=black][data-theme] .launch-intro{--lbg:#000;--lc1:#fff;--lc2:#9a9aa0;--lglass:rgba(255,255,255,.1);--ledge:rgba(255,255,255,.55);--ldot:#f2f2f4;--link:#fff;--lshadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.launch-wallet{position:absolute;left:50%;top:50%;width:66px;height:51px;margin:-25.5px 0 0 -33px;animation:launch-art .7s cubic-bezier(.22,1,.36,1) both}
+.launch-wallet .lw{position:absolute;left:0;top:0;width:220px;height:170px;transform:scale(.3);transform-origin:0 0}
+.launch-wallet i,.launch-wallet b{position:absolute;display:block}
+.lw-card{left:30px;top:-6px;width:150px;height:96px;border-radius:16px;background:linear-gradient(135deg,var(--lc1),var(--lc2));transform:rotate(-9deg) translateY(-70px);opacity:0;animation:launch-card .55s .28s cubic-bezier(.22,1,.36,1) forwards}
+.lw-card::after{content:"";position:absolute;left:16px;top:18px;width:26px;height:20px;border-radius:5px;background:rgba(255,255,255,.55)}
+.lw-body{left:0;right:0;bottom:0;height:136px;border-radius:30px;background:linear-gradient(160deg,rgba(255,255,255,.28),var(--lglass) 45%,rgba(255,255,255,.06));border:1.5px solid var(--ledge);box-shadow:var(--lshadow)}
+.lw-clasp{right:-8px;top:48px;width:68px;height:46px;border-radius:16px;background:linear-gradient(160deg,rgba(255,255,255,.5),rgba(255,255,255,.18));border:1.5px solid var(--ledge)}
+.lw-clasp b{left:20px;top:12px;width:20px;height:20px;border-radius:50%;background:var(--ldot);animation:launch-tap .5s .78s cubic-bezier(.22,1,.36,1) both}
+.launch-name{position:absolute;left:0;right:0;top:calc(50% + 40px);text-align:center;color:var(--link);font-size:17px;font-weight:800;line-height:1;letter-spacing:-.045em;animation:launch-name .5s .9s cubic-bezier(.22,1,.36,1) both}
+.launch-name span{margin-inline-start:.08em;color:var(--ldot)}
+@keyframes launch-art{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:none}}
+@keyframes launch-card{to{opacity:1;transform:rotate(-9deg) translateY(0)}}
+@keyframes launch-tap{0%{transform:scale(1)}45%{transform:scale(.8)}100%{transform:scale(1)}}
+@keyframes launch-name{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes launch-exit{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.045)}}
 @media(prefers-reduced-motion:reduce){.launch-intro{display:none}}
 
