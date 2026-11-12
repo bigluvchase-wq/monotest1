@@ -1522,3 +1522,4 @@ html.motion-busy .bg-float i,html.motion-busy .orbit{animation-play-state:paused
 /* Соцсети в поддержке — ссылки в том же виде, что и кнопки */
 .support-socials a{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--accent)}
 .support-socials a:active{transform:scale(.94)}
+.reminder-more{margin-top:10px}

@@ -53,7 +53,10 @@ function agenda(){
  return `<section class="card payments-agenda reminders-agenda ${calOpen?'is-open':''}"><button type="button" class="agenda-toggle" aria-expanded="${calOpen}" aria-controls="reminderCalendar"><span><strong>${esc(longDate(today))}</strong><small>${status}</small></span><span class="agenda-chevron agenda-cal-icon" aria-hidden="true">${CAL}</span></button><div class="agenda-calendar-reveal" id="reminderCalendar" ${calOpen?'':'inert'} aria-hidden="${!calOpen}"><div class="agenda-calendar-inner">${calendar()}</div></div></section>`;
 }
 function refreshCalendar(){const inner=document.querySelector('.reminders-agenda .agenda-calendar-inner');if(inner)inner.innerHTML=calendar();}
+const LATER_LIMIT=3;let laterAll=false;
 document.addEventListener('click',e=>{
+ if(e.target.closest('[data-rem-more]')){laterAll=true;root.render();return;}
+ if(e.target.closest('[data-nav],#backToMenu,#homeLogo'))laterAll=false; // в следующий раз «Позже» снова свёрнуто
  if(page!=='reminders')return;const t=e.target;
  const open=t.closest('[data-open-reminder]');if(open){form(open.dataset.openReminder);return;}
  const day=t.closest('[data-rem-day]');if(day){calDay=day.dataset.remDay;refreshCalendar();return;}
@@ -67,7 +70,10 @@ function render(){
  const groups={late:[],today:[],tomorrow:[],later:[],done:[]};
  for(const r of items)groups[group(r)].push(r);
  groups.done.reverse();groups.done=groups.done.slice(0,20);
- const body=['late','today','tomorrow','later','done'].filter(k=>groups[k].length).map(k=>`<section class="reminder-group"><h2 class="reminder-group-title">${titles[k]}</h2><div class="goal-list reminder-list">${groups[k].map(card).join('')}</div></section>`).join('');
+ // «Позже» — первые 3, остальные по кнопке «Показать все», чтобы страница не была тяжёлой
+ const shown=k=>k==='later'&&!laterAll?groups[k].slice(0,LATER_LIMIT):groups[k];
+ const more=k=>k==='later'&&!laterAll&&groups[k].length>LATER_LIMIT?`<button type="button" class="secondary full reminder-more" data-rem-more>Показать все · ${groups[k].length}</button>`:'';
+ const body=['late','today','tomorrow','later','done'].filter(k=>groups[k].length).map(k=>`<section class="reminder-group"><h2 class="reminder-group-title">${titles[k]}</h2><div class="goal-list reminder-list">${shown(k).map(card).join('')}</div>${more(k)}</section>`).join('');
  return `<div class="section-row"><button class="secondary" data-action="reminder">+ Добавить</button></div><p class="muted">Скажите: «напомни накормить кота сегодня в 6 вечера» — моно создаст напоминание.</p>${agenda()}${body||empty('Пока нет напоминаний','Потяните вниз, чтобы добавить.',false)}`;
 }
 function form(id,pre={}){
