@@ -1617,3 +1617,24 @@ html:has(#home.home-dash) .app>footer{display:none}
  #home.home-dash .voice-zone{scale:.6;margin-top:-58px;margin-bottom:-60px}
  #home.home-dash .account-picker>span{display:none}
 }
+
+/* Главная: микрофон и кольца поменьше; если есть напоминания — вместо кнопки клавиатуры напоминания */
+#home.home-dash .voice-zone{scale:.74!important;margin-top:-30px!important;margin-bottom:-38px!important}
+#home.home-dash.has-rem #textEntry{display:none}
+@media (max-height:760px){#home.home-dash .voice-zone{scale:.58!important;margin-top:-60px!important;margin-bottom:-64px!important}}
+/* «Можно потратить сегодня» / «Прогноз» — как карусель напоминаний */
+.hd-track{gap:12px;grid-auto-columns:calc(100% - 18px)!important;padding-right:18px}
+.hd-track>.hd-card{transform-origin:center;will-change:transform,opacity}
+.hd-pager{scroll-padding-left:0;overflow-x:auto;border-radius:0}
+.hd-today.over .l b{color:#c2413b}
+.hd-explain li.sum.over b{color:#c2413b}
+/* Операции: итог дня у даты */
+.entry-day h3{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.day-sum{display:grid;padding:2px 0;margin:0;border:0;background:none;font:inherit;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;min-height:0}
+.day-sum>span{grid-area:1/1;justify-self:end;transition:opacity .2s ease,transform .25s var(--motion-ease)}
+.day-out{color:#c2413b}.day-in{color:#1f8a57;opacity:0;transform:translateY(4px)}
+.day-sum.show-in .day-out{opacity:0;transform:translateY(-4px)}.day-sum.show-in .day-in{opacity:1;transform:none}
+.day-sum:not([data-day-toggle]){pointer-events:none}
+.hd-track .l{min-width:0;white-space:normal;line-height:1.25}.hd-track .l b{white-space:nowrap}
+.hd-track .r{flex:none;white-space:nowrap}
+.hd-track{align-items:stretch}

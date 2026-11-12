@@ -33,8 +33,8 @@ function html(){
  <div class="hd-row"><button type="button" class="hd-card hd-flow" data-hd-go="expense"><span class="hd-flow-top"><span class="hd-ic out">${ico.down}</span>Расходы</span><b>${hf?MASK:money(exp,c)}</b></button>
  <button type="button" class="hd-card hd-flow" data-hd-go="income"><span class="hd-flow-top"><span class="hd-ic in">${ico.up}</span>Доходы</span><b>${hf?MASK:money(inc,c)}</b></button></div>
  <div class="hd-pager" data-hd-pager><div class="hd-track">
-  <button type="button" class="hd-card hd-today${over?' over':''}" data-hd-explain="today"><span class="l">Можно потратить сегодня <i>${ico.info}</i><b>${over?'Перерасход '+money(-s.left,c):money(s.left,c)}</b></span><span class="r">до ${dateText(s.horizon)}<br>${s.days} ${plural(s.days,'день','дня','дней')}<span class="hd-bar"><i style="width:${s.norm?Math.max(0,Math.min(100,s.left/s.norm*100)):0}%"></i></span></span></button>
-  <button type="button" class="hd-card hd-forecast" data-hd-explain="forecast"><span class="l">Прогноз при таком темпе <i>${ico.info}</i><b>${money(f.month.value,c)}</b><small>через месяц</small></span><span class="r">через неделю<br><em>${money(f.week.value,c)}</em><small>${f.daily?'≈ '+money(f.daily,c)+' в день':'пока мало трат'}</small></span></button>
+  <button type="button" class="hd-card hd-today${over?' over':''}" data-hd-explain="today"><span class="l">Можно потратить сегодня <i>${ico.info}</i><b>${over?'−'+money(-s.left,c):money(s.left,c)}</b></span><span class="r">до ${dateText(s.horizon)}<br>${s.days} ${plural(s.days,'день','дня','дней')}<span class="hd-bar"><i style="width:${s.norm?Math.max(0,Math.min(100,s.left/s.norm*100)):0}%"></i></span></span></button>
+  <button type="button" class="hd-card hd-forecast" data-hd-explain="forecast"><span class="l">Прогноз через месяц <i>${ico.info}</i><b>${money(f.month.value,c)}</b></span><span class="r">через неделю<br><em>${money(f.week.value,c)}</em></span></button>
  </div></div><div class="hd-dots" aria-hidden="true"><i class="${slide===0?'on':''}"></i><i class="${slide===1?'on':''}"></i></div>`;
 }
 
@@ -47,8 +47,10 @@ function render(){
  if(!box){box=document.createElement('section');box.className='hd';home.querySelector('.intro').after(box);}
  box.innerHTML=html();
  const pager=box.querySelector('[data-hd-pager]');
- pager.scrollLeft=slide*pager.clientWidth;
- pager.onscroll=()=>{const i=Math.round(pager.scrollLeft/Math.max(1,pager.clientWidth));if(i!==slide){slide=i;box.querySelectorAll('.hd-dots i').forEach((d,k)=>d.classList.toggle('on',k===i));}};
+ const cards=[...pager.querySelectorAll('.hd-track>.hd-card')],stepW=()=>cards[1].offsetLeft-cards[0].offsetLeft||pager.clientWidth;
+ const paint=()=>{const x=pager.scrollLeft/Math.max(1,stepW());cards.forEach((c,k)=>{const d=Math.min(1,Math.abs(k-x));c.style.transform=`scale(${(1-.06*d).toFixed(3)})`;c.style.opacity=(1-.38*d).toFixed(3);});const i=Math.round(x);if(i!==slide){slide=i;box.querySelectorAll('.hd-dots i').forEach((dot,k)=>dot.classList.toggle('on',k===i));}};
+ pager.scrollLeft=slide*stepW();paint();
+ pager.onscroll=()=>requestAnimationFrame(paint);
 }
 
 function explain(kind){
@@ -59,7 +61,7 @@ function explain(kind){
   actionDialog('Можно потратить сегодня',`<div class="hd-explain"><p class="muted">Считаем только по деньгам, которые уже есть. Будущие доходы не учитываем, пока они не пришли, — так сумма не обманет.</p>
   <ul><li><span>На счетах на начало дня</span><b>${money(s.morning,c)}</b></li>${pays}<li class="sum"><span>Свободно до ${dateText(s.horizon)}</span><b>${money(s.free,c)}</b></li>
   <li><span>Делим на ${s.days} ${plural(s.days,'день','дня','дней')}</span><b>${money(s.norm,c)} в день</b></li><li><span>Уже потрачено сегодня</span><b>−${money(s.spentToday,c)}</b></li>
-  <li class="sum"><span>${s.left<0?'Перерасход сегодня':'Можно потратить сегодня'}</span><b>${money(Math.abs(s.left),c)}</b></li></ul>
+  <li class="sum${s.left<0?' over':''}"><span>Можно потратить сегодня</span><b>${s.left<0?'−':''}${money(Math.abs(s.left),c)}</b></li></ul>
   <p class="muted tiny">${s.byIncome?`${dateText(s.horizon)} — следующее поступление: по истории вы обычно получаете деньги в эти числа (зарплата, аванс). Подработки и разовые доходы учитываются, когда вы их внесли.`:'Регулярных поступлений пока не видно, поэтому делим до конца месяца. Когда зарплата или аванс придут хотя бы два месяца подряд, начнём считать до следующего поступления.'}</p>
   <p class="muted tiny">Если потратите меньше — завтра сумма будет больше. Если больше — завтрашняя уменьшится.</p></div>`);
  }else{
@@ -71,6 +73,7 @@ function explain(kind){
 }
 
 document.addEventListener('click',e=>{
+ const day=e.target.closest('[data-day-toggle]');if(day){day.classList.toggle('show-in');return;}
  const eye=e.target.closest('[data-hd-eye]');if(eye){hidden=!hidden;render();return;}
  const go=e.target.closest('[data-hd-go]');if(go){const type=go.dataset.hdGo;navigate('history');setTimeout(()=>document.querySelector(`[data-operation="${type}"]`)?.click(),reducedMotion()?0:520);return;}
  const ex=e.target.closest('[data-hd-explain]');if(ex){explain(ex.dataset.hdExplain);return;}
@@ -101,14 +104,7 @@ function goalExtras(g){
  return out;
 }
 
-// Заставка в режиме «баланс»: кошелёк встаёт туда, где окажется микрофон
-function alignLaunch(){
- const w=document.querySelector('.launch-wallet'),n=document.querySelector('.launch-name'),mic=document.querySelector('#mic');
- if(!w||!mic||cfg().mode==='classic')return;
- const r=mic.getBoundingClientRect();if(!r.height)return;const y=r.top+r.height/2;
- w.style.top=y+'px';if(n)n.style.top=(y+46)+'px';
-}
-
+(()=>{const box=document.querySelector('#homeReminders'),home=document.querySelector('#home');if(!box||!home)return;const sync=()=>home.classList.toggle('has-rem',!!box.querySelector('.reminder'));new MutationObserver(sync).observe(box,{childList:true,subtree:true});sync();})();
 root.MonoHome={render,summaryHTML,goalExtras,isHidden:()=>hidden};
-render();requestAnimationFrame(()=>requestAnimationFrame(alignLaunch));
+render();
 })(window);
