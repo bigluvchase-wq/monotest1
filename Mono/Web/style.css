@@ -1542,8 +1542,8 @@ html.motion-busy .bg-float i,html.motion-busy .orbit{animation-play-state:paused
 .reminder-more{margin-top:10px}
 
 /* ===== Главный экран: баланс, расходы и доходы, «Можно потратить сегодня» ===== */
-#home.home-dash .intro{display:none}
-html:has(#home.home-dash) .app>footer{display:none}
+:is(#home,[data-preview-id=home]).home-dash .intro{display:none}
+html:has(:is(#home,[data-preview-id=home]).home-dash) .app>footer{display:none}
 .hd{width:100%;max-width:440px;margin:2px auto 0;text-align:left;font-variant-numeric:tabular-nums}
 .hd-label{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)}
 .hd-eye{display:grid;place-items:center;width:30px;height:30px;min-height:30px;padding:0;margin:-6px 0;border:0;background:none;color:var(--muted)}
@@ -1600,26 +1600,26 @@ html:has(#home.home-dash) .app>footer{display:none}
 .hd-delta.muted{color:var(--muted);background:color-mix(in srgb,var(--muted) 12%,transparent)}
 .hd-track .l{white-space:nowrap}
 /* микрофон в режиме «баланс» чуть меньше — под ним остаётся место для напоминаний */
-#home.home-dash .voice-zone{scale:.84;margin-top:-18px;margin-bottom:-30px}
+:is(#home,[data-preview-id=home]).home-dash .voice-zone{scale:.84;margin-top:-18px;margin-bottom:-30px}
 .ops-head{align-items:center}
 .ops-summary{max-width:50%;font-size:11.5px;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
 /* Невысокие экраны (iPhone SE, mini): компактнее, чтобы микрофон и напоминания помещались */
 @media (max-height:760px){
- #home.home-dash .hd-balance{font-size:30px}
- #home.home-dash .hd-delta{margin-top:4px;padding:2px 8px;font-size:12px}
- #home.home-dash .hd-row{margin-top:8px;gap:8px}
- #home.home-dash .hd-flow{padding:8px 11px}
- #home.home-dash .hd-flow b{margin-top:3px;font-size:16px}
- #home.home-dash .hd-pager{margin-top:8px}
- #home.home-dash .hd-track>.hd-card{min-height:60px;padding:8px 12px}
- #home.home-dash .hd-track .l b{font-size:18px;margin-top:1px}
- #home.home-dash .hd-dots{margin-top:4px}
- #home.home-dash .voice-zone{scale:.6;margin-top:-58px;margin-bottom:-60px}
- #home.home-dash .account-picker>span{display:none}
+ :is(#home,[data-preview-id=home]).home-dash .hd-balance{font-size:30px}
+ :is(#home,[data-preview-id=home]).home-dash .hd-delta{margin-top:4px;padding:2px 8px;font-size:12px}
+ :is(#home,[data-preview-id=home]).home-dash .hd-row{margin-top:8px;gap:8px}
+ :is(#home,[data-preview-id=home]).home-dash .hd-flow{padding:8px 11px}
+ :is(#home,[data-preview-id=home]).home-dash .hd-flow b{margin-top:3px;font-size:16px}
+ :is(#home,[data-preview-id=home]).home-dash .hd-pager{margin-top:8px}
+ :is(#home,[data-preview-id=home]).home-dash .hd-track>.hd-card{min-height:60px;padding:8px 12px}
+ :is(#home,[data-preview-id=home]).home-dash .hd-track .l b{font-size:18px;margin-top:1px}
+ :is(#home,[data-preview-id=home]).home-dash .hd-dots{margin-top:4px}
+ :is(#home,[data-preview-id=home]).home-dash .voice-zone{scale:.6;margin-top:-58px;margin-bottom:-60px}
+ :is(#home,[data-preview-id=home]).home-dash .account-picker>span{display:none}
 }
 
 /* Главная: микрофон и кольца поменьше; если есть напоминания — вместо кнопки клавиатуры напоминания */
-#home.home-dash.has-rem #textEntry{display:none}
+:is(#home,[data-preview-id=home]).home-dash.has-rem :is(#textEntry,[data-preview-id=textEntry]){display:none}
 /* «Можно потратить сегодня» / «Прогноз» — как карусель напоминаний */
 .hd-track{gap:12px;grid-auto-columns:calc(100% - 18px)!important;padding-right:18px}
 .hd-track>.hd-card{transform-origin:center;will-change:transform,opacity}
@@ -1636,10 +1636,17 @@ html:has(#home.home-dash) .app>footer{display:none}
 .hd-track .l{min-width:0;white-space:normal;line-height:1.25}.hd-track .l b{white-space:nowrap}
 .hd-track .r{flex:none;white-space:nowrap}
 .hd-track{align-items:stretch}
-/* Главная «Баланс»: микрофон поменьше, с лёгким свечением и небольшими кругами */
-#home.home-dash .voice-zone{scale:1!important;width:140px!important;height:140px!important;margin:18px 0 4px!important}
-#home.home-dash #mic{width:96px!important;height:96px!important;box-shadow:0 8px 18px rgba(30,36,60,.14),0 0 26px color-mix(in srgb,var(--accent) 30%,transparent)!important}
-#home.home-dash #mic svg{width:30px!important;height:30px!important}
-#home.home-dash .orbit{box-shadow:0 0 0 1px var(--line) inset,0 0 24px var(--glow)!important}
-#home.home-dash .orbit.one{width:118px!important;height:118px!important}#home.home-dash .orbit.two{width:138px!important;height:138px!important}
-@media (max-height:760px){#home.home-dash .voice-zone{width:118px!important;height:118px!important;margin:10px 0 0!important}#home.home-dash #mic{width:82px!important;height:82px!important}#home.home-dash .orbit.one{width:100px!important;height:100px!important}#home.home-dash .orbit.two{width:116px!important;height:116px!important}}
+/* Главная «Баланс»: микрофон без заливки — иконка цветом темы и полупрозрачные круги */
+:is(#home,[data-preview-id=home]).home-dash .voice-zone{scale:1!important;width:150px!important;height:150px!important;margin:18px 0 4px!important}
+:is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]){width:84px!important;height:84px!important;background:color-mix(in srgb,var(--accent) 10%,transparent)!important;border:1px solid color-mix(in srgb,var(--accent) 22%,transparent)!important;box-shadow:none!important;color:var(--accent)!important}
+:is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic])::after{display:none}
+:is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]) svg{width:34px!important;height:34px!important;stroke-width:1.7!important}
+:is(#home,[data-preview-id=home]).home-dash .orbit{background:color-mix(in srgb,var(--accent) 6%,transparent)!important;border:1px solid color-mix(in srgb,var(--accent) 16%,transparent)!important;box-shadow:none!important}
+:is(#home,[data-preview-id=home]).home-dash .orbit.one{width:116px!important;height:116px!important}
+:is(#home,[data-preview-id=home]).home-dash .orbit.two{width:150px!important;height:150px!important;opacity:1!important;background:color-mix(in srgb,var(--accent) 3%,transparent)!important}
+:is(#home,[data-preview-id=home]).home-dash .voice-ripple{display:none!important}
+.listening :is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]){background:color-mix(in srgb,var(--accent) 18%,transparent)!important}
+@media (max-height:760px){:is(#home,[data-preview-id=home]).home-dash .voice-zone{width:124px!important;height:124px!important;margin:10px 0 0!important}:is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]){width:72px!important;height:72px!important}:is(#home,[data-preview-id=home]).home-dash .orbit.one{width:98px!important;height:98px!important}:is(#home,[data-preview-id=home]).home-dash .orbit.two{width:124px!important;height:124px!important}}
+/* «Можно потратить / Прогноз»: карточка во всю ширину, как «Расходы/Доходы» */
+.hd-track{grid-auto-columns:100%!important;padding-right:0!important;gap:12px}
+.hd-track .l{white-space:nowrap}
