@@ -1,5 +1,35 @@
 /* Glass lens: theme-aware depth, no continuously animated blur. */
 :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){position:relative;isolation:isolate;overflow:hidden;color:var(--accent)!important;border:1px solid color-mix(in srgb,var(--paper) 82%,transparent)!important;background:radial-gradient(ellipse at 27% 16%,color-mix(in srgb,var(--paper) 88%,transparent),transparent 55%),linear-gradient(145deg,color-mix(in srgb,var(--accent) 9%,transparent),color-mix(in srgb,var(--accent) 27%,transparent))!important;-webkit-backdrop-filter:blur(12px) saturate(130%);backdrop-filter:blur(12px) saturate(130%);box-shadow:0 16px 30px color-mix(in srgb,var(--accent) 17%,transparent),inset 0 3px 5px color-mix(in srgb,var(--paper) 94%,transparent),inset 0 -6px 12px color-mix(in srgb,var(--accent) 20%,transparent),inset 0 0 0 5px color-mix(in srgb,var(--paper) 35%,transparent)!important}
 :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic])::before{content:"";position:absolute;inset:7px;border-radius:50%;border:1px solid color-mix(in srgb,var(--paper) 75%,transparent);background:linear-gradient(135deg,color-mix(in srgb,var(--paper) 55%,transparent),transparent 48%);pointer-events:none;z-index:-1}
-.together-switch{display:flex;gap:6px;padding:5px;border:1px solid var(--line);border-radius:16px;margin:0 0 14px;align-items:center}.together-switch button{flex:1;min-height:36px;padding:6px 12px;border-radius:11px;font-size:13px;color:var(--muted)}.together-switch .active{background:var(--soft);color:var(--accent)}.together-chip{color:var(--accent);font-size:12px;padding:8px 12px;background:var(--soft);border-radius:12px}#together-home{width:100%}#together-invites{margin:10px 0}
-.ops-head .together-switch{margin:10px 0 0;padding:3px;gap:2px;border-radius:12px}.ops-head .together-switch button{min-width:0;padding:5px 4px;font-size:10px;min-height:30px}.ops-head .together-switch button:last-child{flex:0 0 20px;padding:0}
+/* Only the lens remains; no drifting ring outside the microphone. */
+:is(#home,[data-preview-id=home]) .voice-zone .orbit{display:none!important;animation:none!important}
+.together-mode.secondary{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:10px 15px;border-radius:15px;font-size:13px;white-space:nowrap;color:var(--accent);flex:none;max-width:100%}
+.together-mode svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.together-mode[aria-pressed=true]{background:var(--soft)}
+.together-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0 12px;flex-wrap:wrap}
+.together-toolbar>.together-mode{margin-left:auto}
+.together-toolbar>.limits-add-category{width:auto;flex:1;min-width:0;margin:0}
+.together-toolbar.action-row{display:grid;grid-template-columns:minmax(0,1fr) auto}
+.together-toolbar.action-row>[data-action=transfer]{grid-column:1/-1;justify-self:start}
+.together-toolbar.action-row>.together-mode{grid-column:2;grid-row:1}
+.ops-head .together-mode.secondary{margin-top:10px;min-height:38px;padding:7px 12px;font-size:12px}
+.together-chip{color:var(--accent);font-size:12px;padding:8px 12px;background:var(--soft);border-radius:12px}
+.together-invitation>p{line-height:1.55;overflow-wrap:anywhere}
+.together-invite-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px}
+.together-invite-actions>button{min-width:0;padding:14px 8px;font-size:14px}
+/* Lock the home canvas while dialogs retain their own scrolling. */
+html:has(body[data-page=home]){overflow:hidden;overscroll-behavior:none}
+body[data-page=home]{height:100dvh;overflow:hidden;overscroll-behavior:none}
+@media(prefers-reduced-transparency:reduce){
+ :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){background:var(--soft)!important;backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+@media(max-height:650px){
+ :is(#home,[data-preview-id=home]).home-dash .voice-zone{width:152px!important;height:152px!important}
+ :is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]){width:124px!important;height:124px!important}
+ :is(#home,[data-preview-id=home]).home-dash .recording-block{padding-top:6px}
+}
+
+.together-toolbar>.primary{margin:0;min-height:42px;width:auto;flex:1;min-width:0;padding:12px 14px;font-size:13px}
+@media(max-height:650px){
+ html:has(#home.home-dash) body[data-page=home] .app>footer{position:fixed;bottom:calc(94px + env(safe-area-inset-bottom));left:20px;right:20px;width:auto;height:14px;margin:0;padding:0;font-size:8px;pointer-events:none}
+}
