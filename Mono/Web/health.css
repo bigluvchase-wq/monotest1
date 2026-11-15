@@ -18,3 +18,5 @@
 @media(max-width:360px){.ops-head .health-entry{font-size:10px;padding:8px;gap:5px}.ops-head .health-pulse{width:28px;height:28px}.ops-head .health-entry>span:last-child{font-size:16px}}
 #entryDialog .input-meta>.parse-tools{flex:0 0 auto;min-width:max-content}.parse-tools .gallery-pick{flex:0 0 36px;min-width:36px;max-width:36px;height:36px}
 .rem-carousel .rem-arrow,.rem-carousel .rem-arrow:active{transform:translateY(-50%)!important;animation:none!important;transition:none!important}.rem-carousel .rem-arrow svg{transform:none!important;animation:none!important;transition:none!important}
+
+html:has(#home.home-dash) body[data-page=home] .app>footer{display:grid;height:30px;margin-top:auto;padding-top:5px}#home.home-dash.home-no-reminders .recording-block{transform:translateY(clamp(10px,4vh,36px))}@media(max-height:700px){#home.home-dash.home-no-reminders .recording-block{transform:translateY(16px)}}@media(max-height:600px){#home.home-dash.home-no-reminders .recording-block{transform:translateY(8px)}}

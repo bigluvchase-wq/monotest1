@@ -106,6 +106,7 @@ return [...s.categories,...s.incomeCategories].includes(e.category)&&(e.category
 if(!s.limits||Object.entries(s.limits).some(([c,ls])=>!currencies.includes(c)||!ls||typeof ls!=='object'||Object.entries(ls).some(([k,v])=>!s.categories.includes(k)||!isMoney(v)||v<0)))return false;
 if(!Array.isArray(s.payments)||new Set(s.payments.map(p=>p?.id)).size!==s.payments.length||!s.payments.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&p.name.trim()&&p.name.length<=100&&isMoney(p.amount)&&p.amount>0&&s.accounts.some(a=>a.id===p.account)&&s.categories.includes(p.category)&&validDate(p.date)&&['once','monthly','daily','weekly','fortnightly'].includes(p.repeat)&&(p.reminderTime===undefined||typeof p.reminderTime==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(p.reminderTime))&&Number.isInteger(p.remindDays)&&p.remindDays>=0&&p.remindDays<=30))return false;
 if(!s.settings||!['system','light','dark','black','blue','purple','green','burgundy'].includes(s.settings.theme)||!['ru','en'].includes(s.settings.language))return false;
+if(s.settings.bankMerchantRules!==undefined&&(!Array.isArray(s.settings.bankMerchantRules)||s.settings.bankMerchantRules.length>500||!s.settings.bankMerchantRules.every(r=>r&&typeof r.key==='string'&&r.key.length>=3&&r.key.length<=300&&['expense','income'].includes(r.type)&&typeof r.category==='string'&&r.category.length>0&&r.category.length<=80)))return false;
 if(s.settings.financialHealth!==undefined){
  const h=s.settings.financialHealth;if(!h||typeof h!=='object'||Array.isArray(h))return false;
  for(const key of ['historyComplete','paymentsComplete','debtConfirmed','reserveConfirmed'])if(h[key]!==undefined&&typeof h[key]!=='boolean')return false;
@@ -251,9 +252,13 @@ if(e.type==='expense'&&Speech.installment(clause)){
  e.title=e.title.replace(/(?<!\p{L})долями(?!\p{L})/iu,'').replace(/^(?:оплатил[аи]?|за)\s*/iu,'').trim()||'Покупка';
  e.title=e.title[0].toUpperCase()+e.title.slice(1);
 }
-const remembered=[...history].reverse().find(h=>h.categoryChosen===true&&['expense','income'].includes(h.type)&&normalizeTitle(h.title)===normalizeTitle(e.title)&&(h.type==='income'?state.incomeCategories:state.categories).includes(h.category));
+const bankM=typeof module==='object'?require('./bank-merchants'):root.MonoBankMerchants;
+const directionFree=!Speech.income(clause)&&!Speech.expense(clause)&&!/(?:купил|потрат|оплат|заплат|расход|доход|получил|заработал|продал|вернул|долг)/iu.test(clause);
+const savedRule=(state.settings?.bankMerchantRules||[]).slice().reverse().find(r=>r.key===bankM?.key(e.title)&&(directionFree||r.type===e.type)&&(r.type==='income'?state.incomeCategories:state.categories).includes(r.category));
+const remembered=savedRule||[...history].reverse().find(h=>h.categoryChosen===true&&['expense','income'].includes(h.type)&&normalizeTitle(h.title)===normalizeTitle(e.title)&&(h.type==='income'?state.incomeCategories:state.categories).includes(h.category));
+if(remembered?.type===e.type)e.category=remembered.category;
 // Only a direction-free phrase may inherit the type. Explicit words always win.
-if(remembered&&!Speech.income(clause)&&!Speech.expense(clause)&&!/(?:купил|потрат|оплат|заплат|расход|доход|получил|заработал|продал|вернул|долг)/iu.test(clause)){
+if(remembered&&directionFree){
  e.type=remembered.type;e.category=remembered.category;
 }
 const allowed=e.type==='income'?state.incomeCategories:state.categories;
