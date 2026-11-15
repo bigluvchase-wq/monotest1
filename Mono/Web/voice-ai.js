@@ -1,7 +1,7 @@
 (function(root){
 'use strict';
 const CONSENT='mono-voice-ai-consent';
-function enabled(){try{return localStorage.getItem(CONSENT)==='1';}catch{return false;}}
+function enabled(){try{return localStorage.getItem(CONSENT)!=='0';}catch{return false;}}
 function setEnabled(value){
  try{localStorage.setItem(CONSENT,value?'1':'0');return true;}catch{return false;}
 }
