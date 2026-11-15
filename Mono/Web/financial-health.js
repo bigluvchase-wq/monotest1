@@ -7,7 +7,9 @@ const monthShift=(month,n)=>{const [y,m]=month.split('-').map(Number);return new
 function calculate(state,currency,today=E.dateString(new Date())){
  const config=state.settings.financialHealth||{},currencyOf=id=>state.accounts.find(a=>a.id===id)?.currency;
  const relevant=state.entries.filter(e=>currencyOf(e.account)===currency&&e.date<=today);
- const earliest=relevant.reduce((min,e)=>e.date<min?e.date:min,today).slice(0,7);
+ const firstDate=relevant.reduce((min,e)=>e.date<min?e.date:min,today);
+ const coverageStart=config.coverageStartByCurrency?.[currency];
+ const earliest=coverageStart&&firstDate>=coverageStart&&coverageStart.slice(-2)!=='01'?monthShift(coverageStart.slice(0,7),1):firstDate.slice(0,7);
  const months=[-3,-2,-1].map(n=>monthShift(today.slice(0,7),n)).filter(m=>m>=earliest);
  const entries=relevant.filter(e=>months.includes(e.date.slice(0,7)));
  const targets={reserveMonths:[3,6,9,12].includes(config.reserveMonths)?config.reserveMonths:3,savingRate:[.05,.1,.15,.2,.25,.3].includes(config.savingRate)?config.savingRate:.1,freeRate:[.1,.2,.3].includes(config.freeRate)?config.freeRate:.2};

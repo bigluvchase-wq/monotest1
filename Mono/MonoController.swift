@@ -207,7 +207,26 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
                     }
                     return rows.map { row in row.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\t") }.joined(separator: "\n")
                 }
+                func bankRows(_ page: PDFPage) -> [[String: String]]? {
+                    let normalized = (page.string ?? "").components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
+                    guard normalized.contains("Дата и время"), normalized.contains("в валюте карты"), normalized.contains("Описание") else { return nil }
+                    let bounds = page.bounds(for: .mediaBox), w = bounds.width
+                    let column = CGRect(x: bounds.minX + w * 0.09, y: bounds.minY + 55, width: w * 0.11, height: bounds.height - 55)
+                    let lines = page.selection(for: column)?.selectionsByLine() ?? []
+                    let dates = lines.filter { ($0.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines).range(of: "^\\d{2}\\.\\d{2}\\.\\d{4}$", options: .regularExpression) != nil }.sorted { $0.bounds(for: page).maxY > $1.bounds(for: page).maxY }
+                    return dates.enumerated().map { index, line in
+                        let top = line.bounds(for: page).maxY + 2
+                        let next = index + 1 < dates.count ? dates[index + 1].bounds(for: page).maxY + 2 : bounds.minY + 55
+                        let bottom = max(next, top - 85)
+                        let amountRect = CGRect(x: bounds.minX + w * 0.49, y: line.bounds(for: page).minY - 2, width: w * 0.155, height: line.bounds(for: page).height + 4)
+                        let titleRect = CGRect(x: bounds.minX + w * 0.65, y: bottom, width: w * 0.187, height: max(1, top - bottom))
+                        return ["date": (line.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines), "amount": page.selection(for: amountRect)?.string ?? "", "title": page.selection(for: titleRect)?.string ?? ""]
+                    }
+                }
                 var text = ""
+                var structured: [[String: String]] = []
+                var bankDetected = false
+
                 if body["kind"] as? String == "pdf" {
                     guard let document = PDFDocument(data: data), !document.isLocked,
                           document.pageCount > 0, document.pageCount <= 30 else {
@@ -216,6 +235,7 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
                     for i in 0..<document.pageCount {
                         guard let page = document.page(at: i) else { continue }
                         let pageText = page.string ?? ""
+                        if let rows = bankRows(page) { bankDetected = true; structured.append(contentsOf: rows) }
                         if pageText.trimmingCharacters(in: .whitespacesAndNewlines).count > 30 { text += pageText }
                         else if let image = page.thumbnail(of: CGSize(width: 1800, height: 2400), for: .mediaBox).cgImage { text += try recognize(image) }
                         text += "\n\u{000C}\n"
@@ -232,6 +252,11 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
                     let normalized = UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
                     guard let cg = normalized.cgImage else { throw NSError(domain: "MonoDocument", code: 4, userInfo: [NSLocalizedDescriptionKey: "Не удалось подготовить изображение."]) }
                     text = try recognize(cg)
+                }
+                if bankDetected {
+                    let payload: [String: Any] = ["format": "mono-bank-table-v1", "rows": structured, "sourceText": text]
+                    let encoded = try JSONSerialization.data(withJSONObject: payload)
+                    text = String(decoding: encoded, as: UTF8.self)
                 }
                 DispatchQueue.main.async { self?.send("documentResult", [id, text, ""]) }
             } catch {

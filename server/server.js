@@ -159,15 +159,9 @@ function rateLimit(req, res, next) {
 }
 setInterval(() => { const t = Date.now(); for (const m of [failures, hits]) for (const [k, v] of m) { const f = v.filter(x => t - x < 60000); if (f.length) m.set(k, f); else m.delete(k); } }, 60000).unref();
 
-// Умный разбор: ключ Yandex остаётся только в окружении сервера.
-require('./voice-ai').install(app,{db,rateLimit,authenticate(req,res){
-    const user=q.user.get(req.body.code);
-    if(!user){noteFailure(req);res.status(401).json({ok:false,error:'unauthorized'});return null;}
-    // Для платного API нужен уже привязанный ключ: запрос не может присвоить старый код.
-    const key=keyOf(req);
-    if(!user.key_hash||!validKey(key)||!sameHash(user.key_hash,hashKey(key))){noteFailure(req);res.status(401).json({ok:false,error:'unauthorized'});return null;}
-    return user;
-}});
+// Yandex integration is retired. No provider, credentials or paid routes are initialized.
+app.get('/api/voice/status',(req,res)=>res.json({enabled:false}));
+app.post('/api/voice/parse',(req,res)=>res.status(410).json({ok:false,error:'voice_ai_disabled'}));
 
 // Тарифы: сумма → месяцы. Цены со страницы оплаты и прежние цены — на всякий случай
 const PLAN_MONTHS = { 129: 1, 649: 6, 1299: 12, 199: 1, 999: 6, 1799: 12 };

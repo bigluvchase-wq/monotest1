@@ -126,13 +126,13 @@ function categorize(item,list){
 const ds=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 function cutoff(today=new Date()){const d=new Date(today);d.setMonth(d.getMonth()-3);return ds(d);}
 // Убираем то, что уже есть в приложении (та же дата, сумма и тип на этом счёте)
-function plan(items,existing,account,today=new Date()){
+function plan(items,existing,account,today=new Date(),strict=false){
  const from=cutoff(today),to=ds(today),seen=new Map();
- for(const e of existing)if(e.account===account&&(e.type==='expense'||e.type==='income')){const k=e.date+'|'+e.amount+'|'+e.type;seen.set(k,(seen.get(k)||0)+1);}
+ for(const e of existing)if(e.account===account&&(e.type==='expense'||e.type==='income')){const k=e.date+'|'+e.amount+'|'+e.type+(strict?'|'+low(e.title):'');seen.set(k,(seen.get(k)||0)+1);}
  const fresh=[];let dup=0,old=0;
  for(const it of items){
   if(it.date<from||it.date>to){old++;continue;}
-  const k=it.date+'|'+it.amount+'|'+it.type;if(seen.get(k)){seen.set(k,seen.get(k)-1);dup++;continue;}
+  const k=it.date+'|'+it.amount+'|'+it.type+(strict?'|'+low(it.title):'');if(seen.get(k)){seen.set(k,seen.get(k)-1);dup++;continue;}
   fresh.push(it);
  }
  return {fresh,dup,old,from};
@@ -155,15 +155,16 @@ function pick(){
   try{if(/\.pdf$/i.test(file.name)||file.type==='application/pdf'){await root.MonoDocumentImport.recognize(file);}else preview(await readFile(file));}catch(e){notify(e.message||'Не получилось прочитать файл.');}};
  input.click();
 }
-function preview(items){
+function preview(items,verified=null){
  if(!items.length){notify('В файле не нашлось операций.');return;}
+ let selected=new Set(items.flatMap((e,i)=>e.review?[]:[i]));
  const accounts=state.accounts,first=(accounts.find(a=>a.currency==='RUB')||accounts[0]).id;
  const fmt=d=>new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
  const draw=account=>{
-  const acc=accounts.find(a=>a.id===account),cur=acc.currency,p=plan(items,state.entries,account);
+  const acc=accounts.find(a=>a.id===account),cur=acc.currency,p=plan(items.filter((e,i)=>selected.has(i)),state.entries,account,new Date(),!!verified);
   const sum=t=>p.fresh.filter(i=>i.type===t),ex=sum('expense'),inc=sum('income'),tot=l=>l.reduce((n,i)=>n+i.amount,0);
-  const sample=p.fresh.slice(0,5).map(i=>`<li><span>${esc(i.title)}<small>${fmt(i.date)}</small></span><b class="${i.type==='income'?'in':''}">${i.type==='income'?'+':'−'}${money(i.amount,cur)}</b></li>`).join('');
-  return {p,html:`<form class="bank-import"><p class="muted">Нашли операции с ${fmt(p.from)} по сегодня. Категории подберём сами — потом их можно поменять.</p>
+  const sample=p.fresh.slice(0,20).map(i=>`<li><span>${esc(i.title)}<small>${fmt(i.date)}</small></span><b class="${i.type==='income'?'in':''}">${i.type==='income'?'+':'−'}${money(i.amount,cur)}</b></li>`).join('');
+  return {p,html:`<form class="bank-import">${verified?`<p class="muted">Проверено по итогам банка: ${items.length} операций. Поступления ${money(verified.income,cur)}, списания ${money(verified.expense,cur)}.</p><p class="warn">Переводы и снятие наличных не выбраны автоматически: это может быть движение собственных денег. Проверьте их отдельно. Валюта выписки — RUB; выберите рублёвый счёт.</p><details><summary>Все операции и выбор для импорта</summary>${items.map((e,i)=>`<label class="health-check"><input type="checkbox" data-bank-row="${i}" ${selected.has(i)?'checked':''}><span>${esc(e.date)} · ${esc(e.title)} · ${e.type==='income'?'+':'−'}${money(e.amount,cur)}${e.review?' · требует проверки':''}</span></label>`).join('')}</details>`:''}<p class="muted">Нашли операции с ${fmt(p.from)} по сегодня. Категории подберём сами — потом их можно поменять.</p>
   <label class="field"><span>На какой счёт записать</span><select name="account">${accounts.map(a=>`<option value="${esc(a.id)}" ${a.id===account?'selected':''}>${esc(a.name)} · ${esc(a.currency)}</option>`).join('')}</select></label>
   <ul class="bank-import-sum"><li><span>Расходы · ${ex.length}</span><b>−${money(tot(ex),cur)}</b></li><li><span>Доходы · ${inc.length}</span><b class="in">+${money(tot(inc),cur)}</b></li></ul>
   ${sample?`<ul class="bank-import-list">${sample}</ul>`:''}
@@ -171,15 +172,16 @@ function preview(items){
   <button class="primary full" ${p.fresh.length?'':'disabled'}>${p.fresh.length?`Загрузить ${p.fresh.length}`:'Нечего загружать'}</button></form>`};
  };
  const show=account=>{const v=draw(account);
-  actionDialog('Загрузка выписки',v.html,(data)=>{const acc=String(data.get('account')),{fresh}=plan(items,state.entries,acc),now=new Date().toISOString();
-   const ok=commit(s=>{const ex=s.categories,inc=s.incomeCategories;for(const it of fresh)s.entries.push({id:uid(),type:it.type,title:it.title,amount:it.amount,category:categorize(it,it.type==='income'?inc:ex),account:acc,date:it.date,createdAt:now,imported:true});},`Загружено операций: ${fresh.length}`);
+  actionDialog('Загрузка выписки',v.html,(data)=>{const acc=String(data.get('account'));if(verified&&state.accounts.find(a=>a.id===acc)?.currency!=='RUB')throw Error('Эта выписка в рублях. Выберите рублёвый счёт.');const {fresh}=plan(items.filter((e,i)=>selected.has(i)),state.entries,acc,new Date(),!!verified),now=new Date().toISOString();
+   const ok=commit(s=>{if(verified?.from&&!s.entries.some(e=>s.accounts.find(a=>a.id===e.account)?.currency==='RUB'&&e.date<verified.from)){const h=s.settings.financialHealth||(s.settings.financialHealth={});h.coverageStartByCurrency={...(h.coverageStartByCurrency||{}),RUB:verified.from};}const ex=s.categories,inc=s.incomeCategories;for(const it of fresh)s.entries.push({id:uid(),type:it.type,title:it.title,amount:it.amount,category:categorize(it,it.type==='income'?inc:ex),account:acc,date:it.date,createdAt:now,imported:true});},`Загружено операций: ${fresh.length}`);
    if(ok)$('#actionDialog').close();});
+  document.querySelectorAll('[data-bank-row]').forEach(input=>input.onchange=()=>{const i=Number(input.dataset.bankRow);if(input.checked)selected.add(i);else selected.delete(i);const y=document.querySelector('#actionDialog').scrollTop;show(account);document.querySelector('#actionBody details').open=true;document.querySelector('#actionDialog').scrollTop=y;});
   const sel=document.querySelector('#actionBody select[name=account]');if(sel)sel.onchange=()=>show(sel.value);
  };
  show(first);
 }
 
 const api={parseCSV,parseDate,parseAmount,tableToItems,categorize,plan,cutoff};
-root.MonoBankImport={...api,pick};
+root.MonoBankImport={...api,pick,preview};
 if(typeof module==='object')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
