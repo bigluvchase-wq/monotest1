@@ -354,18 +354,7 @@ function premiumDialog(){
  setTimeout(()=>navigate('premium'),document.querySelector('dialog[open]')?320:0);
 }
 // Отправка текста без раскрытия ключа устройства другим модулям.
-async function parseVoice(payload,{signal}={}){
- if(!accessAvailable||CFG.apiBase)throw Error('voice_unavailable');
- if(!/^\d{6}$/.test(acc.code||'')||!/^[0-9a-f]{64}$/i.test(acc.secret||''))throw Error('voice_unavailable');
- if(acc.provisional){
-  const registration=await fetch('https://api.monoapp.ru/api/registerUser',{method:'POST',signal,headers:keyHeaders(),body:JSON.stringify({code:acc.code})});
-  if(!registration.ok)throw Error('registration_failed');
-  acc.provisional=false;saveIdentity();
- }
- const response=await fetch(CFG.voiceAIUrl,{method:'POST',signal,headers:keyHeaders(),body:JSON.stringify({...payload,code:acc.code})});
- if(!response.ok)throw Error('voice_unavailable');
- return response.json();
-}
+async function parseVoice(){throw Error('voice_ai_disabled');}
 root.MonoAccess={
  isPremium,
  canUse:()=>isPremium()||daysLeft(acc.trialUntil)>0,

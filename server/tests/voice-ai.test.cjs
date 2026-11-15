@@ -49,7 +49,7 @@ test('concurrent requests are bounded and slots release after failure',async t=>
  assert.equal(f.calls.length,1);
  const second=f.request();const previous=release;while(release===previous)await new Promise(r=>setTimeout(r,5));release();await second;assert.equal(f.calls.length,2);
 });
-test('real server requires a previously bound device key and rejects oversized voice bodies',async t=>{
+test('retired live server disables AI even with credentials configured and bounds request bodies',async t=>{
  const {spawn}=require('node:child_process'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),net=require('node:net');
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'mono-ai-http-'));
  const probe=net.createServer();probe.listen(0,'127.0.0.1');await new Promise(r=>probe.once('listening',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
@@ -61,11 +61,12 @@ test('real server requires a previously bound device key and rejects oversized v
  assert.match(output,/Server running/);
  const request=(endpoint,body,key='a'.repeat(64))=>fetch(url+endpoint,{method:'POST',headers:{'Content-Type':'application/json','x-mono-key':key},body:JSON.stringify(body)});
  assert.equal((await request('/api/registerUser',{code:'123456'})).status,200);
- assert.equal((await request('/api/voice/parse',{code:'123456',text:'',context},'b'.repeat(64))).status,401);
- assert.equal((await request('/api/voice/parse',{code:'654321',text:'',context})).status,401);
- assert.equal((await request('/api/voice/parse',{code:'123456',text:'',context})).status,400);
+ assert.equal((await request('/api/voice/parse',{code:'123456',text:'',context},'b'.repeat(64))).status,410);
+ assert.equal((await request('/api/voice/parse',{code:'654321',text:'',context})).status,410);
+ assert.equal((await request('/api/voice/parse',{code:'123456',text:'',context})).status,410);
  assert.equal((await request('/api/voice/parse',{code:'123456',text:'PRIVATE_MARKER'.repeat(6000),context})).status,413);
  assert.equal(output.includes('PRIVATE_MARKER'),false);
+ assert.deepEqual(await (await fetch(url+'/api/voice/status')).json(),{enabled:false});
 });
 test('full voice self-test uses isolated storage and checks both finance and off-topic handling',async()=>{
  const {selfTest}=require('../voice-ai-self-test');let calls=0;const messages=[];

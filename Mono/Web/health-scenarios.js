@@ -1,7 +1,7 @@
 (function(root){
 'use strict';
 const E=typeof module==='object'?require('./engine'):root.MonoEngine,S=typeof module==='object'?require('./schedule'):root.MonoSchedule,H=typeof module==='object'?require('./financial-health'):root.MonoFinancialHealth;
-function signature(state,r){const h=state.settings.financialHealth||{};return JSON.stringify([1,r.currency,r.months.length,r.provisional,r.targets,h.historyComplete===true,h.paymentsComplete===true,h.debtConfirmed===true,h.reserveConfirmed===true,...['debtPaymentIds','reserveAccountIds','reserveGoalIds'].map(k=>(h[k]||[]).slice().sort()),r.parts.filter(p=>p.score!==null).map(p=>p.id)]);}
+function signature(state,r){const h=state.settings.financialHealth||{};return JSON.stringify([2,r.currency,r.months.length,r.provisional,r.targets,h.historyComplete===true,h.paymentsComplete===true,h.debtConfirmed===true,h.reserveConfirmed===true,...['debtPaymentIds','reserveAccountIds','reserveGoalIds'].map(k=>(h[k]||[]).slice().sort()),r.parts.filter(p=>p.score!==null).map(p=>p.id)]);}
 function analyze(state,currency,today=E.dateString(new Date())){
  const r=H.calculate(state,currency,today),h=state.settings.financialHealth||{},next=h.nextIncome?.[currency];
  const cur=id=>state.accounts.find(a=>a.id===id)?.currency;

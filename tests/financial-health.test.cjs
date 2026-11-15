@@ -55,3 +55,4 @@ test('7, 14 and 30 day payment horizons are nested, not additive',()=>{
  const s=seed();s.payments=[{id:'weekly',name:'Платёж',amount:10000,account:'main',date:today,repeat:'weekly',category:'Дом',remindDays:0}];
  assert.deepEqual(H.calculate(s,'RUB',today).commitments,{7:10000,14:20000,30:50000});
 });
+test('a statement beginning mid-month does not make that month a full observation',()=>{const s=seed();s.entries=s.entries.filter(e=>e.date>='2026-08-15');s.settings.financialHealth.coverageStartByCurrency={RUB:'2026-08-15'};assert.deepEqual(H.calculate(s,'RUB','2026-11-15').months,['2026-09','2026-10']);});
