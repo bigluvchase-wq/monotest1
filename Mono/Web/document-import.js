@@ -52,12 +52,14 @@ function bankTable(payload){
 }
 let busy=false;
 async function recognize(file){
- if(!root.MonoNative?.recognizeDocument)throw Error('Распознавание изображений и PDF доступно в новой сборке приложения для iPhone.');
+ const isPDF=/\.pdf$/i.test(file.name)||file.type==='application/pdf';
+ if(!isPDF&&!root.MonoNative?.recognizeDocument)throw Error('Распознавание изображений и PDF доступно в новой сборке приложения для iPhone.');
  if(busy)throw Error('Дождитесь завершения распознавания.');busy=true;
  const originPage=page,wasOpen=document.querySelector('#entryDialog').open,originalText=document.querySelector('#dictation').value;
  try{
-  notify('Распознаём документ на iPhone…',false,{duration:10000});
-  const text=await root.MonoNative.recognizeDocument(file);
+  notify('Читаем документ на устройстве…',false,{duration:10000});
+  let text=isPDF?await root.MonoPDFReader.read(file):null;
+  if(text===null){if(!root.MonoNative?.recognizeDocument)throw Error('Для сканированного PDF нужно приложение на iPhone.');text=await root.MonoNative.recognizeDocument(file);}
   if(page!==originPage||wasOpen&&(!document.querySelector('#entryDialog').open||document.querySelector('#dictation').value!==originalText)){notify('Импорт отменён: экран или текст изменились.');return;}
   if(text.trim().startsWith('{')){let payload;try{payload=JSON.parse(text);}catch{throw Error('Не удалось прочитать ответ распознавания.');}const bank=bankTable(payload);document.querySelector('#entryDialog').close();MonoBankImport.preview(bank.items,bank);return;}
   if(/Справка о движении средств/iu.test(text)&&/в валюте карты/iu.test(text))throw Error('Столбцы банковской выписки не распознаны. Неполный импорт остановлен.');

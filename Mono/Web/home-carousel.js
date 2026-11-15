@@ -24,7 +24,7 @@ function mount(box){
  function paint(animate){
   cards.forEach((el,i)=>{
    const pos=rel(i),a=Math.abs(pos),near=Math.min(1,a);
-   const op=a<=1?1-.42*a:Math.max(0,.58-(a-1)*.9),sc=1-.08*near,bl=near*3.2;
+   const op=a<=1?1-.42*a:Math.max(0,.58-(a-1)*.9),sc=1,bl=near*3.2;
    el.style.transition=animate&&!dragging&&!reducedMotion()?'transform .5s cubic-bezier(.22,1,.36,1),opacity .5s ease':'none';
    el.style.transform=`translateX(calc(-50% + ${(pos*step).toFixed(1)}px)) scale(${sc.toFixed(3)})`;
    el.style.opacity=op.toFixed(3);
@@ -64,7 +64,7 @@ function mount(box){
   // продолжаем с текущего положения: drag переносится в индекс без скачка
   const before=cards.map((_,i)=>rel(i));
   drag=0;cur=loop?((cur+d)%n+n)%n:clamp(cur+d,0,n-1);remembered=cur;
-  cards.forEach((el,i)=>{el.style.transition='none';const p=before[i],a=Math.abs(p);el.style.transform=`translateX(calc(-50% + ${(p*step).toFixed(1)}px)) scale(${(1-.08*Math.min(1,a)).toFixed(3)})`;});
+  cards.forEach((el,i)=>{el.style.transition='none';const p=before[i],a=Math.abs(p);el.style.transform=`translateX(calc(-50% + ${(p*step).toFixed(1)}px)) scale(${'1.000'})`;});
   void stage.offsetWidth;
   cards.forEach((el,i)=>{if(loop&&Math.abs(rel(i)-before[i])>1.5)el.dataset.jump='1';});
   paint(true);
