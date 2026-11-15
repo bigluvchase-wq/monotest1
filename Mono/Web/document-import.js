@@ -65,11 +65,12 @@ async function recognize(file){
   if(/Справка о движении средств/iu.test(text)&&/в валюте карты/iu.test(text))throw Error('Столбцы банковской выписки не распознаны. Неполный импорт остановлен.');
   // Preserve table structure when PDF text extraction produced actual columns.
   let r;
-  if(root.MonoBankImport&&text.includes('\t')){try{const rows=MonoBankImport.tableToItems(MonoBankImport.parseCSV(text));if(rows.length)r={entries:rows.map(e=>({...e,account:voiceAccount,category:MonoBankImport.categorize(e,e.type==='income'?state.incomeCategories:state.categories)})),errors:[],assumed:false};}catch{}}
+  if(root.MonoBankImport&&text.includes('\t')){try{const rows=MonoBankImport.tableToItems(MonoBankImport.parseCSV(text));if(rows.length)r={entries:rows.map(e=>({...e,account:voiceAccount,category:MonoBankImport.categorize(e,e.type==='income'?state.incomeCategories:state.categories,state.entries,state.settings.bankMerchantRules||[])})),errors:[],assumed:false};}catch{}}
   r=r||parse(text,state,voiceAccount);
   if(!r.entries.length)throw Error('Не нашли однозначных операций. Нужны даты, названия и суммы со знаком +/− либо текст «купил…», «получил…». Попробуйте более чёткий снимок или CSV.');
   if(r.entries.length>200)throw Error('Больше 200 операций. Разделите документ.');
-  openEntry();drafts=r.entries;parseErrors=[];renderDrafts();
+  if(r.entries.some(e=>MonoBankImport.isOwnTransfer(e))){document.querySelector('#entryDialog').close();MonoBankImport.preview(r.entries);return;}
+  openEntry();drafts=r.entries.map(e=>({...e,imported:true}));parseErrors=[];renderDrafts();
   const warnings=['Строки без явного направления могут быть предложены как расходы. Проверьте каждую сумму, тип, дату, валюту счёта и категорию. Документ ещё не сохранён.'];
   if(r.assumed)warnings.push('Для записей без даты предложена сегодняшняя дата.');
   if(r.errors.length)warnings.push('Некоторые строки не разобраны: '+r.errors.slice(0,5).join('; '));

@@ -86,7 +86,7 @@ function columns(header){
   amount:find(/^сумма операции$/,/сумма в валюте сч/,/^сумма платежа$/,/^сумма операции/,/^сумма$/,/сумма(?!.*(кеш|кэш|бонус|комисс))/,/^amount/),
   debit:find(/^(расход|списани|дебет)/),credit:find(/^(приход|зачислени|поступлени|кредит)/),
   desc:find(/^описание/,/описание/,/назначение/,/наименование/,/контрагент|получатель|место/,/^description/),
-  cat:find(/категори/,/^category/),status:find(/^статус/,/^status/),kind:find(/^тип( операции)?$/,/направлени/)
+  cat:find(/категори/,/^category/),status:find(/^статус/,/^status/),kind:find(/^тип( операции)?$/,/направлени/),mcc:find(/^mcc$/,/код.*категории.*продавца/)
  };
 }
 function tableToItems(rows){
@@ -103,38 +103,44 @@ function tableToItems(rows){
   if(!n)continue;
   if(col.kind>=0){const k=low(r[col.kind]);if(/списан|расход|покупк|оплат|дебет/.test(k))n=-Math.abs(n);else if(/зачисл|пополн|приход|поступ|кредит/.test(k))n=Math.abs(n);}
   const desc=String(r[col.desc]??'').replace(/\s+/g,' ').trim(),bankCat=String(r[col.cat]??'').trim();
-  items.push({date,amount:Math.round(Math.abs(n)*100),type:n<0?'expense':'income',title:(desc||bankCat||(n<0?'Расход':'Доход')).slice(0,80),bankCat});
+  items.push({date,amount:Math.round(Math.abs(n)*100),type:n<0?'expense':'income',title:(desc||bankCat||(n<0?'Расход':'Доход')).slice(0,80),bankCat,...(col.mcc>=0&&/^\d{4}$/.test(String(r[col.mcc]||'').trim())?{mcc:String(r[col.mcc]).trim()}:{})});
  }
  return items;
 }
 
 // Категории банка → категории «моно»
 const BANK=[
- [/супермаркет|продукт|гипермаркет/,'Продукты'],[/ресторан|фастфуд|кафе|кофейн|бар/,'Кафе'],[/такси|транспорт|каршеринг|метро/,'Транспорт'],
- [/топливо|азс|авто|парковк/,'Авто'],[/аптек|медицин|здоров/,'Здоровье'],[/красот|салон|косметик/,'Красота'],[/одежд|обув/,'Одежда и обувь'],
+ [/супермаркет|продукт|гипермаркет/,'Продукты'],[/ресторан|фастфуд|кафе|кофейн|(?<!\p{L})бары?(?!\p{L})/u,'Кафе'],[/такси|транспорт|каршеринг|метро/,'Транспорт'],
+ [/топливо|азс|авто|парковк/,'Авто'],[/аптек|медицин|здоров/,'Здоровье'],[/красот|салон|косметик|барбер/,'Красота'],[/одежд|обув/,'Одежда и обувь'],
  [/развлечен|кино|театр|музе/,'Развлечения'],[/связь|мобильн|интернет|телеком/,'Связь'],[/жкх|коммунал|дом|ремонт/,'Дом'],[/маркетплейс/,'Маркетплейсы'],
  [/путешеств|авиа|отел|ж\/д|жд билет|туризм/,'Путешествия'],[/образован|книг/,'Образование'],[/спорт|фитнес/,'Спорт'],[/животн|зоо/,'Питомцы'],
  [/подписк|цифров/,'Подписки'],[/перевод/,'Переводы'],[/кэшб|кешб/,'Кешбэк'],[/процент/,'Проценты'],[/зарплат/,'Зарплата'],[/подар/,'Подарки']
 ];
-function categorize(item,list){
+function categorize(item,list,history=[],rules=[]){
+ const M=root.MonoBankMerchants||(typeof module==='object'?require('./bank-merchants'):null);
  const S=root.MonoSpeechCategories,has=c=>c&&list.includes(c)?c:null;
  const bank=BANK.find(([re])=>re.test(low(item.bankCat)))?.[1];
- const fromText=item.type==='income'?S?.income?.(item.title):S?.expense?.(item.title);
- return has(list.includes(item.bankCat)?item.bankCat:null)||has(bank)||has(fromText&&fromText!=='Другое'?fromText:null)||(list.includes('Другое')?'Другое':list[0]);
+ const bankTransfer=/банк|\bbank\b/iu.test(item.title)&&/перевод|perevod/iu.test(item.title);
+ const fromText=bankTransfer?(item.type==='expense'?'Переводы':null):item.type==='income'?S?.income?.(item.title):S?.expense?.(item.title);
+ return has(M?.learned(item,list,history,rules))||has(list.includes(item.bankCat)?item.bankCat:null)||has(bank)||has(M?.category(item))||has(fromText&&fromText!=='Другое'?fromText:null)||(list.includes('Другое')?'Другое':list[0]);
 }
 
 const ds=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 function cutoff(today=new Date()){const d=new Date(today);d.setMonth(d.getMonth()-3);return ds(d);}
 // Убираем то, что уже есть в приложении (та же дата, сумма и тип на этом счёте)
+function isOwnTransfer(item){return item.ownTransfer===true||/(?:перевод(?:[а-я ]{0,20})?себе|между своими|самому себе|self[ -]?transfer)/iu.test(item.title||'');}
+function rowToEntry(item,accountId,counterpartId,accounts){
+ if(!isOwnTransfer(item)&&!counterpartId)return {...item,account:accountId};
+ const own=accounts.find(a=>a.id===accountId),other=accounts.find(a=>a.id===counterpartId);
+ if(!own||!other||own.id===other.id||own.currency!==other.currency)throw Error('Для своего перевода выберите второй счёт в той же валюте.');
+ return {title:item.title,date:item.date,amount:item.amount,type:'transfer',account:item.type==='income'?other.id:own.id,toAccount:item.type==='income'?own.id:other.id,toAmount:item.amount};
+}
 function plan(items,existing,account,today=new Date(),strict=false){
  const from=cutoff(today),to=ds(today),seen=new Map();
- for(const e of existing)if(e.account===account&&(e.type==='expense'||e.type==='income')){const k=e.date+'|'+e.amount+'|'+e.type+(strict?'|'+low(e.title):'');seen.set(k,(seen.get(k)||0)+1);}
+ const key=e=>e.date+'|'+e.amount+'|'+e.type+(e.type==='transfer'?'|'+e.account+'>'+e.toAccount:strict?'|'+low(e.title):'');
+ for(const e of existing)if(e.account===account&&['expense','income'].includes(e.type)||strict&&e.type==='transfer'&&(e.account===account||e.toAccount===account)){const k=key(e);seen.set(k,(seen.get(k)||0)+1);}
  const fresh=[];let dup=0,old=0;
- for(const it of items){
-  if(it.date<from||it.date>to){old++;continue;}
-  const k=it.date+'|'+it.amount+'|'+it.type+(strict?'|'+low(it.title):'');if(seen.get(k)){seen.set(k,seen.get(k)-1);dup++;continue;}
-  fresh.push(it);
- }
+ for(const it of items){if(it.date<from||it.date>to){old++;continue;}const k=key(it);if(seen.get(k)){seen.set(k,seen.get(k)-1);dup++;continue;}fresh.push(it);}
  return {fresh,dup,old,from};
 }
 
@@ -157,31 +163,33 @@ function pick(){
 }
 function preview(items,verified=null){
  if(!items.length){notify('В файле не нашлось операций.');return;}
- let selected=new Set(items.flatMap((e,i)=>e.review?[]:[i]));
+ let selected=new Set(items.flatMap((e,i)=>e.review||isOwnTransfer(e)?[]:[i]));const counterparts=new Map();
  const accounts=state.accounts,first=(accounts.find(a=>a.currency==='RUB')||accounts[0]).id;
  const fmt=d=>new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+ const selectedItems=account=>items.flatMap((it,i)=>{if(!selected.has(i))return [];try{return [rowToEntry(it,account,counterparts.get(i),accounts)];}catch{return [];}});
  const draw=account=>{
-  const acc=accounts.find(a=>a.id===account),cur=acc.currency,p=plan(items.filter((e,i)=>selected.has(i)),state.entries,account,new Date(),!!verified);
+  const acc=accounts.find(a=>a.id===account),cur=acc.currency,p=plan(selectedItems(account),state.entries,account,new Date(),!!verified);
   const sum=t=>p.fresh.filter(i=>i.type===t),ex=sum('expense'),inc=sum('income'),tot=l=>l.reduce((n,i)=>n+i.amount,0);
-  const sample=p.fresh.slice(0,20).map(i=>`<li><span>${esc(i.title)}<small>${fmt(i.date)}</small></span><b class="${i.type==='income'?'in':''}">${i.type==='income'?'+':'−'}${money(i.amount,cur)}</b></li>`).join('');
-  return {p,html:`<form class="bank-import">${verified?`<p class="muted">Проверено по итогам банка: ${items.length} операций. Поступления ${money(verified.income,cur)}, списания ${money(verified.expense,cur)}.</p><p class="warn">Переводы и снятие наличных не выбраны автоматически: это может быть движение собственных денег. Проверьте их отдельно. Валюта выписки — RUB; выберите рублёвый счёт.</p><details><summary>Все операции и выбор для импорта</summary>${items.map((e,i)=>`<label class="health-check"><input type="checkbox" data-bank-row="${i}" ${selected.has(i)?'checked':''}><span>${esc(e.date)} · ${esc(e.title)} · ${e.type==='income'?'+':'−'}${money(e.amount,cur)}${e.review?' · требует проверки':''}</span></label>`).join('')}</details>`:''}<p class="muted">Нашли операции с ${fmt(p.from)} по сегодня. Категории подберём сами — потом их можно поменять.</p>
+  const sample=p.fresh.slice(0,20).map(i=>`<li><span>${esc(i.title)}<small>${fmt(i.date)}</small></span><b class="${i.type==='income'?'in':''}">${i.type==='transfer'?'↔':i.type==='income'?'+':'−'}${money(i.amount,cur)}</b></li>`).join('');
+  return {p,html:`<form class="bank-import">${(verified||items.some(isOwnTransfer))?`${verified?`<p class="muted">Проверено по итогам банка: ${items.length} операций. Поступления ${money(verified.income,cur)}, списания ${money(verified.expense,cur)}.</p>`:''}<p class="warn">Переводы и снятие наличных не выбраны автоматически. Для движения между своими счетами выберите второй свой счёт: такие строки запишутся переводами и не увеличат доходы или расходы. ${verified?'Валюта выписки — RUB; выберите рублёвый счёт.':''}</p><details><summary>Все операции и выбор для импорта</summary>${items.map((e,i)=>`<label class="health-check"><input type="checkbox" data-bank-row="${i}" ${selected.has(i)?'checked':''} ${isOwnTransfer(e)&&!counterparts.get(i)?'disabled':''}><span>${esc(e.date)} · ${esc(e.title)} · ${e.type==='income'?'+':'−'}${money(e.amount,cur)}${e.review||isOwnTransfer(e)?' · требует проверки':''}</span></label>${e.review||isOwnTransfer(e)?`<label class="field">Второй свой счёт (для своего перевода)<select data-bank-counterpart="${i}"><option value="">${isOwnTransfer(e)?'Выберите счёт — иначе пропустим':'Не свой перевод'}</option>${accounts.filter(a=>a.id!==account&&a.currency===cur).map(a=>`<option value="${esc(a.id)}" ${counterparts.get(i)===a.id?'selected':''}>${esc(a.name)}</option>`).join('')}</select></label>`:''}`).join('')}</details>`:''}<p class="muted">Нашли операции с ${fmt(p.from)} по сегодня. Категории подберём сами — потом их можно поменять.</p>
   <label class="field"><span>На какой счёт записать</span><select name="account">${accounts.map(a=>`<option value="${esc(a.id)}" ${a.id===account?'selected':''}>${esc(a.name)} · ${esc(a.currency)}</option>`).join('')}</select></label>
   <ul class="bank-import-sum"><li><span>Расходы · ${ex.length}</span><b>−${money(tot(ex),cur)}</b></li><li><span>Доходы · ${inc.length}</span><b class="in">+${money(tot(inc),cur)}</b></li></ul>
-  ${sample?`<ul class="bank-import-list">${sample}</ul>`:''}
+  ${p.fresh.some(e=>e.type==='transfer')?`<p class="muted tiny">Между своими счетами: ${p.fresh.filter(e=>e.type==='transfer').length} переводов — вне доходов и расходов.</p>`:''}${sample?`<ul class="bank-import-list">${sample}</ul>`:''}
   <p class="muted tiny">${p.dup?`Уже есть в приложении: ${p.dup} — пропустим. `:''}${p.old?`Старше 3 месяцев: ${p.old} — не загружаем.`:''}</p>
   <button class="primary full" ${p.fresh.length?'':'disabled'}>${p.fresh.length?`Загрузить ${p.fresh.length}`:'Нечего загружать'}</button></form>`};
  };
- const show=account=>{const v=draw(account);
-  actionDialog('Загрузка выписки',v.html,(data)=>{const acc=String(data.get('account'));if(verified&&state.accounts.find(a=>a.id===acc)?.currency!=='RUB')throw Error('Эта выписка в рублях. Выберите рублёвый счёт.');const {fresh}=plan(items.filter((e,i)=>selected.has(i)),state.entries,acc,new Date(),!!verified),now=new Date().toISOString();
-   const ok=commit(s=>{if(verified?.from&&!s.entries.some(e=>s.accounts.find(a=>a.id===e.account)?.currency==='RUB'&&e.date<verified.from)){const h=s.settings.financialHealth||(s.settings.financialHealth={});h.coverageStartByCurrency={...(h.coverageStartByCurrency||{}),RUB:verified.from};}const ex=s.categories,inc=s.incomeCategories;for(const it of fresh)s.entries.push({id:uid(),type:it.type,title:it.title,amount:it.amount,category:categorize(it,it.type==='income'?inc:ex),account:acc,date:it.date,createdAt:now,imported:true});},`Загружено операций: ${fresh.length}`);
+ const show=account=>{for(const [i,id] of counterparts)if(id===account||accounts.find(a=>a.id===id)?.currency!==accounts.find(a=>a.id===account)?.currency){counterparts.delete(i);selected.delete(i);}const v=draw(account);
+  actionDialog('Загрузка выписки',v.html,(data)=>{const acc=String(data.get('account'));if(verified&&state.accounts.find(a=>a.id===acc)?.currency!=='RUB')throw Error('Эта выписка в рублях. Выберите рублёвый счёт.');const {fresh}=plan(selectedItems(acc),state.entries,acc,new Date(),!!verified),now=new Date().toISOString();
+   const ok=commit(s=>{if(verified?.from&&!s.entries.some(e=>s.accounts.find(a=>a.id===e.account)?.currency==='RUB'&&e.date<verified.from)){const h=s.settings.financialHealth||(s.settings.financialHealth={});h.coverageStartByCurrency={...(h.coverageStartByCurrency||{}),RUB:verified.from};}const ex=s.categories,inc=s.incomeCategories;for(const it of fresh){const entry={...it,id:uid(),account:it.type==='transfer'?it.account:acc,createdAt:now,imported:true};delete entry.review;delete entry.ownTransfer;if(it.type!=='transfer')entry.category=categorize(it,it.type==='income'?inc:ex,s.entries,s.settings.bankMerchantRules||[]);if(it.bankCat)entry.bankCat=it.bankCat.slice(0,80);s.entries.push(entry);}},`Загружено операций: ${fresh.length}`);
    if(ok)$('#actionDialog').close();});
+  document.querySelectorAll('[data-bank-counterpart]').forEach(input=>input.onchange=()=>{const i=Number(input.dataset.bankCounterpart),scroll=document.querySelector('#actionDialog').scrollTop;if(input.value){counterparts.set(i,input.value);selected.add(i);}else{counterparts.delete(i);if(isOwnTransfer(items[i]))selected.delete(i);}show(account);document.querySelector('#actionBody details').open=true;document.querySelector('#actionDialog').scrollTop=scroll;});
   document.querySelectorAll('[data-bank-row]').forEach(input=>input.onchange=()=>{const i=Number(input.dataset.bankRow);if(input.checked)selected.add(i);else selected.delete(i);const y=document.querySelector('#actionDialog').scrollTop;show(account);document.querySelector('#actionBody details').open=true;document.querySelector('#actionDialog').scrollTop=y;});
   const sel=document.querySelector('#actionBody select[name=account]');if(sel)sel.onchange=()=>show(sel.value);
  };
  show(first);
 }
 
-const api={parseCSV,parseDate,parseAmount,tableToItems,categorize,plan,cutoff};
+const api={parseCSV,parseDate,parseAmount,tableToItems,categorize,plan,cutoff,isOwnTransfer,rowToEntry};
 root.MonoBankImport={...api,pick,preview};
 if(typeof module==='object')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

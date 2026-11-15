@@ -11,7 +11,7 @@ test('выписка в стиле Т-Банка: знак суммы, стат�
  '"01.06.2026 10:00:00";"01.06.2026";"*1234";"OK";"-300,00";"RUB";"-300,00";"RUB";"";"Фастфуд";"";"KFC"';
  const items=B.tableToItems(B.parseCSV(csv));
  assert.equal(items.length,3);
- assert.deepEqual(items[0],{date:'2026-11-10',amount:125050,type:'expense',title:'Пятёрочка',bankCat:'Супермаркеты'});
+ assert.deepEqual(items[0],{date:'2026-11-10',amount:125050,type:'expense',title:'Пятёрочка',bankCat:'Супермаркеты',mcc:'5411'});
  assert.equal(items[1].type,'income');assert.equal(items[1].amount,6000000);
  const cats=['Кафе','Продукты','Транспорт','Другое'],inc=['Зарплата','Другое'];
  assert.equal(B.categorize(items[0],cats),'Продукты');
