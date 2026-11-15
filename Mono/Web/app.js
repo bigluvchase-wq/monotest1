@@ -46,7 +46,15 @@ const selectedEntries=()=>MonoPeriod.filter(state.entries,selectedPeriod(),e=>en
 const inChart=e=>e.type!=='income'||e.category!=='Займы';
 const sum=(items,type)=>items.filter(e=>e.type===type).reduce((s,e)=>s+e.amount,0);
 const spending=(cat,c=selectedCurrency)=>state.entries.filter(e=>e.type==='expense'&&entryCurrency(e)===c&&e.date.startsWith(currentMonth())&&(!cat||cat===e.category)).reduce((s,e)=>s+e.amount,0);
-function notify(message,success=false,options={}){toastTimer?.cancel();$('#toast').replaceChildren();if(success){const check=document.createElement('span');check.className='success-check';check.setAttribute('aria-hidden','true');check.innerHTML='<svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>';$('#toast').append(check);}const text=document.createElement('span');text.textContent=message;$('#toast').append(text);$('#toast').hidden=false;toastTimer=MonoNoticeLifetime.mount($('#toast'),()=>$('#toast').hidden=true,{duration:2500,...options,countdown:false});}
+function notify(message,success=false,options={}){
+ const host=$('#toast');toastTimer?.cancel();
+ host.replaceChildren();
+ const mark=document.createElement('span');mark.className='notice-icon';mark.setAttribute('aria-hidden','true');
+ mark.innerHTML=success?'<svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
+ const text=document.createElement('span');text.textContent=message;host.append(mark,text);
+ MonoNoticeMotion.enter(host);
+ toastTimer=MonoNoticeLifetime.mount(host,()=>MonoNoticeMotion.exit(host,()=>{host.hidePopover?.();host.hidden=true;}),{duration:2500,...options,fade:0,countdown:false});
+}
 // Удалённое не возвращается: запоминаем id удалённых записей («надгробия») и отбрасываем их,
 // даже если с сервера пришла старая копия данных. Список уходит на сервер вместе с данными.
 const TOMB_KINDS=['entries','reminders','payments','goals','deposits','tickets'];
@@ -190,8 +198,12 @@ function entryHTML(e,showDate=true){const a=account(e.account),saving=e.type==='
 function categoryValues(items,type){const cats=type==='expense'?state.categories:state.incomeCategories;return cats.map(c=>({name:c,n:items.filter(e=>e.type===type&&e.category===c).reduce((n,e)=>n+e.amount,0)})).filter(v=>v.n>0).sort((a,b)=>b.n-a.n);}
 function miniBar(items,type){const values=categoryValues(items,type),total=values.reduce((n,v)=>n+v.n,0);return `<span class="mini-chart" aria-hidden="true">${total?values.map((v,i)=>`<i style="width:${v.n/total*100}%;background:${palette[i%palette.length]}"></i>`).join(''):'<i class="mini-empty"></i>'}</span>`;}
 function ringChart(items,type){const values=categoryValues(items,type),total=values.reduce((s,v)=>s+v.n,0);let cursor=0;return `<div class="expanded-chart"><svg class="animated-ring" viewBox="0 0 180 180" role="img" aria-label="${type==='income'?'Доходы':'Расходы'} по категориям"><circle class="ring-track" cx="90" cy="90" r="70"/>${values.map((v,i)=>{const width=v.n/total*100,start=cursor;cursor+=width;return `<circle class="ring-segment" cx="90" cy="90" r="70" pathLength="100" stroke="${palette[i%palette.length]}" stroke-dasharray="${width} ${100-width}" stroke-dashoffset="${-start}" style="--segment-delay:${i*45}ms"/>`;}).join('')}<text x="90" y="88" class="ring-center">${values.length}</text><text x="90" y="107" class="ring-subtitle">категорий</text></svg><div class="legend">${values.map((v,i)=>`<div class="legend-row"><i class="legend-dot" style="background:${palette[i%palette.length]}"></i><span>${esc(v.name)}</span><b>${(v.n/total*100).toFixed(1).replace('.',',')}%</b></div>`).join('')||'<p class="muted">Пока нет операций</p>'}</div></div>`;}
-// Итог дня у заголовка даты: расходы красным; если в этот день был доход — по нажатию показываем его зелёным
-function daySumHTML(rows){const cur=rows.length?entryCurrency(rows[0]):selectedCurrency,out=rows.filter(e=>e.type==='expense').reduce((n,e)=>n+e.amount,0),inc=rows.filter(e=>e.type==='income').reduce((n,e)=>n+e.amount,0);if(!out&&!inc)return '';const a=out?`<span class="day-out">−${money(out,cur)}</span>`:'',b=inc?`<span class="day-in">+${money(inc,cur)}</span>`:'';return `<button type="button" class="day-sum${out?'':' show-in'}" ${out&&inc?'data-day-toggle':''} aria-label="Итог дня">${a}${b}</button>`;}
+// У даты показываем только расходы за весь день, независимо от строки поиска.
+function daySumHTML(rows){
+ const currency=rows.length?entryCurrency(rows[0]):selectedCurrency,date=rows[0]?.date;
+ const out=state.entries.filter(e=>e.type==='expense'&&e.date===date&&entryCurrency(e)===currency).reduce((n,e)=>n+e.amount,0);
+ return `<button type="button" class="day-sum" data-day-expense="${esc(date)}" aria-label="Расходы за день: ${esc(money(out,currency))}. Нажмите для пояснения">${money(out,currency)}</button>`;
+}
 function groupedEntriesHTML(entries){
  const groups=new Map();
  for(const entry of entries){

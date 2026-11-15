@@ -1,5 +1,26 @@
 (function(root){
 'use strict';
+// Popover держит уведомление над модальными окнами, не забирая фокус.
+function enter(host){
+ host.getAnimations().forEach(a=>a.cancel());host.hidden=false;
+ const dialogs=[...document.querySelectorAll('dialog[open]:not(.closing)')];
+ (dialogs.at(-1)||document.body).append(host);
+ if(host.showPopover){host.setAttribute('popover','manual');host.hidePopover();host.showPopover();}
+ const reduce=root.matchMedia?.('(prefers-reduced-motion:reduce)').matches;
+ host.animate([{opacity:0,transform:reduce?'none':'translateY(-14px) scale(.98)'},{opacity:1,transform:'none'}],{duration:reduce?120:240,easing:'cubic-bezier(.16,1,.3,1)'});
+}
+function exit(host,done){
+ host.getAnimations().forEach(a=>a.cancel());
+ const reduce=root.matchMedia?.('(prefers-reduced-motion:reduce)').matches;
+ const animation=host.animate([{opacity:1,transform:'none'},{opacity:0,transform:reduce?'none':'translateY(-10px) scale(.98)'}],{duration:reduce?100:180,easing:'cubic-bezier(.4,0,1,1)',fill:'forwards'});
+ animation.finished.then(()=>{done();animation.cancel();}).catch(()=>{});
+}
+root.MonoNoticeMotion={enter,exit};
+// Закрытие окна не должно прерывать уведомление или кнопку отмены удаления.
+document.addEventListener('close',event=>{
+ if(!event.target.matches?.('dialog'))return;
+ event.target.querySelectorAll('#toast:not([hidden]),.delete-undo').forEach(enter);
+},true);
 const DURATION=5000,CIRCUMFERENCE=2*Math.PI*12;
 function mount(host,expired,options={}){if(options.countdown===false){const duration=options.duration??DURATION,fade=Math.max(0,Math.min(options.fade||0,duration)),end=performance.now()+duration;let done=false,animation=null,fadeTimer=null;const timer=setTimeout(()=>{if(!done){done=true;expired();animation?.cancel();}},duration);if(fade&&host.animate&&!root.matchMedia?.('(prefers-reduced-motion:reduce)').matches)fadeTimer=setTimeout(()=>{if(!done)animation=host.animate([{opacity:1},{opacity:0}],{duration:fade,easing:'ease-out',fill:'forwards'});},duration-fade);return {cancel(){done=true;clearTimeout(timer);clearTimeout(fadeTimer);animation?.cancel();},remaining:()=>Math.max(0,end-performance.now())};}const badge=document.createElement('span');badge.className='notice-countdown';badge.setAttribute('aria-hidden','true');badge.innerHTML='<svg viewBox="0 0 32 32"><circle class="notice-track" cx="16" cy="16" r="12"/><circle class="notice-progress" cx="16" cy="16" r="12"/></svg><b>5</b>';host.append(badge);const circle=badge.querySelector('.notice-progress'),number=badge.querySelector('b'),end=performance.now()+DURATION;circle.style.strokeDasharray=String(CIRCUMFERENCE);let frame,timer,done=false;
 const remaining=()=>Math.max(0,end-performance.now());
