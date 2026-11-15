@@ -6,7 +6,8 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "backup": "node backup.js"
+    "backup": "node backup.js",
+    "test": "node --test tests/*.test.cjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",

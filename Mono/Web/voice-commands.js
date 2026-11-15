@@ -170,7 +170,8 @@ function limitForm(data){
 }
 const REMOVE_NAMES={limit:'лимит',goal:'цель',deposit:'вклад',payment:'платёж',reminder:'напоминание',account:'счёт',category:'категорию',entry:'операцию'};
 // Ищем запись по словам из фразы: лучшее совпадение по основам слов
-function bestMatch(items,nameOf,query){
+function bestMatch(items,nameOf,query,strict=false){
+ if(strict){const matches=items.filter(item=>norm(nameOf(item))===norm(query));return matches.length===1?matches[0]:null;}
  const q=norm(query).split(/[^\p{L}\d]+/u).filter(w=>w.length>1).map(stem);if(!q.length)return null;
  let best=null,score=0;
  for(const item of items){const words=norm(nameOf(item)).split(/[^\p{L}\d]+/u).filter(Boolean).map(stem);const hit=q.filter(w=>words.some(x=>x.startsWith(w)||w.startsWith(x)&&x.length>=3)).length;if(hit>score){score=hit;best=item;}}
@@ -181,16 +182,16 @@ function removeByVoice(d){
  if(d.target==='limit'){
   for(const [currency,ls] of Object.entries(state.limits||{}))for(const [cat,v] of Object.entries(ls||{}))if(v>0)list.push({currency,cat});
   list.sort((a,b)=>(b.currency===selectedCurrency)-(a.currency===selectedCurrency));
-  const hit=d.name?bestMatch(list,x=>x.cat,d.name):list.length===1?list[0]:null;if(hit)info={kind:'limit',id:hit.cat,currency:hit.currency};
+  const hit=d.name?bestMatch(list,x=>x.cat,d.name,d.strict):list.length===1?list[0]:null;if(hit)info={kind:'limit',id:hit.cat,currency:hit.currency};
  }else if(d.target==='category'){
   list=[...state.categories.map(c=>({c,type:'expense'})),...state.incomeCategories.map(c=>({c,type:'income'}))];
-  const hit=d.name?bestMatch(list,x=>x.c,d.name):null;if(hit)info={kind:'category',id:hit.c,type:hit.type};
+  const hit=d.name?bestMatch(list,x=>x.c,d.name,d.strict):null;if(hit)info={kind:'category',id:hit.c,type:hit.type};
  }else if(d.target==='entry'){
   list=state.entries.filter(e=>['expense','income','transfer'].includes(e.type)).sort((a,b)=>(String(b.date)+(b.createdAt||'')).localeCompare(String(a.date)+(a.createdAt||'')));
-  const hit=d.name&&!d.last?bestMatch(list,e=>(e.title||'')+' '+(e.category||''),d.name):list[0];if(hit)info={kind:'entry',id:hit.id};
+  const hit=d.name&&!d.last?bestMatch(list,e=>d.strict?e.title:(e.title||'')+' '+(e.category||''),d.name,d.strict):list[0];if(hit)info={kind:'entry',id:hit.id};
  }else{
   const src={goal:[state.goals,x=>x.name],deposit:[state.deposits||[],x=>x.name],payment:[state.payments,x=>x.name],reminder:[state.reminders||[],x=>x.title],account:[state.accounts,x=>x.name]}[d.target];
-  list=src[0];const hit=d.name?bestMatch(list,src[1],d.name):list.length===1?list[0]:null;if(hit)info={kind:d.target,id:hit.id};
+  list=src[0];const hit=d.name?bestMatch(list,src[1],d.name,d.strict):list.length===1?list[0]:null;if(hit)info={kind:d.target,id:hit.id};
  }
  if(!info){
   if(!list.length)notify(`Нечего удалять: ${what==='лимит'?'лимитов':what==='цель'?'целей':what==='вклад'?'вкладов':what==='платёж'?'платежей':what==='напоминание'?'напоминаний':what==='счёт'?'счетов':what==='категорию'?'категорий':'операций'} нет.`);
@@ -208,7 +209,7 @@ function run(cmd){
  if(cmd.kind==='account'){accountForm();if(!$('#actionDialog').open)return true;fill({name:d.name,currency:d.currency,initial:d.initial?d.initial/100:null});return true;}
  if(cmd.kind==='payment'){paymentForm();if(!$('#actionDialog').open)return true;fill({name:d.name,amount:d.amount?d.amount/100:null,date:d.date,repeat:d.repeat,category:d.category,reminderTime:d.time});return true;}
  if(cmd.kind==='deposit'){root.MonoDeposits.form();if(!$('#actionDialog').open)return true;fill({name:d.name,principal:d.principal?d.principal/100:null,rate:d.rate,term:d.term,payout:d.payout});return true;}
- if(cmd.kind==='limit'){limitForm(d);return true;}
+ if(cmd.kind==='limit'){if(d.currency)selectedCurrency=d.currency;limitForm(d);return true;}
  return false;
 }
 // Список фраз, которыми можно управлять моно

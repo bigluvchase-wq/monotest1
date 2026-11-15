@@ -88,6 +88,13 @@ const app = express();
 // Адрес клиента берём из заголовка, который ставит nginx (сервер стоит за ним на этой же машине)
 app.set('trust proxy', 'loopback');
 app.use(cors());
+// У диктовки отдельный небольшой предел; история синхронизации может быть больше.
+app.use('/api/voice/parse',express.json({limit:'64kb'}));
+app.use('/api/voice/parse',(error,req,res,next)=>{
+    // Не печатаем фрагменты невалидной диктовки из SyntaxError в журналы.
+    if(error.type==='entity.too.large'||error.type==='entity.parse.failed')return res.status(error.type==='entity.too.large'?413:400).json({ok:false,error:'invalid_request'});
+    next(error);
+});
 // Данные приложения (история) могут быть большими
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -151,6 +158,16 @@ function rateLimit(req, res, next) {
     next();
 }
 setInterval(() => { const t = Date.now(); for (const m of [failures, hits]) for (const [k, v] of m) { const f = v.filter(x => t - x < 60000); if (f.length) m.set(k, f); else m.delete(k); } }, 60000).unref();
+
+// Умный разбор: ключ Yandex остаётся только в окружении сервера.
+require('./voice-ai').install(app,{db,rateLimit,authenticate(req,res){
+    const user=q.user.get(req.body.code);
+    if(!user){noteFailure(req);res.status(401).json({ok:false,error:'unauthorized'});return null;}
+    // Для платного API нужен уже привязанный ключ: запрос не может присвоить старый код.
+    const key=keyOf(req);
+    if(!user.key_hash||!validKey(key)||!sameHash(user.key_hash,hashKey(key))){noteFailure(req);res.status(401).json({ok:false,error:'unauthorized'});return null;}
+    return user;
+}});
 
 // Тарифы: сумма → месяцы. Цены со страницы оплаты и прежние цены — на всякий случай
 const PLAN_MONTHS = { 129: 1, 649: 6, 1299: 12, 199: 1, 999: 6, 1799: 12 };
