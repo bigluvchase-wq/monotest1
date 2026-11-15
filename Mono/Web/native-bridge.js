@@ -87,8 +87,18 @@ function deepLink(kind){
  };
  if(document.querySelector('.launch-intro'))setTimeout(run,2000);else setTimeout(run,150);
 }
+const documents=new Map();
+function recognizeDocument(file){return new Promise(async(resolve,reject)=>{
+ const id='document-'+(++sequence),timer=setTimeout(()=>{documents.delete(id);reject(Error('Распознавание заняло слишком много времени. Попробуйте файл поменьше.'));},120000);
+ documents.set(id,{resolve,reject,timer});
+ try{if(file.size>20000000)throw Error('Максимальный размер файла — 20 МБ.');
+ const bytes=new Uint8Array(await file.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));
+ post('recognizeDocument',{id,kind:/\.pdf$/i.test(file.name)||file.type==='application/pdf'?'pdf':'image',data:btoa(binary)});
+ }catch(error){clearTimeout(timer);documents.delete(id);reject(error);}
+});}
+function documentResult(id,text,error){const job=documents.get(id);if(!job)return;clearTimeout(job.timer);documents.delete(id);if(error)job.reject(Error(error));else job.resolve(text);}
 root.MonoNative={
- pushWidget,deepLink,
+ pushWidget,deepLink,recognizeDocument,documentResult,
  Recognition:NativeRecognition,speechEvent,refreshReminders,
  storeAccess:access=>post('storeAccess',{access}),
  refreshAccess:()=>root.MonoAccess?.refresh(true),

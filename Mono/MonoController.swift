@@ -3,6 +3,8 @@ import Security
 import UserNotifications
 import WebKit
 import WidgetKit
+import Vision
+import PDFKit
 
 final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
     private var web: WKWebView!
@@ -90,6 +92,8 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
             case "speechStop": speech.stop(id)
             default: speech.cancel(id)
             }
+        case "recognizeDocument":
+            recognizeDocument(body)
         case "share":
             guard let name = body["name"] as? String, let text = body["text"] as? String else { return }
             share(name, text: text)
@@ -177,6 +181,62 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
             item[kSecValueData as String] = data
             item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
             SecItemAdd(item as CFDictionary, nil)
+        }
+    }
+
+    // Vision and PDFKit keep financial documents on the device.
+    private func recognizeDocument(_ body: [String: Any]) {
+        guard let id = body["id"] as? String, id.count < 80,
+              let encoded = body["data"] as? String, encoded.count <= 28_000_000,
+              let data = Data(base64Encoded: encoded), data.count <= 20_000_000 else { return }
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            do {
+                func recognize(_ image: CGImage) throws -> String {
+                    let request = VNRecognizeTextRequest()
+                    request.recognitionLevel = .accurate
+                    request.recognitionLanguages = ["ru-RU", "en-US"]
+                    request.usesLanguageCorrection = false
+                    try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+                    let observations = (request.results ?? []).sorted { $0.boundingBox.midY > $1.boundingBox.midY }
+                    var rows: [[VNRecognizedTextObservation]] = []
+                    for observation in observations {
+                        if let last = rows.last, let first = last.first,
+                           abs(first.boundingBox.midY - observation.boundingBox.midY) < min(first.boundingBox.height, observation.boundingBox.height) * 0.5 {
+                            rows[rows.count - 1].append(observation)
+                        } else { rows.append([observation]) }
+                    }
+                    return rows.map { row in row.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\t") }.joined(separator: "\n")
+                }
+                var text = ""
+                if body["kind"] as? String == "pdf" {
+                    guard let document = PDFDocument(data: data), !document.isLocked,
+                          document.pageCount > 0, document.pageCount <= 30 else {
+                        throw NSError(domain: "MonoDocument", code: 1, userInfo: [NSLocalizedDescriptionKey: "Нужен PDF без пароля, не больше 30 страниц."])
+                    }
+                    for i in 0..<document.pageCount {
+                        guard let page = document.page(at: i) else { continue }
+                        let pageText = page.string ?? ""
+                        if pageText.trimmingCharacters(in: .whitespacesAndNewlines).count > 30 { text += pageText }
+                        else if let image = page.thumbnail(of: CGSize(width: 1800, height: 2400), for: .mediaBox).cgImage { text += try recognize(image) }
+                        text += "\n\u{000C}\n"
+                        if text.utf8.count > 300_000 { throw NSError(domain: "MonoDocument", code: 2, userInfo: [NSLocalizedDescriptionKey: "Документ слишком большой. Разделите выписку на части."]) }
+                    }
+                } else {
+                    // UIImage decodes HEIC/JPEG/PNG and normalizes orientation before OCR.
+                    guard let image = UIImage(data: data), image.size.width * image.size.height <= 60_000_000 else {
+                        throw NSError(domain: "MonoDocument", code: 3, userInfo: [NSLocalizedDescriptionKey: "Не удалось открыть изображение."])
+                    }
+                    let scale = min(1, 2400 / max(image.size.width, image.size.height))
+                    let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+                    let format = UIGraphicsImageRendererFormat(); format.scale = 1
+                    let normalized = UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+                    guard let cg = normalized.cgImage else { throw NSError(domain: "MonoDocument", code: 4, userInfo: [NSLocalizedDescriptionKey: "Не удалось подготовить изображение."]) }
+                    text = try recognize(cg)
+                }
+                DispatchQueue.main.async { self?.send("documentResult", [id, text, ""]) }
+            } catch {
+                DispatchQueue.main.async { self?.send("documentResult", [id, "", error.localizedDescription]) }
+            }
         }
     }
 

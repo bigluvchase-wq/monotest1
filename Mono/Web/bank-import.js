@@ -149,10 +149,10 @@ async function readFile(file){
 
 // ---------- Интерфейс ----------
 function pick(){
- const input=document.createElement('input');input.type='file';input.accept='.csv,.xlsx,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+ const input=document.createElement('input');input.type='file';input.accept='.pdf,application/pdf,.csv,.xlsx,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
  input.style.display='none';document.body.append(input);
  input.onchange=async()=>{const file=input.files?.[0];input.remove();if(!file)return;
-  try{preview(await readFile(file));}catch(e){notify(e.message||'Не получилось прочитать файл.');}};
+  try{if(/\.pdf$/i.test(file.name)||file.type==='application/pdf'){await root.MonoDocumentImport.recognize(file);}else preview(await readFile(file));}catch(e){notify(e.message||'Не получилось прочитать файл.');}};
  input.click();
 }
 function preview(items){
