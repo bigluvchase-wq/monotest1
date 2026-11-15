@@ -54,3 +54,9 @@ test('only exact all-null command templates are skipped; meaningful invalid comm
   assert.throws(()=>AI.result({entries:[],commands:[{...empty,...patch}],errors:[]},context),/invalid_ai_response/);
  }
 });
+test('clarification suppresses incomplete model drafts instead of treating them as actions',()=>{
+ const parsed=AI.result({entries:[{type:'income',amount:500000,account:'main',category:null},{type:'income',amount:0}],commands:[],errors:['operation']},context);
+ assert.deepEqual(parsed.entries,[]);assert.deepEqual(parsed.commands,[]);assert.deepEqual(parsed.errors,['Уточните действие и название записи.']);
+ const exchange=AI.result({entries:[{type:'transfer',amount:10000,account:'usd',toAccount:'main',toAmount:null},{type:'transfer',amount:0}],commands:[],errors:['missing_data']},context);
+ assert.deepEqual(exchange.entries,[]);assert.deepEqual(exchange.errors,['Уточните валюту и сумму зачисления.']);
+});
