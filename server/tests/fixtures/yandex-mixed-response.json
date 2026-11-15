@@ -1,0 +1,99 @@
+{
+  "entries": [
+    {
+      "amount": 543700,
+      "toAccount": null,
+      "title": "Покупка продуктов",
+      "type": "expense",
+      "toAmount": null,
+      "category": "Покупки",
+      "date": "2026-11-15",
+      "installmentTotal": null,
+      "account": "main",
+      "goalId": null
+    },
+    {
+      "amount": 100000,
+      "toAccount": null,
+      "title": "Заправка",
+      "type": "expense",
+      "toAmount": null,
+      "category": "Авто",
+      "date": "2026-11-14",
+      "installmentTotal": null,
+      "account": "main",
+      "goalId": null
+    },
+    {
+      "amount": 50000,
+      "toAccount": null,
+      "title": "Заём от друга",
+      "type": "income",
+      "toAmount": null,
+      "category": "Займы",
+      "date": "2026-11-15",
+      "installmentTotal": null,
+      "account": "main",
+      "goalId": null
+    },
+    {
+      "amount": 20000,
+      "toAccount": null,
+      "title": "Возврат долга другу",
+      "type": "expense",
+      "toAmount": null,
+      "category": "Финансовые операции",
+      "date": "2026-11-15",
+      "installmentTotal": null,
+      "account": "main",
+      "goalId": null
+    }
+  ],
+  "commands": [
+    {
+      "kind": "reminder",
+      "data": {
+        "name": null,
+        "title": "Оплатить интернет",
+        "text": null,
+        "date": "2026-11-16",
+        "time": "10:00",
+        "repeat": "once",
+        "currency": null,
+        "amount": null,
+        "target": null,
+        "initial": null,
+        "category": null,
+        "principal": null,
+        "rate": null,
+        "term": null,
+        "payout": null,
+        "removeTarget": null,
+        "last": null
+      }
+    },
+    {
+      "kind": "reminder",
+      "data": {
+        "name": null,
+        "title": null,
+        "text": null,
+        "date": null,
+        "time": null,
+        "repeat": null,
+        "currency": null,
+        "amount": null,
+        "target": null,
+        "initial": null,
+        "category": null,
+        "principal": null,
+        "rate": null,
+        "term": null,
+        "payout": null,
+        "removeTarget": null,
+        "last": null
+      }
+    }
+  ],
+  "errors": []
+}

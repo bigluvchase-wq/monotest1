@@ -111,3 +111,9 @@ test('corpus benchmark evaluates all held-out phrases without reusing them in pr
  }});
  assert.equal(calls,35);assert.equal(messages.filter(m=>m.startsWith('ОК:')).length,35);assert.equal(messages.join('').includes('test-secret'),false);
 });
+test('HTTP route accepts real rows and drops the observed empty reminder template',async t=>{
+ const answer=require('./fixtures/yandex-mixed-response.json');
+ const f=await fixture(t,{provider:async()=>new Response(JSON.stringify({result:{alternatives:[{status:'ALTERNATIVE_STATUS_FINAL',message:{text:JSON.stringify(answer)}}]}}),{headers:{'Content-Type':'application/json'}})});
+ const response=await f.request({text:require('../voice-ai-self-test').USER_PHRASE,context:{...context,categories:['Продукты','Покупки','Авто','Финансовые операции','Другое'],incomeCategories:['Займы','Другое']}});
+ assert.equal(response.status,200);const body=await response.json();assert.equal(body.entries.length,4);assert.equal(body.commands.length,1);assert.equal(body.commands[0].data.time,'10:00');
+});

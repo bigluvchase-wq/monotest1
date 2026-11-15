@@ -38,3 +38,19 @@ test('only bounded app commands are returned, with strict single-record deletion
  assert.equal(value.commands.length,3);assert.equal(value.commands[2].data.strict,true);assert.equal(value.commands[2].data.target,'account');
  for(const cmd of [{kind:'remove',data:{removeTarget:'account',name:'всё'}},{kind:'remove',data:{removeTarget:'account',last:true}},{kind:'payment',data:{name:'Аренда',amount:-100}},{kind:'reminder',data:{title:'Купить',time:'25:00'}},{kind:'limit',data:{category:'Unknown',amount:100}},{kind:'deposit',data:{name:'Банк',rate:Infinity}}])assert.throws(()=>AI.result({entries:[],commands:[cmd],errors:[]},context),/invalid_ai_response/);
 });
+test('observed Yandex all-null placeholder does not discard four real drafts and a reminder',()=>{
+ const fixture=require('../server/tests/fixtures/yandex-mixed-response.json');
+ const c={...context,categories:[...context.categories,'Авто','Финансовые операции'],incomeCategories:[...context.incomeCategories,'Займы']};
+ const parsed=AI.result(fixture,c);
+ assert.equal(parsed.entries.length,4);assert.deepEqual(parsed.entries.map(e=>e.amount),[543700,100000,50000,20000]);
+ assert.equal(parsed.commands.length,1);assert.equal(parsed.commands[0].data.time,'10:00');assert.equal(parsed.commands[0].data.date,'2026-11-16');
+ assert.equal(parsed.entries[0].category,'Покупки'); // Категорию нельзя молча менять: это исправляется в инструкции и проверяется на модели.
+ assert.deepEqual(parsed.errors,[]);
+});
+test('only exact all-null command templates are skipped; meaningful invalid commands still fail',()=>{
+ const fixture=require('../server/tests/fixtures/yandex-mixed-response.json'),empty=fixture.commands[1];
+ assert.equal(AI.result({entries:[],commands:[empty],errors:[]},context).errors.length,1);
+ for(const patch of [{kind:'exec'}, {data:{...empty.data,time:'25:00'}}, {data:{...empty.data,amount:-100}}, {data:{...empty.data,last:false}}, {data:{title:null}}, {data:{...empty.data,unknown:null}}]){
+  assert.throws(()=>AI.result({entries:[],commands:[{...empty,...patch}],errors:[]},context),/invalid_ai_response/);
+ }
+});
