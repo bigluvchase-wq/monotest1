@@ -101,3 +101,13 @@ test('single-case diagnostics reveal rejected model fields and redact the API ke
  }}),/Пройдено 0 из 1/);
  assert.equal(calls,1);assert(messages.some(m=>m.includes('not-a-date')));assert(messages.some(m=>m.includes('ALTERNATIVE_STATUS_FINAL')));assert.equal(messages.join('').includes('test-secret'),false);
 });
+test('corpus benchmark evaluates all held-out phrases without reusing them in prompt examples',async()=>{
+ const {selfTest}=require('../voice-ai-self-test'),Examples=require('../voice-examples');let calls=0;const messages=[];
+ await selfTest({corpusMode:true,limit:35,env:{VOICE_AI_ENABLED:'1',YANDEX_API_KEY:'test-secret',YANDEX_FOLDER_ID:'test-folder'},log:m=>messages.push(m),fetchImpl:async(url,options)=>{
+  calls++;const request=JSON.parse(options.body),payload=JSON.parse(request.messages[1].text),example=Examples.corpus.examples.find(e=>e.split==='evaluation'&&e.text===payload.text);assert(example);
+  assert(Examples.select(payload).every(e=>e.id!==example.id));
+  const answer=Examples.materialize(example,payload.context);
+  return new Response(JSON.stringify({result:{alternatives:[{status:'ALTERNATIVE_STATUS_FINAL',message:{text:JSON.stringify(answer)}}]}}),{headers:{'Content-Type':'application/json'}});
+ }});
+ assert.equal(calls,35);assert.equal(messages.filter(m=>m.startsWith('ОК:')).length,35);assert.equal(messages.join('').includes('test-secret'),false);
+});

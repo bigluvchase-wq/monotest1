@@ -1,5 +1,6 @@
 'use strict';
-const {install,settings}=require('./voice-ai');
+const {install,settings,result:validateResult}=require('./voice-ai');
+const Examples=require('./voice-examples');
 const USER_PHRASE='купил продукты 5437 заправился вчера на тыщу а еще сегодня взял в долг у друга питик и вернул долг две сотки а еще напомни оплатить завтра инет в 10 утра';
 function complexCases(context){
  const today=context.today,shift=n=>{const d=new Date(today+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
@@ -30,7 +31,7 @@ function checkCase(actual,example){
  return true;
 }
 // Проверяем рабочий обработчик на отдельном локальном порту и SQLite в памяти.
-async function selfTest({env=process.env,fetchImpl=globalThis.fetch,log=console.log,complex=false,onlyUser=false,diagnose=false}={}){
+async function selfTest({env=process.env,fetchImpl=globalThis.fetch,log=console.log,complex=false,onlyUser=false,diagnose=false,corpusMode=false,limit=8,reportPath=null}={}){
  const cfg=settings(env);
  if(!cfg.enabled||!cfg.key||!cfg.folder)throw Error('Сначала настройте и включите умный разбор в .env.');
  const express=require('express'),Database=require('better-sqlite3'),crypto=require('node:crypto');
@@ -74,12 +75,35 @@ async function selfTest({env=process.env,fetchImpl=globalThis.fetch,log=console.
    context.categories=['Кафе','Продукты','Транспорт','Авто','Покупки','Финансовые операции','Другое'];
    context.incomeCategories=['Зарплата','Подработка','Займы','Возврат долга','Подарки','Кешбэк','Другое'];
   }
+  if(corpusMode)Object.assign(context,Examples.benchmarkContext());
   async function request(text){
    upstreamError='';modelReply=null;
    const response=await fetch(url,{method:'POST',signal:AbortSignal.timeout(16000),headers:{'Content-Type':'application/json','X-Mono-Key':localKey},body:JSON.stringify({code:'000000',text,context})});
    const body=await response.json();
    if(!response.ok||!body.ok)throw Error(upstreamError||'Ошибка разбора: HTTP '+response.status+' / '+body.error);
    return body;
+  }
+  if(corpusMode){
+   if(!Number.isSafeInteger(limit)||limit<1||limit>35)throw Error('limit должен быть целым числом от 1 до 35.');
+   const cases=Examples.corpus.examples.filter(e=>e.split==='evaluation').slice(0,limit),report=[];let passed=0;
+   const key=e=>JSON.stringify([e.type,e.amount,e.date,e.account,e.category??null,e.goalId??null,e.toAccount??null,e.toAmount??null,e.installmentTotal??null]);
+   const commandKey=cmd=>JSON.stringify([cmd.kind,Object.entries(cmd.data).filter(([k])=>!['title','name','text','strict'].includes(k)).sort(([a],[b])=>a.localeCompare(b))]);
+   for(const example of cases){
+    const reference=Examples.materialize(example,context);if(!reference)throw Error('Некорректный эталон '+example.id);
+    const expected=validateResult(reference,context);let actual=null,error=null,ok=false;
+    try{
+     actual=await request(example.text);
+     ok=actual.entries.map(key).sort().join('|')===expected.entries.map(key).sort().join('|')&&actual.commands.map(commandKey).sort().join('|')===expected.commands.map(commandKey).sort().join('|')&&actual.errors.slice().sort().join('|')===expected.errors.slice().sort().join('|');
+     if(ok)passed++;
+     log((ok?'ОК: ':'НЕ ПРОШЁЛ: ')+example.id+' — '+example.text);
+     if(!ok){log('Ответ: '+scrub(JSON.stringify(actual)));if(diagnose)diagnostic(context);}
+    }catch(e){error=scrub(e.message);log('НЕ ПРОШЁЛ: '+example.id+' — '+error);if(diagnose)diagnostic(context);}
+    report.push({id:example.id,text:example.text,expected,actual,error,ok});
+   }
+   if(reportPath){require('node:fs').writeFileSync(reportPath,scrub(JSON.stringify({context,passed,total:cases.length,cases:report},null,2)),{mode:0o600});log('Отчёт: '+reportPath);}
+   log('Проверяются действия, суммы, даты, счета и категории. Названия и тексты команд смотрите в отчёте.');
+   if(passed!==cases.length)throw Error('Пройдено '+passed+' из '+cases.length+'. Рабочая база не менялась.');
+   log('Все '+passed+' контрольных фраз пройдены. Рабочая база не менялась.');return;
   }
   if(complex){
    const cases=onlyUser?complexCases(context).slice(0,1):complexCases(context);let passed=0;
@@ -106,4 +130,4 @@ async function selfTest({env=process.env,fetchImpl=globalThis.fetch,log=console.
  }
 }
 module.exports={selfTest,complexCases,checkCase,USER_PHRASE};
-if(require.main===module){require('dotenv').config({quiet:true});selfTest({complex:process.argv.includes('--complex'),onlyUser:process.argv.includes('--only-user'),diagnose:process.argv.includes('--diagnose')}).catch(error=>{console.error(error.message);process.exitCode=1;});}
+if(require.main===module){require('dotenv').config({quiet:true});selfTest({complex:process.argv.includes('--complex'),onlyUser:process.argv.includes('--only-user'),diagnose:process.argv.includes('--diagnose'),corpusMode:process.argv.includes('--corpus'),limit:Number(process.argv.find(a=>a.startsWith('--limit='))?.split('=')[1]||8),reportPath:process.argv.includes('--corpus')?require('node:path').join(__dirname,'voice-ai-report.json'):null}).catch(error=>{console.error(error.message);process.exitCode=1;});}
