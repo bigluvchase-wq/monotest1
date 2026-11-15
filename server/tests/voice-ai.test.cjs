@@ -67,3 +67,12 @@ test('real server requires a previously bound device key and rejects oversized v
  assert.equal((await request('/api/voice/parse',{code:'123456',text:'PRIVATE_MARKER'.repeat(6000),context})).status,413);
  assert.equal(output.includes('PRIVATE_MARKER'),false);
 });
+test('full voice self-test uses isolated storage and checks both finance and off-topic handling',async()=>{
+ const {selfTest}=require('../voice-ai-self-test');let calls=0;const messages=[];
+ await selfTest({env:{VOICE_AI_ENABLED:'1',YANDEX_API_KEY:'test-secret',YANDEX_FOLDER_ID:'test-folder'},log:message=>messages.push(message),fetchImpl:async(url,options)=>{
+  calls++;const request=JSON.parse(options.body),payload=JSON.parse(request.messages[1].text);
+  const entries=payload.text.includes('скорость')?[]:[{...expense,date:payload.context.today},{...expense,title:'Такси',category:'Транспорт',amount:40000,date:payload.context.today}];
+  return new Response(JSON.stringify({result:{alternatives:[{status:'ALTERNATIVE_STATUS_FINAL',message:{text:JSON.stringify({entries,commands:[],errors:entries.length?[]:['out_of_scope']})}}]}}),{headers:{'Content-Type':'application/json'}});
+ }});
+ assert.equal(calls,2);assert.equal(messages.length,3);assert.equal(messages.join('').includes('test-secret'),false);
+});
