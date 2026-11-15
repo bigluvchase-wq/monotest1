@@ -1035,7 +1035,7 @@ body[data-page=menu] .menu-tile.menu-wide::after,.root-preview[data-page="menu"]
 #homeReminders .rem-go{flex:none;color:var(--accent);font-size:20px;line-height:1;opacity:.7}
 .rem-carousel{position:relative;width:100%;overflow:hidden;padding:4px 0 6px}
 .rem-stage{position:relative;width:100%;touch-action:pan-y}
-#homeReminders .rem-stage>.reminder{position:absolute;left:50%;top:0;margin:0;width:min(64vw,330px);will-change:transform,opacity,filter}
+#homeReminders .rem-stage>.reminder{position:absolute;left:50%;top:0;margin:0;width:min(64vw,330px);will-change:auto}
 .rem-arrow{position:absolute;top:50%;transform:translateY(-50%);width:30px;height:44px;min-height:0;padding:0;display:grid;place-items:center;border:0;outline:0;background:none;box-shadow:none;color:var(--accent);opacity:.55;z-index:200;transition:opacity .25s ease;-webkit-tap-highlight-color:transparent}
 .rem-arrow:active{opacity:1}
 .rem-arrow svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -1541,7 +1541,7 @@ html.motion-busy .bg-float i,html.motion-busy .orbit{animation-play-state:paused
 .support-socials a:active{transform:scale(.94)}
 .reminder-more{margin-top:10px}
 
-/* ===== Главный экран: баланс, расходы и доходы, «Можно потратить сегодня» ===== */
+/* ===== Главный экран: баланс, расходы и доходы ===== */
 :is(#home,[data-preview-id=home]).home-dash .intro{display:none}
 html:has(:is(#home,[data-preview-id=home]).home-dash) .app>footer{display:none}
 .hd{width:100%;max-width:440px;margin:2px auto 0;text-align:left;font-variant-numeric:tabular-nums}
@@ -1587,9 +1587,10 @@ html:has(:is(#home,[data-preview-id=home]).home-dash) .app>footer{display:none}
 .hd-explain li.sum{font-weight:600}
 .hd-explain li.sum b{color:var(--accent)}
 /* Операции: «Итоги» справа от «На счетах» */
-.ops-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
-.ops-head .balance-top{flex:none}
-.ops-summary{max-width:52%;padding:9px 11px;border-radius:14px;background:var(--depth-bg,var(--surface));border:1px solid var(--card-edge);box-shadow:var(--depth-shadow-soft,none);font-size:12px;line-height:1.35;color:var(--ink)}
+.ops-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:12px}
+.ops-head .balance-top{min-width:0}
+.ops-head .operations-total{font-size:clamp(24px,7vw,42px);overflow-wrap:anywhere;white-space:normal}
+.ops-summary{min-width:0;max-width:100%;padding:9px 11px;border-radius:14px;background:var(--depth-bg,var(--surface));border:1px solid var(--card-edge);box-shadow:var(--depth-shadow-soft,none);font-size:12px;line-height:1.35;color:var(--ink)}
 .ops-summary small{display:block;font-size:11px;font-weight:600;color:var(--accent);margin-bottom:2px}
 .ops-summary.up small{color:#c2413b}.ops-summary.down small,.ops-summary.good small{color:#1f8a57}
 /* Цели: срок, план и умная цель */
@@ -1602,7 +1603,7 @@ html:has(:is(#home,[data-preview-id=home]).home-dash) .app>footer{display:none}
 /* микрофон в режиме «баланс» чуть меньше — под ним остаётся место для напоминаний */
 :is(#home,[data-preview-id=home]).home-dash .voice-zone{scale:.84;margin-top:-18px;margin-bottom:-30px}
 .ops-head{align-items:center}
-.ops-summary{max-width:50%;font-size:11.5px;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.ops-summary{font-size:11.5px;overflow-wrap:anywhere}
 /* Невысокие экраны (iPhone SE, mini): компактнее, чтобы микрофон и напоминания помещались */
 @media (max-height:760px){
  :is(#home,[data-preview-id=home]).home-dash .hd-balance{font-size:30px}
@@ -1628,25 +1629,22 @@ html:has(:is(#home,[data-preview-id=home]).home-dash) .app>footer{display:none}
 .hd-explain li.sum.over b{color:#c2413b}
 /* Операции: итог дня у даты */
 .entry-day h3{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.day-sum{display:grid;padding:2px 0;margin:0;border:0;background:none;font:inherit;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;min-height:0}
-.day-sum>span{grid-area:1/1;justify-self:end;transition:opacity .2s ease,transform .25s var(--motion-ease)}
-.day-out{color:#c2413b}.day-in{color:#1f8a57;opacity:0;transform:translateY(4px)}
-.day-sum.show-in .day-out{opacity:0;transform:translateY(-4px)}.day-sum.show-in .day-in{opacity:1;transform:none}
-.day-sum:not([data-day-toggle]){pointer-events:none}
+.day-sum{padding:7px 0 7px 12px;margin:0;border:0;background:none;color:var(--muted);font:inherit;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;min-height:32px;flex-shrink:0}
+.day-sum:active{opacity:.65}
 .hd-track .l{min-width:0;white-space:normal;line-height:1.25}.hd-track .l b{white-space:nowrap}
 .hd-track .r{flex:none;white-space:nowrap}
 .hd-track{align-items:stretch}
 /* Главная «Баланс»: микрофон без заливки — иконка цветом темы и полупрозрачные круги */
-:is(#home,[data-preview-id=home]).home-dash .voice-zone{scale:1!important;width:124px!important;height:124px!important;margin:22px 0 6px!important}
-:is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]){width:84px!important;height:84px!important;background:color-mix(in srgb,var(--accent) 10%,transparent)!important;border:1px solid color-mix(in srgb,var(--accent) 22%,transparent)!important;box-shadow:none!important;color:var(--accent)!important}
+:is(#home,[data-preview-id=home]).home-dash .voice-zone{scale:1!important;width:204px!important;height:204px!important;margin:0!important}
+:is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]){width:152px!important;height:152px!important;background:color-mix(in srgb,var(--accent) 10%,transparent)!important;border:1px solid color-mix(in srgb,var(--accent) 22%,transparent)!important;box-shadow:none!important;color:var(--accent)!important}
 :is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic])::after{display:none}
-:is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]) svg{width:34px!important;height:34px!important;stroke-width:1.7!important}
+:is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]) svg{width:48px!important;height:48px!important;stroke-width:1.7!important}
 :is(#home,[data-preview-id=home]).home-dash .orbit{background:color-mix(in srgb,var(--accent) 6%,transparent)!important;border:1px solid color-mix(in srgb,var(--accent) 16%,transparent)!important;box-shadow:none!important}
-:is(#home,[data-preview-id=home]).home-dash .orbit.one{width:116px!important;height:116px!important}
+:is(#home,[data-preview-id=home]).home-dash .orbit.one{width:194px!important;height:194px!important}
 :is(#home,[data-preview-id=home]).home-dash .orbit.two{display:none!important}
 :is(#home,[data-preview-id=home]).home-dash .voice-ripple{display:none!important}
 .listening :is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]){background:color-mix(in srgb,var(--accent) 18%,transparent)!important}
-@media (max-height:760px){:is(#home,[data-preview-id=home]).home-dash .voice-zone{width:100px!important;height:100px!important;margin:12px 0 2px!important}:is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]){width:72px!important;height:72px!important}:is(#home,[data-preview-id=home]).home-dash .orbit.one{width:98px!important;height:98px!important}:is(#home,[data-preview-id=home]).home-dash .orbit.two{width:124px!important;height:124px!important}}
+@media (max-height:760px){:is(#home,[data-preview-id=home]).home-dash .voice-zone{width:188px!important;height:188px!important;margin:0!important}:is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]){width:136px!important;height:136px!important}:is(#home,[data-preview-id=home]).home-dash .orbit.one{width:178px!important;height:178px!important}:is(#home,[data-preview-id=home]).home-dash .orbit.two{width:124px!important;height:124px!important}}
 /* «Можно потратить / Прогноз»: карточка во всю ширину, как «Расходы/Доходы» */
 .hd-track{grid-auto-columns:100%!important;padding-right:0!important;gap:12px}
 .hd-track .l{white-space:nowrap}
@@ -1669,3 +1667,26 @@ html:has(:is(#home,[data-preview-id=home]).home-dash) .app>footer{display:none}
 .hd-dots{position:relative;z-index:1}
 /* Напоминания не прилипают к выбору счёта */
 :is(#home,[data-preview-id=home]).home-dash #homeReminders,:is(#home,[data-preview-id=home]).home-dash [data-preview-id=homeReminders]{margin-top:18px}
+
+/* После месячных расходов и доходов сразу идёт крупная кнопка записи. */
+:is(#home,[data-preview-id=home]).home-dash .recording-block{flex:0 0 auto;justify-content:flex-start;padding:22px 0 8px;transform:none}
+@media(max-height:700px){:is(#home,[data-preview-id=home]).home-dash .recording-block{padding-top:14px}}
+
+/* Общий стиль верхних уведомлений во всех темах, в том числе над модальными окнами. */
+#toast,body[data-page=history] #toast,.delete-undo,.nested-page .delete-undo,#chartDialog .delete-undo{
+ position:fixed;inset:calc(env(safe-area-inset-top,0px) + 12px) 0 auto;
+ margin:0 auto;width:min(430px,calc(100% - 32px));max-width:calc(100% - 32px);
+ display:flex;align-items:center;gap:12px;padding:15px 17px;
+ border:1px solid var(--card-edge);border-radius:22px;
+ background:var(--card-solid,var(--paper));color:var(--ink);
+ box-shadow:0 12px 36px var(--shadow);font-size:13px;line-height:1.5;
+ transform:none;translate:none;animation:none;will-change:auto;z-index:100;
+ overflow-wrap:anywhere;text-align:left;
+}
+#toast>span:not(.notice-icon),.delete-undo>span:first-child{flex:1;min-width:0}
+.notice-icon{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:50%;background:var(--soft);color:var(--accent)}
+.notice-icon svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.delete-undo button{flex:none}
+#homeReminders .rem-stage>.reminder{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card-solid,var(--paper));filter:none}
+/* На небольшом iPhone содержимое можно прокрутить выше нижней навигации. */
+body[data-page=home]:has(#home.home-dash) .app{height:auto;min-height:calc(100dvh - var(--main-nav-space) - env(safe-area-inset-top,0px))}

@@ -1,7 +1,7 @@
 (function(root){
 'use strict';
 // Напоминания и платежи на главной. Выбранная карточка по центру, соседние справа и слева
-// видны в лёгком размытии. Листается свайпом и стрелками; от трёх карточек лента зациклена.
+// приглушены. Листается свайпом и стрелками; от трёх карточек лента зациклена.
 const chev=d=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 let remembered=0;
@@ -19,28 +19,31 @@ function mount(box){
  const next=document.createElement('button');next.type='button';next.className='rem-arrow next';next.setAttribute('aria-label','Следующее напоминание');next.innerHTML=chev('M9.5 6l6 6-6 6');
  const dots=document.createElement('div');dots.className='rem-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML=cards.map(()=>'<i></i>').join('');
  cards.forEach(c=>stage.append(c));wrap.append(stage,prev,next);box.append(wrap,dots);
- let cur=clamp(remembered,0,n-1),drag=0,step=300,dragging=false;
+ let cur=clamp(remembered,0,n-1),drag=0,step=300,dragging=false,frame=0,layerTimer=0;
  const rel=i=>{let p=i-cur+drag;if(loop){const half=n/2;p=((p+half)%n+n)%n-half;}return p;};
- function paint(animate){
+ function promote(){clearTimeout(layerTimer);cards.forEach(el=>el.style.willChange='transform,opacity');}
+ function releaseLayers(){clearTimeout(layerTimer);layerTimer=setTimeout(()=>cards.forEach(el=>el.style.willChange='auto'),520);}
+ function paint(animate,jumps=new Set()){
+  if(animate){promote();releaseLayers();}
   cards.forEach((el,i)=>{
    const pos=rel(i),a=Math.abs(pos),near=Math.min(1,a);
-   const op=a<=1?1-.42*a:Math.max(0,.58-(a-1)*.9),sc=1-.08*near,bl=near*3.2;
-   el.style.transition=animate&&!dragging&&!reducedMotion()?'transform .5s cubic-bezier(.22,1,.36,1),opacity .5s ease,filter .5s ease':'none';
+   const op=a<=1?1-.42*a:Math.max(0,.58-(a-1)*.9),sc=1-.08*near;
+   el.style.transition=animate&&!dragging&&!jumps.has(i)&&!reducedMotion()?'transform .5s cubic-bezier(.22,1,.36,1),opacity .5s ease':'none';
    el.style.transform=`translateX(calc(-50% + ${(pos*step).toFixed(1)}px)) scale(${sc.toFixed(3)})`;
    el.style.opacity=op.toFixed(3);
-   el.style.filter=bl>.05?`blur(${bl.toFixed(2)}px)`:'none';
-   el.style.zIndex=String(100-Math.round(a*10));
-   el.tabIndex=a<.5?0:-1;el.setAttribute('aria-hidden',a<.5?'false':'true');
-   el.dataset.pos=pos.toFixed(2);
+   if(!dragging){
+    el.style.zIndex=String(100-Math.round(a*10));
+    el.tabIndex=a<.5?0:-1;el.setAttribute('aria-hidden',a<.5?'false':'true');
+    el.dataset.pos=pos.toFixed(2);
+   }
   });
   prev.classList.toggle('off',!loop&&cur===0);next.classList.toggle('off',!loop&&cur===n-1);
   [...dots.children].forEach((d,i)=>d.classList.toggle('on',i===cur));
  }
  function measure(){const w=cards[0].offsetWidth||260,h=Math.max(...cards.map(c=>c.offsetHeight));step=w*.8;stage.style.height=h+'px';}
  function go(d){const before=cards.map((_,i)=>rel(i));cur=loop?((cur+d)%n+n)%n:clamp(cur+d,0,n-1);remembered=cur;
-  // при переходе через край ленты карточка перескакивает без анимации
-  cards.forEach((el,i)=>{if(loop&&Math.abs(rel(i)-before[i])>1.5)el.style.transition='none';});
-  paint(true);}
+  const jumps=new Set(cards.flatMap((_,i)=>loop&&Math.abs(rel(i)-before[i])>1.5?[i]:[]));
+  paint(true,jumps);}
  measure();paint(false);
  prev.onclick=e=>{e.stopPropagation();go(-1);};next.onclick=e=>{e.stopPropagation();go(1);};
  // Свайп
@@ -49,29 +52,29 @@ function mount(box){
  const move=e=>{
   if(!g||e.pointerId!==g.id)return;
   const dx=e.clientX-g.x,dy=e.clientY-g.y;
-  if(!g.lock){if(Math.abs(dx)<6&&Math.abs(dy)<6)return;g.lock=Math.abs(dx)>Math.abs(dy)?'x':'y';if(g.lock==='x'){try{stage.setPointerCapture(e.pointerId);}catch{}dragging=true;}}
+  if(!g.lock){if(Math.abs(dx)<6&&Math.abs(dy)<6)return;g.lock=Math.abs(dx)>Math.abs(dy)?'x':'y';if(g.lock==='x'){try{stage.setPointerCapture(e.pointerId);}catch{}dragging=true;promote();}}
   if(g.lock!=='x')return;
   moved=true;if(e.cancelable)e.preventDefault();
   let f=dx/step;if(!loop&&(cur===0&&f>0||cur===n-1&&f<0))f*=.3;
-  drag=clamp(f,-1.2,1.2);paint(false);
+  drag=clamp(f,-1.2,1.2);if(!frame)frame=requestAnimationFrame(()=>{frame=0;paint(false);});
  };
  const up=e=>{
   if(!g||e.pointerId!==g.id)return;
   const was=g.lock==='x',dx=e.clientX-g.x,v=dx/Math.max(1,performance.now()-g.t);g=null;
   if(!was)return;
-  dragging=false;
-  const d=Math.abs(dx)>step*.25||Math.abs(v)>.4?(dx<0?1:-1):0;
-  // продолжаем с текущего положения: drag переносится в индекс без скачка
+  cancelAnimationFrame(frame);frame=0;paint(false);dragging=false;
+  const cancelled=e.type==='pointercancel'||e.type==='lostpointercapture';
+  const d=!cancelled&&(Math.abs(dx)>step*.25||Math.abs(v)>.4)?(dx<0?1:-1):0;
   const before=cards.map((_,i)=>rel(i));
-  drag=0;cur=loop?((cur+d)%n+n)%n:clamp(cur+d,0,n-1);remembered=cur;
-  cards.forEach((el,i)=>{el.style.transition='none';const p=before[i],a=Math.abs(p);el.style.transform=`translateX(calc(-50% + ${(p*step).toFixed(1)}px)) scale(${(1-.08*Math.min(1,a)).toFixed(3)})`;});
+  // Фиксируем последний кадр жеста перед переходом к ближайшей карточке.
   void stage.offsetWidth;
-  cards.forEach((el,i)=>{if(loop&&Math.abs(rel(i)-before[i])>1.5)el.dataset.jump='1';});
-  paint(true);
-  cards.forEach(el=>{if(el.dataset.jump){el.style.transition='none';delete el.dataset.jump;}});
+  drag=0;cur=loop?((cur+d)%n+n)%n:clamp(cur+d,0,n-1);remembered=cur;
+  const jumps=new Set(cards.flatMap((_,i)=>loop&&Math.abs(rel(i)-before[i])>1.5?[i]:[]));
+  paint(true,jumps);
+  if(stage.hasPointerCapture(e.pointerId))stage.releasePointerCapture(e.pointerId);
  };
  stage.addEventListener('pointerdown',down);stage.addEventListener('pointermove',move,{passive:false});
- stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);
+ stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);stage.addEventListener('lostpointercapture',up);
  stage.addEventListener('touchmove',e=>{if(g?.lock==='x'&&e.cancelable)e.preventDefault();},{passive:false});
  // нажатие на соседнюю карточку выводит её в центр, а не открывает
  const click=e=>{
@@ -83,7 +86,7 @@ function mount(box){
  box.addEventListener('click',click,true);
  const onResize=()=>{measure();paint(false);};
  addEventListener('resize',onResize);
- box._remCleanup=()=>{box.removeEventListener('click',click,true);removeEventListener('resize',onResize);};
+ box._remCleanup=()=>{cancelAnimationFrame(frame);clearTimeout(layerTimer);box.removeEventListener('click',click,true);removeEventListener('resize',onResize);};
 }
 // Появление блока последним после заставки
 function reveal(box){

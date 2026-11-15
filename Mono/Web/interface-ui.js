@@ -17,6 +17,7 @@ for(const dialog of document.querySelectorAll('dialog:not(#onboarding):not(#char
  function alignHome(){
   queued=false;
   if(document.body.dataset.page!=='home')return;
+  if(document.querySelector('#home.home-dash')){root.style.setProperty('--home-shift','0px');return;}
   const mic=document.querySelector('#mic'),key=document.querySelector('#textEntry');
   if(!mic||!key)return;
   // текущий сдвиг вычитаем из координат: при плавном переходе не сбрасываем его в ноль

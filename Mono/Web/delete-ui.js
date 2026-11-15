@@ -32,9 +32,9 @@ function decorate(container=document.querySelector('#pageBody')){
 function refresh(){refreshAccounts();renderHomeReminders();if(page!=='home')render();root.MonoCharts?.refresh?.();}
 function showUndo(before,after,label){
  undoBar?.remove();undoTimer?.cancel();const bar=document.createElement('div');bar.className='delete-undo';bar.setAttribute('role','status');const text=document.createElement('span');text.textContent=label;const undo=document.createElement('button');undo.type='button';undo.textContent='Отменить';bar.append(text,undo);
- (document.querySelector('#chartDialog[open]')||document.body).append(bar);undoBar=bar;
+ (document.querySelector('#chartDialog[open]')||document.body).append(bar);undoBar=bar;MonoNoticeMotion.enter(bar);
  undo.onclick=()=>{if(!undoTimer||undoTimer.remaining()<=0)return;if(JSON.stringify(state)!==after){bar.remove();undoTimer?.cancel();notify('После новых изменений отмена недоступна.');return;}if(persist(structuredClone(before))){refresh();bar.remove();undoTimer?.cancel();notify('Удаление отменено',false,{duration:2500,fade:160});}};
- undoTimer=MonoNoticeLifetime.mount(bar,()=>{bar.remove();if(undoBar===bar)undoBar=null;});
+ undoTimer=MonoNoticeLifetime.mount(bar,()=>MonoNoticeMotion.exit(bar,()=>{bar.remove();if(undoBar===bar)undoBar=null;}));
 }
 function remove(info){
  closeShell();let result;
@@ -61,6 +61,5 @@ document.addEventListener('click',event=>{
  if(performance.now()<suppressUntil){event.preventDefault();event.stopImmediatePropagation();return;}
  const button=event.target.closest('[data-entity-delete]');if(button){event.preventDefault();event.stopImmediatePropagation();remove(metadata(button));}
 },{capture:true});
-document.querySelector('#chartDialog').addEventListener('close',()=>{if(undoBar?.isConnected&&undoBar.closest('dialog'))document.body.append(undoBar);});
 root.MonoSwipe={decorate,close:closeShell,cancelGesture:()=>{if(gesture)closeShell(gesture.shell);gesture=null;}};root.MonoDeleteUI={remove};decorate();
 })(window);
