@@ -16,7 +16,7 @@ document.body.append(hint);
 const text=hint.querySelector('.pull-text'),arrow=hint.querySelector('.pull-arrow');
 const app=document.querySelector('.app');
 let g=null;
-function blocked(target){return !actions[page]||window.scrollY>2||tourActive||holding||listening||document.querySelector('dialog[open]')||document.documentElement.classList.contains('search-open')||window.MonoPageMotion?.isBusy()||target.closest('input,textarea,select,.swipe-shell.swipe-open,[data-goal-handle],.goal-card.dragging');}
+function blocked(target){return !actions[page]||window.scrollY>2||tourActive||holding||listening||document.querySelector('dialog[open]')||document.documentElement.classList.contains('search-open')||window.MonoPageMotion?.isBusy()||target.closest('.rem-carousel,#toast,.delete-undo,input,textarea,select,.swipe-shell.swipe-open,[data-goal-handle],.goal-card.dragging');}
 function show(pull,progress){
  app.style.transition='none';app.style.transform=pull?`translateY(${pull.toFixed(1)}px)`:'';
  hint.style.opacity=String(Math.min(1,progress*1.4));

@@ -7,86 +7,32 @@ const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 let remembered=0;
 function mount(box){
  if(!box)return;
- box._remCleanup?.();box._remCleanup=null;
+ box._remCleanup?.();
  const cards=[...box.querySelectorAll(':scope>.reminder')];
  box.classList.toggle('has-carousel',cards.length>1);
- if(cards.length<2){box.classList.remove('rem-peek');return;}
- const n=cards.length,loop=n>=3;
- box.classList.add('rem-peek');
+ box.classList.toggle('rem-peek',cards.length>1);
+ if(cards.length<2)return;
  const wrap=document.createElement('div');wrap.className='rem-carousel';
- const stage=document.createElement('div');stage.className='rem-stage';
- const prev=document.createElement('button');prev.type='button';prev.className='rem-arrow prev';prev.setAttribute('aria-label','Предыдущее напоминание');prev.innerHTML=chev('M14.5 6l-6 6 6 6');
- const next=document.createElement('button');next.type='button';next.className='rem-arrow next';next.setAttribute('aria-label','Следующее напоминание');next.innerHTML=chev('M9.5 6l6 6-6 6');
+ const stage=document.createElement('div');stage.className='rem-stage rem-native';
+ stage.setAttribute('role','region');stage.setAttribute('aria-label','Напоминания');
+ const arrow=(label,d)=>{const el=document.createElement('button');el.type='button';el.className='rem-arrow '+(d<0?'prev':'next');el.setAttribute('aria-label',label);el.innerHTML=chev(d<0?'M14.5 6l-6 6 6 6':'M9.5 6l6 6-6 6');return el;};
+ const prev=arrow('Предыдущее напоминание',-1),next=arrow('Следующее напоминание',1);
  const dots=document.createElement('div');dots.className='rem-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML=cards.map(()=>'<i></i>').join('');
  cards.forEach(c=>stage.append(c));wrap.append(stage,prev,next);box.append(wrap,dots);
- let cur=clamp(remembered,0,n-1),drag=0,step=300,dragging=false,frame=0,layerTimer=0;
- const rel=i=>{let p=i-cur+drag;if(loop){const half=n/2;p=((p+half)%n+n)%n-half;}return p;};
- function promote(){clearTimeout(layerTimer);cards.forEach(el=>el.style.willChange='transform,opacity');}
- function releaseLayers(){clearTimeout(layerTimer);layerTimer=setTimeout(()=>cards.forEach(el=>el.style.willChange='auto'),520);}
- function paint(animate,jumps=new Set()){
-  if(animate){promote();releaseLayers();}
-  cards.forEach((el,i)=>{
-   const pos=rel(i),a=Math.abs(pos),near=Math.min(1,a);
-   const op=a<=1?1-.42*a:Math.max(0,.58-(a-1)*.9),sc=1-.08*near;
-   el.style.transition=animate&&!dragging&&!jumps.has(i)&&!reducedMotion()?'transform .5s cubic-bezier(.22,1,.36,1),opacity .5s ease':'none';
-   el.style.transform=`translateX(calc(-50% + ${(pos*step).toFixed(1)}px)) scale(${sc.toFixed(3)})`;
-   el.style.opacity=op.toFixed(3);
-   if(!dragging){
-    el.style.zIndex=String(100-Math.round(a*10));
-    el.tabIndex=a<.5?0:-1;el.setAttribute('aria-hidden',a<.5?'false':'true');
-    el.dataset.pos=pos.toFixed(2);
-   }
-  });
-  prev.classList.toggle('off',!loop&&cur===0);next.classList.toggle('off',!loop&&cur===n-1);
-  [...dots.children].forEach((d,i)=>d.classList.toggle('on',i===cur));
- }
- function measure(){const w=cards[0].offsetWidth||260,h=Math.max(...cards.map(c=>c.offsetHeight));step=w*.8;stage.style.height=h+'px';}
- function go(d){const before=cards.map((_,i)=>rel(i));cur=loop?((cur+d)%n+n)%n:clamp(cur+d,0,n-1);remembered=cur;
-  const jumps=new Set(cards.flatMap((_,i)=>loop&&Math.abs(rel(i)-before[i])>1.5?[i]:[]));
-  paint(true,jumps);}
- measure();paint(false);
- prev.onclick=e=>{e.stopPropagation();go(-1);};next.onclick=e=>{e.stopPropagation();go(1);};
- // Свайп
- let g=null,moved=false;
- const down=e=>{moved=false;if(e.button>0||e.target.closest('.rem-arrow'))return;g={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),lock:null};};
- const move=e=>{
-  if(!g||e.pointerId!==g.id)return;
-  const dx=e.clientX-g.x,dy=e.clientY-g.y;
-  if(!g.lock){if(Math.abs(dx)<6&&Math.abs(dy)<6)return;g.lock=Math.abs(dx)>Math.abs(dy)?'x':'y';if(g.lock==='x'){try{stage.setPointerCapture(e.pointerId);}catch{}dragging=true;promote();}}
-  if(g.lock!=='x')return;
-  moved=true;if(e.cancelable)e.preventDefault();
-  let f=dx/step;if(!loop&&(cur===0&&f>0||cur===n-1&&f<0))f*=.3;
-  drag=clamp(f,-1.2,1.2);if(!frame)frame=requestAnimationFrame(()=>{frame=0;paint(false);});
- };
- const up=e=>{
-  if(!g||e.pointerId!==g.id)return;
-  const was=g.lock==='x',dx=e.clientX-g.x,v=dx/Math.max(1,performance.now()-g.t);g=null;
-  if(!was)return;
-  cancelAnimationFrame(frame);frame=0;paint(false);dragging=false;
-  const cancelled=e.type==='pointercancel'||e.type==='lostpointercapture';
-  const d=!cancelled&&(Math.abs(dx)>step*.25||Math.abs(v)>.4)?(dx<0?1:-1):0;
-  const before=cards.map((_,i)=>rel(i));
-  // Фиксируем последний кадр жеста перед переходом к ближайшей карточке.
-  void stage.offsetWidth;
-  drag=0;cur=loop?((cur+d)%n+n)%n:clamp(cur+d,0,n-1);remembered=cur;
-  const jumps=new Set(cards.flatMap((_,i)=>loop&&Math.abs(rel(i)-before[i])>1.5?[i]:[]));
-  paint(true,jumps);
-  if(stage.hasPointerCapture(e.pointerId))stage.releasePointerCapture(e.pointerId);
- };
- stage.addEventListener('pointerdown',down);stage.addEventListener('pointermove',move,{passive:false});
- stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);stage.addEventListener('lostpointercapture',up);
- stage.addEventListener('touchmove',e=>{if(g?.lock==='x'&&e.cancelable)e.preventDefault();},{passive:false});
- // нажатие на соседнюю карточку выводит её в центр, а не открывает
- const click=e=>{
-  if(moved){e.stopPropagation();e.preventDefault();moved=false;return;}
-  const el=e.target.closest('.reminder');if(!el||!stage.contains(el))return;
-  const pos=Number(el.dataset.pos||0);
-  if(Math.abs(pos)>.5){e.stopPropagation();e.preventDefault();go(Math.round(pos));}
- };
- box.addEventListener('click',click,true);
- const onResize=()=>{measure();paint(false);};
- addEventListener('resize',onResize);
- box._remCleanup=()=>{cancelAnimationFrame(frame);clearTimeout(layerTimer);box.removeEventListener('click',click,true);removeEventListener('resize',onResize);};
+ let cur=clamp(remembered,0,cards.length-1),timer;
+ const offset=i=>cards[i].offsetLeft-(stage.clientWidth-cards[i].offsetWidth)/2;
+ function mark(){prev.disabled=cur===0;next.disabled=cur===cards.length-1;[...dots.children].forEach((d,i)=>d.classList.toggle('on',i===cur));remembered=cur;}
+ function go(i,smooth=true){cur=clamp(i,0,cards.length-1);stage.scrollTo({left:offset(cur),behavior:smooth&&!reducedMotion()?'smooth':'instant'});mark();}
+ prev.onclick=()=>go(cur-1);next.onclick=()=>go(cur+1);
+ stage.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();go(cur+(e.key==='ArrowRight'?1:-1));}});
+ // Let WebKit own scrolling and inertia; no pointer capture or per-frame transforms.
+ let start=null,moved=false;
+ stage.addEventListener('pointerdown',e=>{start={x:e.clientX,y:e.clientY};moved=false;},{passive:true});
+ stage.addEventListener('pointermove',e=>{if(start&&Math.hypot(e.clientX-start.x,e.clientY-start.y)>8)moved=true;},{passive:true});
+ stage.addEventListener('click',e=>{if(moved){e.preventDefault();e.stopImmediatePropagation();moved=false;}},true);
+ stage.addEventListener('scroll',()=>{clearTimeout(timer);timer=setTimeout(()=>{cur=cards.reduce((best,c,i)=>Math.abs(offset(i)-stage.scrollLeft)<Math.abs(offset(best)-stage.scrollLeft)?i:best,0);mark();},80);},{passive:true});
+ const resize=()=>go(cur,false);addEventListener('resize',resize);go(cur,false);
+ box._remCleanup=()=>{clearTimeout(timer);removeEventListener('resize',resize);};
 }
 // Появление блока последним после заставки
 function reveal(box){

@@ -98,6 +98,7 @@ if(!Array.isArray(s.goals)||!s.goals.every(g=>g&&typeof g.id==='string'&&typeof 
 if(s.deposits!==undefined&&(!Array.isArray(s.deposits)||!s.deposits.every(d=>d&&typeof d.id==='string'&&typeof d.name==='string'&&isMoney(d.principal)&&d.principal>0&&Number.isFinite(d.rate)&&d.rate>0&&validDate(d.start)&&validDate(d.end)&&['daily','monthly'].includes(d.payout)&&Number.isInteger(d.posted)&&Number.isInteger(d.postedAmount))||new Set(s.deposits.map(d=>d.id)).size!==s.deposits.length))return false;
 if(!Array.isArray(s.entries)||new Set(s.entries.map(e=>e?.id)).size!==s.entries.length)return false;
 if(!s.entries.every(e=>{const a=s.accounts.find(a=>a.id===e?.account);if(!e||!a||typeof e.id!=='string'||typeof e.title!=='string'||!e.title.trim()||e.title.length>300||!isMoney(e.amount)||e.amount<=0||!validDate(e.date)||!['income','expense','saving','transfer'].includes(e.type))return false;
+if(e.purchaseReview!==undefined&&(e.type!=='expense'||!e.purchaseReview||!['delighted','useful','disappointed'].includes(e.purchaseReview.value)||!validDate(e.purchaseReview.date)))return false;
 if(e.createdAt!==undefined&&!(typeof e.createdAt==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(e.createdAt)&&Number.isFinite(Date.parse(e.createdAt))&&new Date(e.createdAt).toISOString()===(e.createdAt.includes('.')?e.createdAt:e.createdAt.replace('Z','.000Z'))))return false;
 if(e.type==='saving')return s.goals.some(g=>g.id===e.goalId&&g.currency===a.currency);
 if(e.type==='transfer'){const to=s.accounts.find(a=>a.id===e.toAccount);return !!to&&to.id!==a.id&&isMoney(e.toAmount)&&e.toAmount>0&&(to.currency!==a.currency||e.toAmount===e.amount);}
@@ -105,6 +106,13 @@ return [...s.categories,...s.incomeCategories].includes(e.category)&&(e.category
 if(!s.limits||Object.entries(s.limits).some(([c,ls])=>!currencies.includes(c)||!ls||typeof ls!=='object'||Object.entries(ls).some(([k,v])=>!s.categories.includes(k)||!isMoney(v)||v<0)))return false;
 if(!Array.isArray(s.payments)||new Set(s.payments.map(p=>p?.id)).size!==s.payments.length||!s.payments.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&p.name.trim()&&p.name.length<=100&&isMoney(p.amount)&&p.amount>0&&s.accounts.some(a=>a.id===p.account)&&s.categories.includes(p.category)&&validDate(p.date)&&['once','monthly','daily','weekly','fortnightly'].includes(p.repeat)&&(p.reminderTime===undefined||typeof p.reminderTime==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(p.reminderTime))&&Number.isInteger(p.remindDays)&&p.remindDays>=0&&p.remindDays<=30))return false;
 if(!s.settings||!['system','light','dark','black','blue','purple','green','burgundy'].includes(s.settings.theme)||!['ru','en'].includes(s.settings.language))return false;
+if(s.settings.financialHealth!==undefined){
+ const h=s.settings.financialHealth;if(!h||typeof h!=='object'||Array.isArray(h))return false;
+ for(const key of ['historyComplete','paymentsComplete','debtConfirmed','reserveConfirmed'])if(h[key]!==undefined&&typeof h[key]!=='boolean')return false;
+ for(const key of ['debtPaymentIds','reserveAccountIds','reserveGoalIds'])if(h[key]!==undefined&&(!Array.isArray(h[key])||h[key].length>1000||!h[key].every(id=>typeof id==='string'&&id.length<=100)||new Set(h[key]).size!==h[key].length))return false;
+ for(const [key,values] of [['reserveMonths',[3,6,9,12]],['savingRate',[.05,.1,.15,.2,.25,.3]],['freeRate',[.1,.2,.3]]])if(h[key]!==undefined&&!values.includes(h[key]))return false;
+ if(h.lastReviewDate!==undefined&&!validDate(h.lastReviewDate))return false;
+}
 if(!Array.isArray(s.tickets)||!s.tickets.every(t=>t&&typeof t.id==='string'&&typeof t.text==='string'&&t.text.length<=5000&&typeof t.date==='string'))return false;
 return true;
 }catch{return false;}}
@@ -240,7 +248,13 @@ if(e.type==='expense'&&Speech.installment(clause)){
  e.title=e.title.replace(/(?<!\p{L})долями(?!\p{L})/iu,'').replace(/^(?:оплатил[аи]?|за)\s*/iu,'').trim()||'Покупка';
  e.title=e.title[0].toUpperCase()+e.title.slice(1);
 }
-if(!all.includes(e.category))e.category='Другое';entries.push(e);}
+const remembered=[...history].reverse().find(h=>h.categoryChosen===true&&['expense','income'].includes(h.type)&&normalizeTitle(h.title)===normalizeTitle(e.title)&&(h.type==='income'?state.incomeCategories:state.categories).includes(h.category));
+// Only a direction-free phrase may inherit the type. Explicit words always win.
+if(remembered&&!Speech.income(clause)&&!Speech.expense(clause)&&!/(?:купил|потрат|оплат|заплат|расход|доход|получил|заработал|продал|вернул|долг)/iu.test(clause)){
+ e.type=remembered.type;e.category=remembered.category;
+}
+const allowed=e.type==='income'?state.incomeCategories:state.categories;
+if(!allowed.includes(e.category))e.category='Другое';entries.push(e);}
 }
 return {entries,errors};}
 
