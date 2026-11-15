@@ -85,8 +85,8 @@ function applyTheme(){const mode=themeAllowed(state.settings.theme)?state.settin
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change',e=>{systemDark=e.matches;applyTheme();});
 function download(name,text,type='application/json'){if(window.MonoNative){MonoNative.share(name,text);return;}const u=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1500);}
 function empty(title='Пока чистый лист',description='Добавьте первую запись — и здесь появится ваша история.',action=true){return `<div class="empty"><h2>${esc(title)}</h2><p>${esc(description)}</p>${action?'<button data-add>Записать операцию ↗</button>':''}</div>`;}
-function refreshAccounts(){if(!account(voiceAccount))voiceAccount=state.accounts[0].id;$('#voiceAccount').innerHTML=state.accounts.map(a=>`<option value="${esc(a.id)}" ${a.id===voiceAccount?'selected':''}>${esc(a.name)} · ${a.currency}</option>`).join('');}
-$('#voiceAccount').onchange=e=>voiceAccount=e.target.value;
+function refreshAccounts(){if(!account(voiceAccount))voiceAccount=state.accounts[0].id;$('#voiceAccount').innerHTML=state.accounts.map(a=>`<option value="${esc(a.id)}" ${a.id===voiceAccount?'selected':''}>${esc(a.name)} · ${a.currency}</option>`).join('');window.MonoTogether?.decoratePicker();}
+$('#voiceAccount').onchange=async e=>{const value=e.target.value;if(await window.MonoTogether?.selectAccount(value))return;voiceAccount=value;};
 const rootPages=['history','home','menu'];
 const reducedMotion=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
 // Копия страницы для анимации перехода: выкидываем то, что ниже экрана — меньше работы телефону

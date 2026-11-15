@@ -40,3 +40,8 @@ for(const dialog of document.querySelectorAll('dialog:not(#onboarding):not(#char
  setTimeout(queue,400);setTimeout(queue,1200);setTimeout(queue,2200);
  queue();
 })();
+
+// Prevent vertical rubber-banding on the home canvas, preserving modal scrolling.
+document.addEventListener('touchmove',event=>{
+ if(document.body.dataset.page==='home'&&!document.querySelector('dialog[open]')&&event.cancelable)event.preventDefault();
+},{passive:false});
