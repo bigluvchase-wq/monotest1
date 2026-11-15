@@ -22,3 +22,10 @@ test('reconciliation never overrides different amounts, clarifications or mixed 
   assert.equal(reconcile(raw,{text:example.text,context}),raw);
  }
 });
+test('reminder removal accepts an exact title alias but rejects conflicting names',()=>{
+ const context=Examples.benchmarkContext();
+ const raw={entries:[],errors:[],commands:[{kind:'remove',data:{removeTarget:'reminder',title:'Позвонить маме',last:false}}]};
+ assert.deepEqual(result(raw,context).commands,[{kind:'remove',data:{target:'reminder',name:'Позвонить маме',last:false,strict:true}}]);
+ raw.commands[0].data.name='Оплатить интернет';
+ assert.throws(()=>result(raw,context),/invalid_ai_response/);
+});

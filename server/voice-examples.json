@@ -1307,7 +1307,7 @@
           {
             "type": "expense",
             "amount": 8500,
-            "category": "Кафе",
+            "category": "Продукты",
             "dateOffset": 0,
             "account": "default"
           }
