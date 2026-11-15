@@ -30,17 +30,32 @@ function checkCase(actual,example){
  return true;
 }
 // Проверяем рабочий обработчик на отдельном локальном порту и SQLite в памяти.
-async function selfTest({env=process.env,fetchImpl=globalThis.fetch,log=console.log,complex=false}={}){
+async function selfTest({env=process.env,fetchImpl=globalThis.fetch,log=console.log,complex=false,onlyUser=false,diagnose=false}={}){
  const cfg=settings(env);
  if(!cfg.enabled||!cfg.key||!cfg.folder)throw Error('Сначала настройте и включите умный разбор в .env.');
  const express=require('express'),Database=require('better-sqlite3'),crypto=require('node:crypto');
  const db=new Database(':memory:'),app=express(),localKey=crypto.randomBytes(32).toString('hex');
- let upstreamError='';app.use(express.json({limit:'64kb'}));
+ let upstreamError='',modelReply=null;
+ const scrub=value=>String(value).split(cfg.key).join('[ключ скрыт]').replace(/(?:Api-Key|Bearer)\s+\S+/gi,'[ключ скрыт]');
+ function diagnostic(context){
+  log('ДИАГНОСТИКА: сегодня='+context.today+'; статус='+String(modelReply?.status||'нет')+'; токены='+JSON.stringify(modelReply?.usage||null));
+  if(!modelReply)return;
+  try{
+   const reply=JSON.parse(modelReply.text);
+   log('Ошибки модели: '+scrub(JSON.stringify(reply.errors)));
+   if(Array.isArray(reply.entries))reply.entries.slice(0,10).forEach((entry,i)=>log('Запись '+(i+1)+': '+scrub(JSON.stringify(entry))));
+   else log('Поле entries: '+scrub(JSON.stringify(reply.entries)));
+   if(Array.isArray(reply.commands))reply.commands.slice(0,5).forEach((cmd,i)=>log('Команда '+(i+1)+': '+scrub(JSON.stringify(cmd))));
+   else log('Поле commands: '+scrub(JSON.stringify(reply.commands)));
+  }catch{log('Текст модели: '+scrub(modelReply.text||'').slice(0,2000));}
+ }
+ app.use(express.json({limit:'64kb'}));
  install(app,{db,env,rateLimit:(req,res,next)=>next(),authenticate(req,res){
   if(req.get('x-mono-key')!==localKey){res.status(401).json({error:'unauthorized'});return null;}
   return {code:'000000'};
  },fetchImpl:async(url,options)=>{
   const response=await fetchImpl(url,options);
+  if(diagnose&&response.ok){try{const data=await response.clone().json(),a=data.result?.alternatives?.[0];modelReply={status:a?.status,text:a?.message?.text,usage:data.result?.usage};}catch{}}
   if(!response.ok){
    upstreamError='Yandex Cloud: HTTP '+response.status;
    try{const body=await response.clone().json(),message=body.error?.message||body.message;
@@ -60,19 +75,20 @@ async function selfTest({env=process.env,fetchImpl=globalThis.fetch,log=console.
    context.incomeCategories=['Зарплата','Подработка','Займы','Возврат долга','Подарки','Кешбэк','Другое'];
   }
   async function request(text){
+   upstreamError='';modelReply=null;
    const response=await fetch(url,{method:'POST',signal:AbortSignal.timeout(16000),headers:{'Content-Type':'application/json','X-Mono-Key':localKey},body:JSON.stringify({code:'000000',text,context})});
    const body=await response.json();
    if(!response.ok||!body.ok)throw Error(upstreamError||'Ошибка разбора: HTTP '+response.status+' / '+body.error);
    return body;
   }
   if(complex){
-   const cases=complexCases(context);let passed=0;
+   const cases=onlyUser?complexCases(context).slice(0,1):complexCases(context);let passed=0;
    for(const example of cases){
     try{
      const actual=await request(example.text);
      if(checkCase(actual,example)){passed++;log('ОК: '+example.name);}
-     else{log('НЕ ПРОШЁЛ: '+example.name);log('Ответ: '+JSON.stringify(actual));}
-    }catch(error){log('НЕ ПРОШЁЛ: '+example.name+' — '+error.message);}
+     else{log('НЕ ПРОШЁЛ: '+example.name);log('Ответ: '+scrub(JSON.stringify(actual)));if(diagnose)diagnostic(context);}
+    }catch(error){log('НЕ ПРОШЁЛ: '+example.name+' — '+scrub(error.message));if(diagnose)diagnostic(context);}
    }
    if(passed!==cases.length)throw Error('Пройдено '+passed+' из '+cases.length+'. Рабочая база не менялась.');
    log('Все '+passed+' сложных примеров пройдены. Рабочая база не менялась.');return;
@@ -90,4 +106,4 @@ async function selfTest({env=process.env,fetchImpl=globalThis.fetch,log=console.
  }
 }
 module.exports={selfTest,complexCases,checkCase,USER_PHRASE};
-if(require.main===module){require('dotenv').config({quiet:true});selfTest({complex:process.argv.includes('--complex')}).catch(error=>{console.error(error.message);process.exitCode=1;});}
+if(require.main===module){require('dotenv').config({quiet:true});selfTest({complex:process.argv.includes('--complex'),onlyUser:process.argv.includes('--only-user'),diagnose:process.argv.includes('--diagnose')}).catch(error=>{console.error(error.message);process.exitCode=1;});}

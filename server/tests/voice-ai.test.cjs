@@ -93,3 +93,11 @@ test('complex checker catches wrong debt amount, wrong date and missing reminder
  actual.entries[2].amount=50000;actual.entries[1].date=context.today;assert.equal(checkCase(actual,example),false);
  actual.entries[1].date=example.entries[1].date;actual.commands=[];assert.equal(checkCase(actual,example),false);
 });
+test('single-case diagnostics reveal rejected model fields and redact the API key',async()=>{
+ const {selfTest}=require('../voice-ai-self-test');let calls=0;const messages=[];
+ await assert.rejects(selfTest({complex:true,onlyUser:true,diagnose:true,env:{VOICE_AI_ENABLED:'1',YANDEX_API_KEY:'test-secret',YANDEX_FOLDER_ID:'test-folder'},log:message=>messages.push(message),fetchImpl:async()=>{
+  calls++;
+  return new Response(JSON.stringify({result:{alternatives:[{status:'ALTERNATIVE_STATUS_FINAL',message:{text:JSON.stringify({entries:[{...expense,title:'test-secret',date:'not-a-date'}],commands:[],errors:[]})}}],usage:{completionTokens:'123'}}}),{headers:{'Content-Type':'application/json'}});
+ }}),/Пройдено 0 из 1/);
+ assert.equal(calls,1);assert(messages.some(m=>m.includes('not-a-date')));assert(messages.some(m=>m.includes('ALTERNATIVE_STATUS_FINAL')));assert.equal(messages.join('').includes('test-secret'),false);
+});
