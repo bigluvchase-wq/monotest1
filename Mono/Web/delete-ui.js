@@ -37,6 +37,7 @@ function showUndo(before,after,label){
  undoTimer=MonoNoticeLifetime.mount(bar,()=>MonoNoticeMotion.exit(bar,()=>{bar.remove();if(undoBar===bar)undoBar=null;}));
 }
 function remove(info){
+ if(info.kind==='account'&&info.id==='main'&&window.MonoTogether?.active()){window.MonoTogether.manage();return;}
  closeShell();let result;
  try{result=MonoDeletion.plan(state,info);if(info.kind==='limit'){const form=document.querySelector('#limitForm'),limits=state.limits[info.currency]||{};if(form&&state.categories.some((c,i)=>c!==info.id&&Math.round(Number(form.elements['limit'+i]?.value||0)*100)!==(limits[c]||0)))result.warning+=' Несохранённые изменения других лимитов будут сброшены.';}}catch(error){notify(error.message);return;}
  if(!confirm(result.warning))return;

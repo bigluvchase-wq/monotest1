@@ -163,6 +163,9 @@ setInterval(() => { const t = Date.now(); for (const m of [failures, hits]) for 
 app.get('/api/voice/status',(req,res)=>res.json({enabled:false}));
 app.post('/api/voice/parse',(req,res)=>res.status(410).json({ok:false,error:'voice_ai_disabled'}));
 
+const sharedEnginePath=require('fs').existsSync(path.join(__dirname,'engine.js'))?'./engine.js':'../Mono/Web/engine.js';
+require('./shared-accounts').install(app,{db,rateLimit,engine:require(sharedEnginePath),authenticate(req,res,code){const user=q.user.get(code);if(!user||!user.key_hash){noteFailure(req);res.status(401).json({error:'unauthorized'});return false;}return checkKey(req,res,user);}});
+
 // Тарифы: сумма → месяцы. Цены со страницы оплаты и прежние цены — на всякий случай
 const PLAN_MONTHS = { 129: 1, 649: 6, 1299: 12, 199: 1, 999: 6, 1799: 12 };
 

@@ -19,7 +19,7 @@ function speechEvent(id,event,info){
  if(event==='error')session.onerror?.({error:info.code,message:info.detail});
  if(event==='end'){sessions.delete(id);session.onend?.();}
 }
-function refreshReminders(){
+function refreshReminders(collectOnly=false){
  if(typeof state!=='object')return;
  const now=new Date(),today=E.dateString(now),minute=now.toTimeString().slice(0,5),items=[];
  const recorded=new Set(state.entries.filter(e=>e.paymentId).map(e=>e.paymentId+'|'+e.paymentDate));
@@ -54,7 +54,8 @@ function refreshReminders(){
  items.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
  // Ежедневные напоминания не вытесняют платежи и личные напоминания
  const main=items.filter(i=>!i.id.startsWith('daily|')),daily=items.filter(i=>i.id.startsWith('daily|'));
- post('reminders',{items:[...main.slice(0,60-Math.min(daily.length,7)),...daily].slice(0,60)});
+ const output=[...main.slice(0,60-Math.min(daily.length,7)),...daily].slice(0,60);if(collectOnly)return output;
+ const extra=root.MonoTogether?.otherNotifications(()=>refreshReminders(true))||[];const all=[...new Map([...output,...extra].map(i=>[i.id,i])).values()].sort((a,b)=>Number(a.id.startsWith('daily|'))-Number(b.id.startsWith('daily|'))||(a.date+a.time).localeCompare(b.date+b.time));post('reminders',{items:all.slice(0,60)});
 }
 let widgetTimer=0,quiet=false;
 // Запоминаем разрешение на уведомления: в настройках кнопка меняется на «Разрешённые уведомления»
