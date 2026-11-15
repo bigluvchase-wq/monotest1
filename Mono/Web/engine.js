@@ -111,6 +111,8 @@ if(s.settings.financialHealth!==undefined){
  for(const key of ['historyComplete','paymentsComplete','debtConfirmed','reserveConfirmed'])if(h[key]!==undefined&&typeof h[key]!=='boolean')return false;
  for(const key of ['debtPaymentIds','reserveAccountIds','reserveGoalIds'])if(h[key]!==undefined&&(!Array.isArray(h[key])||h[key].length>1000||!h[key].every(id=>typeof id==='string'&&id.length<=100)||new Set(h[key]).size!==h[key].length))return false;
  for(const [key,values] of [['reserveMonths',[3,6,9,12]],['savingRate',[.05,.1,.15,.2,.25,.3]],['freeRate',[.1,.2,.3]]])if(h[key]!==undefined&&!values.includes(h[key]))return false;
+ if(h.nextIncome!==undefined){if(!h.nextIncome||typeof h.nextIncome!=='object'||Array.isArray(h.nextIncome))return false;for(const [currency,n] of Object.entries(h.nextIncome))if(!currencies.includes(currency)||!n||!validDate(n.date)||!isMoney(n.amount)||n.amount<=0)return false;}
+ if(h.snapshots!==undefined&&(!Array.isArray(h.snapshots)||h.snapshots.length>180||!h.snapshots.every(x=>x&&validDate(x.date)&&currencies.includes(x.currency)&&typeof x.key==='string'&&x.key.length<=10000&&Number.isInteger(x.score)&&x.score>=0&&x.score<=100&&x.parts&&['flow','reserve','debt','bills','saving'].every(k=>x.parts[k]===null||Number.isInteger(x.parts[k])&&x.parts[k]>=0&&x.parts[k]<=100))))return false;
  if(h.lastReviewDate!==undefined&&!validDate(h.lastReviewDate))return false;
 }
 if(!Array.isArray(s.tickets)||!s.tickets.every(t=>t&&typeof t.id==='string'&&typeof t.text==='string'&&t.text.length<=5000&&typeof t.date==='string'))return false;
