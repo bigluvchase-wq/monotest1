@@ -43,7 +43,7 @@ function clampPeriod(p){const b=periodBounds();if(p.start>b.maxDate)throw Error(
 const selectedPeriod=()=>selectedRange||MonoPeriod.month(selectedMonth);
 const periodLabel=(short=false)=>MonoPeriod.label(selectedPeriod(),state.settings.language==='en'?'en-US':'ru-RU',short);
 const selectedEntries=()=>MonoPeriod.filter(state.entries,selectedPeriod(),e=>entryCurrency(e)===selectedCurrency);
-const inChart=e=>e.type!=='income'||e.category!=='Займы';
+const inChart=e=>e.type!=='income'||E.isIncomeForStats(e);
 const sum=(items,type)=>items.filter(e=>e.type===type).reduce((s,e)=>s+e.amount,0);
 const spending=(cat,c=selectedCurrency)=>state.entries.filter(e=>e.type==='expense'&&entryCurrency(e)===c&&e.date.startsWith(currentMonth())&&(!cat||cat===e.category)).reduce((s,e)=>s+e.amount,0);
 function notify(message,success=false,options={}){
@@ -244,7 +244,7 @@ async function submitTicket(t,button){
  commit(s=>{const i=s.tickets.findIndex(x=>x.id===t.id);const v={...t,sent:ok};if(i<0)s.tickets.push(v);else s.tickets[i]=v;});
  notify(ok?'Отправлено. Спасибо! Мы прочитаем и ответим.':'Не удалось отправить — нет связи. Обращение сохранено, отправьте его ещё раз позже.',ok);
 }
-function renderSettings(){const section=(...args)=>MonoSettings.section(...args);return `${section('appearance','Тема приложения',`<label class="field"><span class="sr-only">Тема приложения</span><select id="themeSetting" aria-label="Тема приложения">${[['system','Как на устройстве'],['light','Светлая'],['dark','Тёмная'],['black','Чёрно-белая'],['blue','Голубая'],['purple','Фиолетовая'],['green','Зелёная'],['burgundy','Бургунди']].map(([v,t])=>`<option value="${v}" ${(themeAllowed(state.settings.theme)?state.settings.theme:'system')===v?'selected':''}>${t}${themeAllowed(v)?'':' · Премиум'}</option>`).join('')}</select></label>`)}${section('home','Главный экран',`<label class="field">Что показывать<select id="homeMode"><option value="dash" ${(state.settings.home?.mode||'dash')==='dash'?'selected':''}>Баланс</option><option value="classic" ${state.settings.home?.mode==='classic'?'selected':''}>Классический</option></select></label><label class="field">Что скрывает глаз<select id="homeHideScope"><option value="all" ${(state.settings.home?.hideScope||'all')==='all'?'selected':''}>Всё: баланс, расходы и доходы</option><option value="balance" ${state.settings.home?.hideScope==='balance'?'selected':''}>Только общий баланс</option><option value="flows" ${state.settings.home?.hideScope==='flows'?'selected':''}>Только расходы и доходы</option></select></label><label class="notify-row"><span><b>Скрывать суммы при запуске</b><small>Чтобы увидеть, нажмите на глаз рядом с балансом</small></span><input type="checkbox" id="homeHideStart" ${state.settings.home?.hideOnStart?'checked':''}></label>`)}${section('history','Ваша история',`<p class="muted">Без Премиума вся история хранится только на этом устройстве. Если удалить приложение, история удалится вместе с остальными данными.</p><p class="muted">С Премиумом история всегда хранится на сервере и останется с вами даже после переустановки приложения.</p>`)}${section('notifications','Уведомления',notificationSettingsHTML())}${section('data','Ваши данные',`<p class="muted">Загрузите расходы и доходы из банка за последние 3 месяца: выписка в CSV или Excel (.xlsx) из приложения банка. Файл читается только на телефоне.</p><button class="secondary full" id="importBank" type="button">Загрузить выписку из банка</button><p class="muted">Удалит все операции, счета, цели, лимиты, платежи, вклады, напоминания и обращения — на телефоне и на сервере. Код привязки и оплаченный Премиум сохранятся.</p><button class="secondary danger full delete-data" id="deleteMyData">Удалить мои данные</button><p class="tiny muted settings-docs"><a href="https://monoapp.ru/privacy.html">Политика конфиденциальности</a> · <a href="https://monoapp.ru/offer.html">Оферта</a></p>`)}${section('voice','Голос и приватность',`<p class="muted">Речь обрабатывает системное распознавание iOS. Суммы и категории — на устройстве.</p><p class="muted"></p><button class="secondary" id="showWelcome">Повторить инструкцию</button>`)}${section('commands','Голосовые команды',`<p class="muted">Голосом можно не только записывать расходы и доходы, но и создавать напоминания, цели, счета, лимиты, платежи и вклады.</p>${window.MonoCommands?.phrasesHTML()||''}`)}`;}
+function renderSettings(){const section=(...args)=>MonoSettings.section(...args);return `${section('appearance','Тема приложения',`<label class="field"><span class="sr-only">Тема приложения</span><select id="themeSetting" aria-label="Тема приложения">${[['system','Как на устройстве'],['light','Светлая'],['dark','Тёмная'],['black','Чёрно-белая'],['blue','Голубая'],['purple','Фиолетовая'],['green','Зелёная'],['burgundy','Бургунди']].map(([v,t])=>`<option value="${v}" ${(themeAllowed(state.settings.theme)?state.settings.theme:'system')===v?'selected':''}>${t}${themeAllowed(v)?'':' · Премиум'}</option>`).join('')}</select></label>`)}${section('home','Главный экран',`<label class="field">Что показывать<select id="homeMode"><option value="dash" ${(state.settings.home?.mode||'dash')==='dash'?'selected':''}>Баланс</option><option value="classic" ${state.settings.home?.mode==='classic'?'selected':''}>Классический</option></select></label><label class="field">Что скрывает глаз<select id="homeHideScope"><option value="all" ${(state.settings.home?.hideScope||'all')==='all'?'selected':''}>Всё: баланс, расходы и доходы</option><option value="balance" ${state.settings.home?.hideScope==='balance'?'selected':''}>Только общий баланс</option><option value="flows" ${state.settings.home?.hideScope==='flows'?'selected':''}>Только расходы и доходы</option></select></label><label class="notify-row"><span><b>Скрывать суммы при запуске</b><small>Чтобы увидеть, нажмите на глаз рядом с балансом</small></span><input type="checkbox" id="homeHideStart" ${state.settings.home?.hideOnStart?'checked':''}></label>`)}${section('history','Ваша история',`<p class="muted">Без Премиума вся история хранится только на этом устройстве. Если удалить приложение, история удалится вместе с остальными данными.</p><p class="muted">С Премиумом история всегда хранится на сервере и останется с вами даже после переустановки приложения.</p>`)}${section('notifications','Уведомления',notificationSettingsHTML())}${section('data','Ваши данные',`<p class="muted">Загрузите расходы и доходы из банка за последние 3 месяца: выписка в CSV или Excel (.xlsx) из приложения банка. Файл читается только на телефоне.</p><button class="secondary full" id="importBank" type="button">Загрузить выписку из банка</button><p class="muted">Удалит все операции, счета, цели, лимиты, платежи, вклады, напоминания и обращения — на телефоне и на сервере. Код привязки и оплаченный Премиум сохранятся.</p><button class="secondary danger full delete-data" id="deleteMyData">Удалить мои данные</button><p class="tiny muted settings-docs"><a href="https://monoapp.ru/privacy.html">Политика конфиденциальности</a> · <a href="https://monoapp.ru/offer.html">Оферта</a></p>`)}${section('voice','Голос и приватность',`<p class="muted">Голос распознаёт система iOS. Аудиозапись на сервер моно не отправляется.</p><label class="notify-row"><span><b>Умный разбор</b><small>Разбирать фразы с помощью YandexGPT</small></span><input type="checkbox" id="voiceAI" ${window.MonoVoiceAI?.enabled()?'checked':''}></label><p class="muted tiny">Включая умный разбор, вы разрешаете отправлять текст введённой или распознанной фразы и названия счетов, категорий и целей через сервер моно в Yandex Cloud для подготовки черновика. История операций, балансы и аудио не отправляются. Без этой функции разбор работает на устройстве. <a href="https://monoapp.ru/privacy.html">Подробнее о данных</a>.</p><button class="secondary" id="showWelcome">Повторить инструкцию</button>`)}${section('commands','Голосовые команды',`<p class="muted">Голосом можно не только записывать расходы и доходы, но и создавать напоминания, цели, счета, лимиты, платежи и вклады.</p>${window.MonoCommands?.phrasesHTML()||''}`)}`;}
 // Уведомления: какие присылать
 const notifyKinds=[['payments','По платежам','В день платежа и заранее — как настроено в платеже'],['reminders','По напоминаниям','Напоминания, которые вы создали'],['daily','Ежедневное в 20:00','Если за день не внесено ни одной операции'],['subscription','О подписке','За 3 дня и за день до окончания Премиума'],['smart','Умные напоминания','Раз в неделю: где тратите больше или меньше обычного']];
 const notifyOn=kind=>state.settings.notifications?.[kind]!==false;
@@ -311,6 +311,7 @@ function bindPage(){
  on('#importBank','onclick',()=>window.MonoBankImport?.pick());
  on('#notifyList','onclick',()=>{notifyListOpen=!notifyListOpen;const list=document.querySelector('.notify-list'),b=$('#notifyList');list.hidden=!notifyListOpen;b.setAttribute('aria-expanded',String(notifyListOpen));b.querySelector('span').textContent=notifyListOpen?'⌃':'⌄';if(notifyListOpen&&!reducedMotion())list.animate([{opacity:0,transform:'translateY(-6px)'},{opacity:1,transform:'none'}],{duration:260,easing:'ease-out'});});
  document.querySelectorAll('[data-notify-kind]').forEach(i=>i.onchange=()=>{const kind=i.dataset.notifyKind,on=i.checked;const next=structuredClone(state);next.settings.notifications={...(next.settings.notifications||{}),[kind]:on};if(persist(next))window.MonoNative?.refreshReminders();});
+ on('#voiceAI','onchange',e=>{if(!MonoVoiceAI.setEnabled(e.target.checked)){e.target.checked=MonoVoiceAI.enabled();notify('Не удалось сохранить настройку.');return;}cancelParse();notify(e.target.checked?'Умный разбор включён':'Разбор на устройстве');});
  on('#showWelcome','onclick',startTour);
  on('#ticketForm','onsubmit',e=>{e.preventDefault();const f=new FormData(e.target),text=f.get('message').trim();let contact=String(f.get('contact')||'').trim();if(!text){notify('Опишите вопрос или идею.');return;}if(/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(contact))contact='@'+contact;if(contact&&!/^\S+@\S+\.\S+$/.test(contact)&&!/^@[A-Za-z][A-Za-z0-9_]{4,31}$/.test(contact)){notify('Укажите почту (you@example.com) или ник в Telegram (@nickname).');return;}submitTicket({id:uid(),topic:f.get('topic'),email:contact,text,date:new Date().toISOString()},$('#ticketSend'));});
 }
@@ -329,27 +330,49 @@ $('#pageBody').onclick=e=>{const b=e.target.closest('button');if(!b)return;const
  else if(d.ticket){const t=state.tickets.find(t=>t.id===d.ticket);download('mono-ticket-'+t.id.slice(0,8)+'.txt',`Обращение моно #${t.id}\nСтатус: черновик, не отправлен\nДата: ${t.date}\nТема: ${t.topic}\nПочта для ответа: ${t.email}\n\n${t.text}`,'text/plain;charset=utf-8');}
 };
 // Команды (напоминания, цели, лимиты…) можно смешивать с расходами: «Кофе 280. Напомни купить колу».
-let commandQueue=[],commandRest='';
+let commandQueue=[],commandRest='',commandAfter=null;
 function runCommand(text){
  if(!text||!window.MonoCommands)return false;
  const parts=text.split(/(?<=[.!?])\s+|\n+/).map(s=>s.trim()).filter(Boolean),cmds=[],rest=[];
  for(const part of parts){const cmd=MonoCommands.detect(part);if(cmd)cmds.push(cmd);else rest.push(part);}
  if(!cmds.length)return false;
  const wasOpen=$('#entryDialog').open;if(wasOpen)$('#entryDialog').close();if(listening||holding)cancelVoice();
- commandQueue=cmds;commandRest=rest.join(' ');
+ commandQueue=cmds;commandRest=rest.join(' ');commandAfter=null;
  setTimeout(nextCommand,wasOpen?280:0);return true;
 }
-function nextCommand(){const cmd=commandQueue.shift();if(cmd){MonoCommands.run(cmd);if(!$('#actionDialog').open)nextCommand();return;}if(commandRest){const t=commandRest;commandRest='';openEntry(t);}}
-$('#actionDialog').addEventListener('close',()=>{if(commandQueue.length||commandRest)setTimeout(nextCommand,320);});
-function openEntry(text='',how=''){if(text&&runCommand(text))return;$('#entryDialog').dataset.enter=how;
+function nextCommand(){const cmd=commandQueue.shift();if(cmd){MonoCommands.run(cmd);if(!$('#actionDialog').open)nextCommand();return;}if(commandAfter){const done=commandAfter;commandAfter=null;done();return;}if(commandRest){const t=commandRest;commandRest='';openEntry(t);}}
+$('#actionDialog').addEventListener('close',()=>{if(commandQueue.length||commandRest||commandAfter)setTimeout(nextCommand,320);});
+function openEntry(text='',how=''){cancelParse();if(text&&!window.MonoVoiceAI?.enabled()&&runCommand(text))return;$('#entryDialog').dataset.enter=how;
  if(listening||holding)cancelVoice();drafts=[];parseErrors=[];$('#dictation').value=text;$('#drafts').innerHTML='';$('#parseErrors').textContent='';$('#saveButton').hidden=true;$('#sheetTitle').textContent='Что запишем?';if(!$('#entryDialog').open)$('#entryDialog').showModal();if(text)parseInput();else $('#dictation').focus({preventScroll:true});translateUI();
 }
 $('#textEntry').onclick=()=>openEntry();$('#closeEntry').onclick=()=>$('#entryDialog').close();
-$('#dictation').oninput=()=>{drafts=[];parseErrors=[];$('#drafts').innerHTML='';$('#saveButton').hidden=true;$('#parseErrors').textContent='';};
-function parseInput(){
- const text=$('#dictation').value.trim();
- if(runCommand(text))return;
- const r=E.parse(text,new Date(),state.entries,state,voiceAccount);drafts=r.entries;parseErrors=r.errors;$('#parseErrors').innerHTML=r.errors.map(e=>`<p class="warn">${esc(e)}</p>`).join('')+(r.errors.length&&drafts.length?'<p class="warn">Исправьте неразобранные части текста перед сохранением.</p>':'');renderDrafts();}
+$('#dictation').oninput=()=>{cancelParse();drafts=[];parseErrors=[];$('#drafts').innerHTML='';$('#saveButton').hidden=true;$('#parseErrors').textContent='';};
+let parseTask=null,parseVersion=0;
+function cancelParse(){parseVersion++;parseTask?.abort();parseTask=null;$('#parseButton').disabled=false;$('#parseButton').textContent='Разобрать ↗';}
+$('#entryDialog').addEventListener('close',cancelParse);
+async function parseInput(){
+ cancelParse();const text=$('#dictation').value.trim();if(!text)return;
+ if(!window.MonoVoiceAI?.enabled()&&runCommand(text))return;
+ const version=parseVersion,controller=new AbortController();parseTask=controller;
+ const timeout=setTimeout(()=>controller.abort(),15000);
+ drafts=[];parseErrors=[];$('#drafts').replaceChildren();$('#saveButton').hidden=true;
+ $('#parseButton').disabled=true;$('#parseButton').textContent='Разбираю…';
+ $('#parseErrors').innerHTML='<p class="muted" role="status">Разбираю фразу…</p>';
+ let r,fallback=false;
+ try{r=await window.MonoVoiceAI?.parse(text,{signal:controller.signal});}
+ catch(error){fallback=true;}
+ finally{clearTimeout(timeout);}
+ if(version!==parseVersion||!$('#entryDialog').open||$('#dictation').value.trim()!==text)return;
+ parseTask=null;$('#parseButton').disabled=false;$('#parseButton').textContent='Разобрать ↗';
+ if(!r){if(runCommand(text))return;r=E.parse(text,new Date(),state.entries,state,voiceAccount);}
+ if(r.commands?.length&&!r.errors.length){
+  $('#entryDialog').close();commandQueue=r.commands;commandRest='';
+  commandAfter=r.entries.length?()=>{openEntry();$('#dictation').value=text;drafts=r.entries;parseErrors=[];renderDrafts();}:null;
+  setTimeout(nextCommand,320);return;
+ }
+ drafts=r.entries;parseErrors=r.errors;
+ $('#parseErrors').innerHTML=(fallback?'<p class="muted tiny">Умный разбор недоступен — фраза разобрана на устройстве.</p>':'')+r.errors.map(e=>`<p class="warn">${esc(e)}</p>`).join('')+(r.errors.length&&drafts.length?'<p class="warn">Исправьте неразобранные части текста перед сохранением.</p>':'');renderDrafts();
+}
 $('#parseButton').onclick=parseInput;
 function installmentRows(plan,currency){
  return plan.map((part,i)=>`<li><span>${esc(part.date.split('-').reverse().join('.'))} · ${i===0?'расход':'платёж'}</span><strong>${money(part.amount,currency)}</strong></li>`).join('');
