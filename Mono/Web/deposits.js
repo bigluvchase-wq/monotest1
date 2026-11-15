@@ -46,7 +46,7 @@ function accrue(){
     dep.posted=k;
     if(amount<=0)continue;
     dep.postedAmount+=amount;
-    s.entries.push({id:uid(),title:'Проценты · '+dep.name,amount,account:dep.account,type:'income',category:CATEGORY,date,createdAt:new Date().toISOString(),depositId:dep.id});
+    s.entries.push({id:window.MonoTogether?.active()?'deposit-'+dep.id+'-'+date:uid(),title:'Проценты · '+dep.name,amount,account:dep.account,type:'income',category:CATEGORY,date,createdAt:window.MonoTogether?.active()?date+'T00:00:00.000Z':new Date().toISOString(),depositId:dep.id});
    }
   }
  });
@@ -60,7 +60,7 @@ function render(){
   return `<div class="card goal-card deposit-card" data-deposit-id="${esc(dep.id)}"><div class="category-head"><span class="goal-title">${esc(dep.name)}</span><span class="goal-percent">${String(dep.rate).replace('.',',')}%</span></div><div class="goal-value">${money(dep.principal,currency)} <small>· ${dep.payout==='daily'?'проценты каждый день':'проценты раз в месяц'}</small></div><div class="bar goal-bar"><span style="width:${percent.toFixed(1)}%"></span></div><div class="deposit-stats"><div><small>Начислено</small><b>${money(dep.postedAmount,currency)}</b></div><div><small>За весь срок</small><b>${money(expectedTotal(dep),currency)}</b></div><div><small>До</small><b>${dep.end.slice(8)}.${dep.end.slice(5,7)}.${dep.end.slice(2,4)}</b></div></div><p class="tiny muted">${esc(nextText)}</p><div class="action-row"><button class="small-link" data-edit-deposit="${esc(dep.id)}">Изменить вклад</button></div></div>`;
  }).join('')||empty('Пока нет вкладов','Потяните вниз, чтобы добавить.',false)}</div>`;
 }
-function form(id){
+function form(id){if(!id&&window.MonoTogether?.offer(()=>form()))return;
  if(!requireAccess('deposits'))return;
  const dep=(state.deposits||[]).find(d=>d.id===id),start=dep?.start||today(),selectedTerm=dep?(['1m','6m','1y'].find(t=>termEnd(dep.start,t)===dep.end)||'custom'):'1y',end=dep?.end||termEnd(start,'1y');
  actionDialog(dep?'Изменить вклад':'Новый вклад',`<form class="deposit-form"><label class="field">Название<input name="name" maxlength="100" required value="${esc(dep?.name||'')}" placeholder="Вклад в банке"></label><div class="form-grid"><label class="field">Сумма вклада<input name="principal" type="number" step="0.01" min="0.01" max="10000000000" required value="${dep?dep.principal/100:''}"></label><label class="field">Процент годовых<input name="rate" type="number" step="0.01" min="0.01" max="1000" required value="${dep?.rate??''}" inputmode="decimal"></label></div><label class="field">Счёт для начисления процентов<select name="account">${accountOptions(dep?.account||voiceAccount)}</select></label>${pickerField('Дата открытия','start','date',start)}<div class="form-grid"><label class="field">Срок<select name="term" id="depositTerm">${Object.entries(term).map(([v,t])=>`<option value="${v}" ${selectedTerm===v?'selected':''}>${t}</option>`).join('')}</select></label>${pickerField('Окончание','end','date',end)}</div><label class="field">Начислять проценты<select name="payout"><option value="daily" ${dep?.payout!=='monthly'?'selected':''}>Каждый день</option><option value="monthly" ${dep?.payout==='monthly'?'selected':''}>Раз в месяц</option></select></label><p class="tiny muted">Простой процент на сумму вклада. Проценты добавляются в доходы выбранного счёта; сама сумма вклада остаётся на вашем счёте.</p><button class="primary">Сохранить вклад</button>${dep?'<button type="button" class="secondary danger" id="deleteDeposit">Удалить вклад</button>':''}</form>`,f=>{

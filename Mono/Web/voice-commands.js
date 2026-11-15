@@ -231,5 +231,5 @@ document.addEventListener('click',e=>{
  const b=e.target.closest('[data-try-phrase]');if(b){const text=b.dataset.tryPhrase;$('#actionDialog').close();setTimeout(()=>openEntry(text.replace(/ — .*$/,'')),280);return;}
  if(e.target.closest('[data-voice-phrases]')){e.preventDefault();if($('#entryDialog').open)$('#entryDialog').close();showPhrases();}
 });
-root.MonoCommands={detect,run,showPhrases,phrasesHTML,parseWhen:t=>parseWhen({text:norm(t)})};
+root.MonoCommands={detect,run:cmd=>root.MonoTogether?.withCurrentScope?root.MonoTogether.withCurrentScope(()=>run(cmd)):run(cmd),showPhrases,phrasesHTML,parseWhen:t=>parseWhen({text:norm(t)})};
 })(window);

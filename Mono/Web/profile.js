@@ -255,8 +255,9 @@ function syncMeta(){const m=meta();if(typeof m.rev!=='number'){m.rev=m.updatedAt
 let pushAgain=false;
 // Аватарка хранится только на телефоне и на сервер не отправляется: она может много весить
 function withoutAvatar(s){const copy={...s,settings:{...(s.settings||{})}};delete copy.settings.profileAvatar;return copy;}
-function queueSync(){const m=syncMeta();m.rev+=1;m.updatedAt=new Date().toISOString();setMeta(m);if(!isPremium())return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1200);}
+function queueSync(){if(root.MonoTogether?.active()){root.MonoTogether.queueSync();return;}const m=syncMeta();m.rev+=1;m.updatedAt=new Date().toISOString();setMeta(m);if(!isPremium())return;clearTimeout(syncTimer);syncTimer=setTimeout(push,1200);}
 async function push(options={}){
+ if(root.MonoTogether?.active())return;
  if(!isPremium()||!acc.code)return;
  if(syncing){pushAgain=true;return;}
  syncing=true;pushAgain=false;
@@ -273,6 +274,7 @@ async function push(options={}){
 }
 const unsynced=()=>{const m=syncMeta();return m.rev>(m.pushedRev||0);};
 async function reconcile(){
+ if(root.MonoTogether?.active())return;
  if(!isPremium()||!acc.code||syncing)return;
  try{
   const r=await fetch(`${SYNC_URL}?code=${acc.code}`,{headers:keyHeaders(false)});
@@ -296,6 +298,7 @@ async function reconcile(){
    j.state.settings.language='ru';
   }
   // пока шёл запрос, пользователь мог что-то изменить — тогда оставляем его изменения
+  if(root.MonoTogether?.active())return;
   if(unsynced()){push();return;}
   const wasProblem=storageProblem;storageProblem=false;
   if(!persist(E.migrate(j.state),{remote:true})){storageProblem=wasProblem;return;}
@@ -310,6 +313,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&unsynced()
 // Сначала сервер (копия истории, обращения, заявки), потом телефон. Код и Премиум остаются.
 const DELETE_URL='https://api.monoapp.ru/api/deleteData';
 function confirmDeleteData(){
+ if(root.MonoTogether?.active()){notify('Для удаления личных данных сначала выберите «Личный».');return;}
  actionDialog('Удалить мои данные?',`<div class="delete-data-sheet"><p>Будут удалены <b>все операции, счета, цели, лимиты, платежи, вклады, напоминания, свои категории, обращения в поддержку, имя и аватар</b> — на этом телефоне и на сервере.</p><p class="muted">Код привязки и оплаченный Премиум сохранятся. Отменить удаление нельзя.</p><p class="form-error delete-data-error" role="alert" hidden></p><button type="button" class="primary danger-primary" id="deleteDataConfirm">Удалить навсегда</button><button type="button" class="secondary full" id="deleteDataCancel">Отмена</button></div>`);
  document.querySelector('#deleteDataCancel').onclick=()=>document.querySelector('#actionDialog').close();
  document.querySelector('#deleteDataConfirm').onclick=deleteMyData;
@@ -355,7 +359,9 @@ function premiumDialog(){
 }
 // Отправка текста без раскрытия ключа устройства другим модулям.
 async function parseVoice(){throw Error('voice_ai_disabled');}
-root.MonoAccess={
+async function togetherRequest(path,body={}){await ensureCode();if(!acc.code||!acc.secret)throw Error('Нет привязки устройства. Откройте профиль и проверьте сеть.');const r=await fetch('https://api.monoapp.ru/api/together/'+path,{method:'POST',headers:keyHeaders(),signal:AbortSignal.timeout(15000),body:JSON.stringify({...body,code:acc.code})});let data;try{data=await r.json();}catch{throw Error('Совместные счета ещё не установлены на сервере.');}if(!r.ok)throw Object.assign(Error(data.error||'network_error'),{status:r.status,data});return data;}
+root.MonoAccess={togetherRequest,
+
  isPremium,
  canUse:()=>isPremium()||daysLeft(acc.trialUntil)>0,
  codeText:()=>acc.code?acc.code.slice(0,3)+' '+acc.code.slice(3):'',

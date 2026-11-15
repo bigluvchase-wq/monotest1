@@ -76,7 +76,7 @@ function render(){
  const body=['late','today','tomorrow','later','done'].filter(k=>groups[k].length).map(k=>`<section class="reminder-group"><h2 class="reminder-group-title">${titles[k]}</h2><div class="goal-list reminder-list">${shown(k).map(card).join('')}</div>${more(k)}</section>`).join('');
  return `<div class="section-row"><button class="secondary" data-action="reminder">+ Добавить</button></div><p class="muted">Скажите: «напомни накормить кота сегодня в 6 вечера» — моно создаст напоминание.</p>${agenda()}${body||empty('Пока нет напоминаний','Потяните вниз, чтобы добавить.',false)}`;
 }
-function form(id,pre={}){
+function form(id,pre={}){if(!id&&window.MonoTogether?.offer(()=>form(id,pre)))return;
  if(!requireAccess('reminders'))return;
  const r=list().find(x=>x.id===id),def=defaults();
  const date=r?.date||pre.date||(calOpen&&calDay&&calDay>=E.dateString(new Date())?calDay:def.date),time=r?.time||pre.time||def.time;
