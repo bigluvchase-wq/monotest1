@@ -11,7 +11,7 @@ const today=()=>iso(new Date());
 const inCur=(e,cur)=>entryCurrency(e)===cur;
 const sum=(list)=>list.reduce((n,e)=>n+e.amount,0);
 const spentIn=(cur,from,to,cat)=>sum(state.entries.filter(e=>e.type==='expense'&&inCur(e,cur)&&e.date>=from&&e.date<=to&&(!cat||e.category===cat)));
-const incomeIn=(cur,from,to)=>sum(state.entries.filter(e=>e.type==='income'&&inCur(e,cur)&&e.date>=from&&e.date<=to));
+const incomeIn=(cur,from,to)=>sum(state.entries.filter(e=>E.isIncomeForStats(e)&&inCur(e,cur)&&e.date>=from&&e.date<=to));
 const shiftMonth=(s,n)=>{const d=at(s);const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+n);const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return iso(d);};
 const monthStart=s=>s.slice(0,8)+'01';
 const monthEnd=s=>iso(new Date(at(s).getFullYear(),at(s).getMonth()+1,0,12));
@@ -20,7 +20,7 @@ const pctText=p=>(p>0?'+':'−')+Math.abs(Math.round(p))+'%';
 // Регулярные поступления (зарплата, аванс): числа месяца, в которые доход приходил хотя бы в 2 разных месяца
 // за последние 4 месяца. Разовые подработки сюда не попадают, но уже полученные деньги учитываются в балансе.
 function incomeDays(cur){
- const from=shiftMonth(today(),-4),incomes=state.entries.filter(e=>e.type==='income'&&inCur(e,cur)&&e.date>=from);
+ const from=shiftMonth(today(),-4),incomes=state.entries.filter(e=>E.isIncomeForStats(e)&&inCur(e,cur)&&e.date>=from);
  const monthsTotal={};incomes.forEach(e=>{const m=e.date.slice(0,7);monthsTotal[m]=(monthsTotal[m]||0)+e.amount;});
  const big=incomes.filter(e=>e.amount>=(monthsTotal[e.date.slice(0,7)]||0)*.15);
  const clusters=[];

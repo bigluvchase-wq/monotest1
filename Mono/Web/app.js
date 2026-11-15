@@ -43,7 +43,7 @@ function clampPeriod(p){const b=periodBounds();if(p.start>b.maxDate)throw Error(
 const selectedPeriod=()=>selectedRange||MonoPeriod.month(selectedMonth);
 const periodLabel=(short=false)=>MonoPeriod.label(selectedPeriod(),state.settings.language==='en'?'en-US':'ru-RU',short);
 const selectedEntries=()=>MonoPeriod.filter(state.entries,selectedPeriod(),e=>entryCurrency(e)===selectedCurrency);
-const inChart=e=>e.type!=='income'||e.category!=='Займы';
+const inChart=e=>e.type!=='income'||E.isIncomeForStats(e);
 const sum=(items,type)=>items.filter(e=>e.type===type).reduce((s,e)=>s+e.amount,0);
 const spending=(cat,c=selectedCurrency)=>state.entries.filter(e=>e.type==='expense'&&entryCurrency(e)===c&&e.date.startsWith(currentMonth())&&(!cat||cat===e.category)).reduce((s,e)=>s+e.amount,0);
 function notify(message,success=false,options={}){
@@ -341,7 +341,7 @@ function runCommand(text){
  setTimeout(nextCommand,wasOpen?280:0);return true;
 }
 function nextCommand(){const cmd=commandQueue.shift();if(cmd){MonoCommands.run(cmd);if(!$('#actionDialog').open)nextCommand();return;}if(commandAfter){const done=commandAfter;commandAfter=null;done();return;}if(commandRest){const t=commandRest;commandRest='';openEntry(t);}}
-$('#actionDialog').addEventListener('close',()=>{if(commandQueue.length||commandRest)setTimeout(nextCommand,320);});
+$('#actionDialog').addEventListener('close',()=>{if(commandQueue.length||commandRest||commandAfter)setTimeout(nextCommand,320);});
 function openEntry(text='',how=''){cancelParse();if(text&&!window.MonoVoiceAI?.enabled()&&runCommand(text))return;$('#entryDialog').dataset.enter=how;
  if(listening||holding)cancelVoice();drafts=[];parseErrors=[];$('#dictation').value=text;$('#drafts').innerHTML='';$('#parseErrors').textContent='';$('#saveButton').hidden=true;$('#sheetTitle').textContent='Что запишем?';if(!$('#entryDialog').open)$('#entryDialog').showModal();if(text)parseInput();else $('#dictation').focus({preventScroll:true});translateUI();
 }

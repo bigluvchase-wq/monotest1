@@ -80,6 +80,8 @@ return next;}
 if(s?.version!==1)throw Error('Неподдерживаемая версия данных');
 return {...initialState(),accounts:s.accounts.map(a=>({...a,currency:'RUB'})),entries:s.entries.map(e=>({...e})),limits:{RUB:{...s.limits}},settings:{theme:'system',language:'ru',onboarded:false,beautyCategoryAdded:true,speechCategoriesAdded:true,autoCategoryAdded:true,voiceCategoriesAdded:true,voiceFlowsAdded:true}};
 }
+// Заём меняет остаток, но не увеличивает доход в итогах и прогнозах.
+function isIncomeForStats(entry){return entry.type==='income'&&entry.category!=='Займы';}
 function balance(state,id){const a=state.accounts.find(a=>a.id===id);if(!a)return 0;return a.initial+state.entries.reduce((sum,e)=>{
 if(e.type==='transfer')return sum-(e.account===id?e.amount:0)+(e.toAccount===id?(e.toAmount||e.amount):0);
 return sum+(e.account===id?(e.type==='income'?e.amount:-e.amount):0);
@@ -106,7 +108,7 @@ if(!s.settings||!['system','light','dark','black','blue','purple','green','burgu
 if(!Array.isArray(s.tickets)||!s.tickets.every(t=>t&&typeof t.id==='string'&&typeof t.text==='string'&&t.text.length<=5000&&typeof t.date==='string'))return false;
 return true;
 }catch{return false;}}
-function slang(text){const hundreds=['','сто','двести','триста','четыреста','пятьсот','шестьсот','семьсот','восемьсот','девятьсот'];return text.toLowerCase().replace(/(?<!\p{L})пятихатк[ауи]?(?!\p{L})/gu,'пятьсот').replace(/(?<!\p{L})(?:питик|пятик)(?!\p{L})/gu,'пять тысяч').replace(/(?<!\p{L})косар[ьяей]+(?!\p{L})|(?<!\p{L})касар[ьяей]+(?!\p{L})/gu,'тысячи').replace(/(?<!\p{L})касарь(?!\p{L})|(?<!\p{L})косарь(?!\p{L})/gu,'тысяча').replace(/(?<!\p{L})тыщ[а-яё]*(?!\p{L})/gu,'тысячи').replace(/(?<!\p{L})сотк[ауи](?!\p{L})/gu,'__HUNDRED__').replace(/(одна|одну|две|два|три|четыре|пять|шесть|семь|восемь|девять|\d+)\s+__HUNDRED__/g,(_,n)=>String((nums[n]||Number(n))*100)).replace(/__HUNDRED__/g,'сто').replace(/(?<!\p{L})(один|одна|одну|два|две|три|четыре|пять|шесть|семь|восемь|девять)\s+(?=сто(?:\s|$)|двести|триста|четыреста|пятьсот|шестьсот|семьсот|восемьсот|девятьсот)/gu,'$1 тысячи ').replace(/(тысяч[аиу]?)\s+([1-9]00)(?!\d)/gu,(_,th,n)=>th+' '+hundreds[Number(n)/100]);}
+function slang(text){const hundreds=['','сто','двести','триста','четыреста','пятьсот','шестьсот','семьсот','восемьсот','девятьсот'];return text.toLowerCase().replace(/(?<!\p{L})пятихатк[ауи]?(?!\p{L})/gu,'пятьсот').replace(/(?<!\p{L})питик(?!\p{L})/gu,'пятьсот').replace(/(?<!\p{L})пятик(?!\p{L})/gu,'пять тысяч').replace(/(?<!\p{L})косар[ьяей]+(?!\p{L})|(?<!\p{L})касар[ьяей]+(?!\p{L})/gu,'тысячи').replace(/(?<!\p{L})касарь(?!\p{L})|(?<!\p{L})косарь(?!\p{L})/gu,'тысяча').replace(/(?<!\p{L})тыщ[а-яё]*(?!\p{L})/gu,'тысячи').replace(/(?<!\p{L})сотк[ауи](?!\p{L})/gu,'__HUNDRED__').replace(/(одна|одну|две|два|три|четыре|пять|шесть|семь|восемь|девять|\d+)\s+__HUNDRED__/g,(_,n)=>String((nums[n]||Number(n))*100)).replace(/__HUNDRED__/g,'сто').replace(/(?<!\p{L})(один|одна|одну|два|две|три|четыре|пять|шесть|семь|восемь|девять)\s+(?=сто(?:\s|$)|двести|триста|четыреста|пятьсот|шестьсот|семьсот|восемьсот|девятьсот)/gu,'$1 тысячи ').replace(/(тысяч[аиу]?)\s+([1-9]00)(?!\d)/gu,(_,th,n)=>th+' '+hundreds[Number(n)/100]);}
 function matchGoal(clause,goals){
  const stop=new Set(['на','в','для','и','к','цель']);
  const stem=w=>{w=normalizeTitle(w);const r=w.replace(/(?:иями|ями|ами|ого|ему|ому|ыми|ими|ая|яя|ую|юю|ое|ее|ий|ый|ой|ов|ев|ам|ям|ах|ях|ом|ем|ы|и|а|я|у|ю|е)$/u,'');return r.length>=3?r:w;};
@@ -293,5 +295,5 @@ function saveDrafts(state,drafts,createdAt=new Date().toISOString()){
 
 function nextPayment(payment,now=new Date()){return Schedule.next(payment,dateString(now));}
 function addEntry(state,entry){const next=structuredClone(state);next.entries.push({...entry,id:entry.id||uid(),createdAt:entry.createdAt??new Date().toISOString()});if(!validateState(next))throw Error('Проверьте операцию');return next;}
-const api={categories,incomeCategories,currencies,parse,balance,goalBalance,totals,validateState,dateString,initialState,migrate,slang,nextPayment,addEntry,normalizeTitle,installmentPlan,saveDrafts};if(typeof module!=='undefined')module.exports=api;root.MonoEngine=api;
+const api={categories,incomeCategories,currencies,parse,isIncomeForStats,balance,goalBalance,totals,validateState,dateString,initialState,migrate,slang,nextPayment,addEntry,normalizeTitle,installmentPlan,saveDrafts};if(typeof module!=='undefined')module.exports=api;root.MonoEngine=api;
 })(typeof window!=='undefined'?window:globalThis);

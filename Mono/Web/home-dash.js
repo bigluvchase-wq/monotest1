@@ -19,7 +19,7 @@ function html(){
  const c=cur(),t=E.dateString(new Date()),ym=t.slice(0,7);
  const balance=E.totals(state,c).available;
  const exp=state.entries.filter(e=>e.type==='expense'&&entryCurrency(e)===c&&e.date.startsWith(ym)).reduce((n,e)=>n+e.amount,0);
- const inc=state.entries.filter(e=>e.type==='income'&&entryCurrency(e)===c&&e.date.startsWith(ym)).reduce((n,e)=>n+e.amount,0);
+ const inc=state.entries.filter(e=>E.isIncomeForStats(e)&&entryCurrency(e)===c&&e.date.startsWith(ym)).reduce((n,e)=>n+e.amount,0);
  const hb=hides('balance'),hf=hides('flows');
  // Под балансом — сколько отложено в этом месяце: доходы минус расходы с 1-го числа
  const saved=inc-exp,monthName=['январе','феврале','марте','апреле','мае','июне','июле','августе','сентябре','октябре','ноябре','декабре'][new Date().getMonth()];
@@ -43,7 +43,7 @@ function render(){
 
 function explain(){
  const c=cur();
-  const ym=E.dateString(new Date()).slice(0,7),sum=t=>state.entries.filter(e=>e.type===t&&entryCurrency(e)===c&&e.date.startsWith(ym)).reduce((n,e)=>n+e.amount,0);
+  const ym=E.dateString(new Date()).slice(0,7),sum=t=>state.entries.filter(e=>e.type===t&&(t!=='income'||E.isIncomeForStats(e))&&entryCurrency(e)===c&&e.date.startsWith(ym)).reduce((n,e)=>n+e.amount,0);
   const inc=sum('income'),exp=sum('expense'),d=inc-exp,mask=hides('balance')||hides('flows'),m=v=>mask?MASK:money(v,c);
   actionDialog(d>=0?'Отложено в этом месяце':'Расходы больше доходов',`<div class="hd-explain"><p class="muted">Доходы минус расходы с 1-го числа этого месяца.</p>
   <ul><li><span>Доходы</span><b>${m(inc)}</b></li><li><span>Расходы</span><b>−${m(exp)}</b></li><li class="sum${d<0?' over':''}"><span>${d>=0?'Отложено':'Не хватило'}</span><b>${d<0?'−':''}${m(Math.abs(d))}</b></li></ul>

@@ -76,3 +76,20 @@ test('full voice self-test uses isolated storage and checks both finance and off
  }});
  assert.equal(calls,2);assert.equal(messages.length,3);assert.equal(messages.join('').includes('test-secret'),false);
 });
+test('complex live checker covers mixed commands, debts, dates and ambiguity',async()=>{
+ const {selfTest,complexCases}=require('../voice-ai-self-test');let calls=0;const messages=[];
+ await selfTest({complex:true,env:{VOICE_AI_ENABLED:'1',YANDEX_API_KEY:'test-secret',YANDEX_FOLDER_ID:'test-folder'},log:message=>messages.push(message),fetchImpl:async(url,options)=>{
+  calls++;const request=JSON.parse(options.body),payload=JSON.parse(request.messages[1].text),example=complexCases(payload.context).find(c=>c.text===payload.text);
+  assert(example);const entries=example.entries.map(e=>({...e,title:e.category||'Между своими'}));
+  const commands=(example.commands||[]).map(cmd=>({...cmd,data:{...cmd.data,title:'Оплатить интернет',repeat:'once'}}));
+  return new Response(JSON.stringify({result:{alternatives:[{status:'ALTERNATIVE_STATUS_FINAL',message:{text:JSON.stringify({entries,commands,errors:example.clarification?[example.clarification]:[]})}}]}}),{headers:{'Content-Type':'application/json'}});
+ }});
+ assert.equal(calls,6);assert.equal(messages.filter(m=>m.startsWith('ОК:')).length,6);assert.equal(messages.join('').includes('test-secret'),false);
+});
+test('complex checker catches wrong debt amount, wrong date and missing reminder',()=>{
+ const {complexCases,checkCase}=require('../voice-ai-self-test');const example=complexCases(context)[0];
+ const actual={entries:structuredClone(example.entries),commands:[{kind:'reminder',data:{...example.commands[0].data,title:'Оплатить интернет'}}],errors:[]};
+ assert(checkCase(actual,example));actual.entries[2].amount=500000;assert.equal(checkCase(actual,example),false);
+ actual.entries[2].amount=50000;actual.entries[1].date=context.today;assert.equal(checkCase(actual,example),false);
+ actual.entries[1].date=example.entries[1].date;actual.commands=[];assert.equal(checkCase(actual,example),false);
+});
