@@ -1,5 +1,7 @@
 'use strict';
 const Examples=require('./voice-examples');
+const fs=require('node:fs'),path=require('node:path');
+const Engine=require(fs.existsSync(path.join(__dirname,'engine.js'))?'./engine.js':'../Mono/Web/engine.js');
 const ENDPOINT='https://ai.api.cloud.yandex.net/foundationModels/v1/completion';
 const ISSUES={out_of_scope:'Я помогаю с расходами, доходами, счетами, целями, платежами и напоминаниями в моно.',amount:'Уточните сумму операции.',account:'Уточните, какой счёт использовать.',currency:'Уточните валюту и сумму зачисления.',goal:'Уточните название цели.',date:'Уточните дату или время.',operation:'Уточните действие и название записи.',refund:'Уточните исходную покупку и сумму возврата.',installment:'Для «Долями Плюс» укажите график из договора.',too_many:'Разделите фразу на несколько запросов.',missing_data:'Для этого действия не хватает данных. Уточните фразу.'};
 const COMMANDS=['reminder','goal','account','payment','deposit','limit','remove'];
@@ -21,6 +23,23 @@ function input(body){
  if(new Set(accounts.map(a=>a.id)).size!==accounts.length||new Set(goals.map(g=>g.id)).size!==goals.length||!accounts.some(a=>a.id===c.account))fail();
  if(c.time!==undefined&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(c.time))fail();
  return {text:body.text.trim(),context:{today:c.today,time:c.time||'12:00',account:c.account,accounts,goals,categories:names(c.categories),incomeCategories:names(c.incomeCategories)}};
+}
+// Reuse the application's parser only for complete, unambiguous financial lists.
+// Never repair amounts, clarification responses, commands or cross-currency actions.
+function reconcile(value,payload){
+ const c=payload.context;
+ if(!object(value)||!Array.isArray(value.errors)||value.errors.length||!Array.isArray(value.entries)||value.entries.length<3||
+  (value.commands!==undefined&&(!Array.isArray(value.commands)||value.commands.some(cmd=>!emptyCommand(cmd)))))return value;
+ if(/напом|удал|(?<!\p{L})не\s|долг|одолж|займ|занял|обмен|валют|брокер|штраф|если|долями|рассроч/iu.test(payload.text))return value;
+ const state={...Engine.initialState(),accounts:c.accounts.map(a=>({...a,initial:0})),categories:c.categories,incomeCategories:c.incomeCategories,goals:[]};
+ const local=Engine.parse(payload.text,new Date(c.today+'T'+(c.time||'12:00')+':00'),[],state,c.account);
+ if(local.errors.length||local.entries.length!==value.entries.length||!local.entries.every((entry,i)=>
+  ['expense','income'].includes(entry.type)&&entry.installmentTotal===undefined&&entry.sourceCurrency===undefined&&
+  object(value.entries[i])&&date(value.entries[i].date)&&c.accounts.some(a=>a.id===value.entries[i].account)&&['expense','income','transfer'].includes(value.entries[i].type)&&entry.amount===value.entries[i].amount&&
+  c.accounts.find(a=>a.id===entry.account)?.currency==='RUB'))return value;
+ // The ordinary response validator remains the final authority on every local draft.
+ try{result({entries:local.entries,commands:[],errors:[]},c);}catch(error){if(error.code==='invalid_ai_response')return value;throw error;}
+ return {...value,entries:local.entries};
 }
 function result(value,c){
  const invalid=()=>{throw new VoiceError('invalid_ai_response',502);};
@@ -148,7 +167,7 @@ function install(app,{db,rateLimit,authenticate,env=process.env,fetchImpl=global
    if(!response.ok)throw new VoiceError(response.status===429?'ai_busy':'ai_unavailable',503);
    const data=await response.json(),alternative=data?.result?.alternatives?.[0];
    if(alternative?.status!=='ALTERNATIVE_STATUS_FINAL'||typeof alternative.message?.text!=='string'||alternative.message.text.length>60000)throw new VoiceError('invalid_ai_response',502);
-   const parsed=result(JSON.parse(alternative.message.text),payload.context);
+   const parsed=result(reconcile(JSON.parse(alternative.message.text),payload),payload.context);
    if(!res.destroyed)res.json({ok:true,source:'yandex',...parsed});
   }catch(e){
    const error=controller.signal.aborted?'ai_timeout':e instanceof VoiceError?e.code:'ai_unavailable';
@@ -156,4 +175,4 @@ function install(app,{db,rateLimit,authenticate,env=process.env,fetchImpl=global
   }finally{clearTimeout(timeout);res.off('close',closed);active--;}
  });
 }
-module.exports={input,result,settings,install};
+module.exports={input,result,reconcile,settings,install};
