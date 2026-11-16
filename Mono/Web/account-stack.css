@@ -1,0 +1,11 @@
+/* Account cards keep their existing theme surfaces, typography and controls. */
+.account-stack{position:relative;isolation:isolate;margin-bottom:12px}
+.account-stack.is-stacked>.swipe-shell{position:absolute;inset:0 0 auto;margin:0;transform-origin:50% 0;transition:none}
+.account-stack .account-stack-select{flex:1;min-width:0;min-height:48px;padding:0;text-align:left;color:inherit;font:inherit;overflow-wrap:anywhere;touch-action:pan-y}
+.account-stack .category-head{gap:12px}
+.account-stack [data-stack-front=false] [data-edit-account],
+.account-stack [data-stack-front=false] .entity-x{visibility:hidden;pointer-events:none}
+.account-stack [data-stack-front=false] .swipe-delete{pointer-events:none}
+/* Each card already has its own opaque swipe-content; do not sample the cards behind it. */
+.account-stack>.swipe-shell{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.account-stack .account-balance{overflow-wrap:anywhere}
