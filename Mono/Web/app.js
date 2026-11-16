@@ -1,7 +1,7 @@
 'use strict';
 // Плавное появление и закрытие всех окон (кроме графика, обучения и блокировки)
 (()=>{const P=HTMLDialogElement.prototype,nShow=P.showModal,nClose=P.close,od=Object.getOwnPropertyDescriptor(P,'open');
- const skip=d=>['chartDialog','onboarding','homeAccountDialog'].includes(d.id)||matchMedia('(prefers-reduced-motion:reduce)').matches;
+ const skip=d=>d.dataset.saveWave==='true'||['chartDialog','onboarding','homeAccountDialog'].includes(d.id)||matchMedia('(prefers-reduced-motion:reduce)').matches;
  Object.defineProperty(P,'open',{configurable:true,enumerable:true,get(){return od.get.call(this)&&!this._closing;},set(v){od.set.call(this,v);}});
  P.showModal=function(){if(this._closing){this._exit?.cancel();this._exit=null;this._closing=false;this.classList.remove('closing');this.style.animation='none';void this.offsetWidth;this.style.animation='';return;}if(od.get.call(this))return;return nShow.call(this);};
  P.close=function(v){if(!od.get.call(this)||this._closing)return;if(skip(this))return nClose.call(this,v);this._closing=true;this.classList.add('closing');
@@ -415,7 +415,8 @@ $('#drafts').onclick=e=>{const b=e.target.closest('[data-remove]');if(b){drafts.
 $('#saveButton').onclick=()=>{if(!drafts.length||parseErrors.length)return;if(drafts.some(d=>d.type==='saving')&&!requireAccess('goals'))return;if(drafts.some(d=>d.installmentTotal!==undefined)&&!requireAccess('payments'))return;for(const input of $('#drafts').querySelectorAll('input,select'))if(!input.reportValidity())return;let next,added;try{({next,added}=E.saveDrafts(state,drafts));}catch(error){notify(error.message);return;}
  if(added.some(e=>e.type==='saving'&&E.balance(next,e.account)<0)&&!confirm('Пополнение цели сделает остаток счёта отрицательным. Продолжить?'))return;
  for(const entry of added)window.MonoBankMerchants?.remember(next,entry);
- if(!persist(next))return;drafts=[];$('#entryDialog').close();refreshAccounts();renderHomeReminders();if(page!=='home')render();notify(added.some(e=>e.type==='saving')?'Накопления пополнены. В расходы не включены.':'Записано. Всё на своих местах.',true);
+ const base=state;const finish=captured=>{if(state!==base){notify('Данные изменились. Проверьте запись и сохраните ещё раз.');return false;}if(!persist(next))return false;drafts=[];const dialog=$('#entryDialog');if(captured)dialog.dataset.saveWave='true';dialog.close();delete dialog.dataset.saveWave;refreshAccounts();renderHomeReminders();window.MonoHome?.render();if(page!=='home')render();notify(added.some(e=>e.type==='saving')?'Накопления пополнены. В расходы не включены.':'Записано. Всё на своих местах.',true);return true;};
+ if(window.MonoSaveWave&&added.some(e=>e.type==='expense'||e.type==='income'))MonoSaveWave.run($('#saveButton'),finish);else finish(false);
 };
 let recognition;
 function resetVoiceUI(){delete document.body.dataset.voicePhase;listening=false;document.body.classList.remove('listening','holding');$('#mic').setAttribute('aria-pressed','false');$('#mic').disabled=false;$('#voiceStatus').textContent='';$('#voiceHint').textContent='';}

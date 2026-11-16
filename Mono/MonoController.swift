@@ -12,6 +12,9 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         self?.send("speechEvent", [id, event, info])
     }
     private let reminders = MonoReminders()
+    private lazy var saveWave = MonoSaveWave(parent: self, web: web,
+        ready: { [weak self] id, captured in self?.send("saveWaveReady", [id, captured]) },
+        finished: { [weak self] id in self?.send("saveWaveFinished", [id]) })
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,7 +25,7 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         config.userContentController.add(self, name: "mono")
         let access = loadAccess()
         config.userContentController.addUserScript(WKUserScript(
-            source: "window.monoStoredAccess = \(access)",
+            source: "window.monoStoredAccess = \(access); window.monoSaveWaveSupported = true;",
             injectionTime: .atDocumentStart, forMainFrameOnly: true))
         // Системная тема известна сразу: страница не мигает светлой при запуске из уведомления
         let systemDark = UIScreen.main.traitCollection.userInterfaceStyle == .dark
@@ -75,7 +78,7 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
             : UIColor(red: 0.925, green: 0.933, blue: 0.949, alpha: 1)
     }
 
-    @objc private func interruptSpeech() { speech.cancel() }
+    @objc private func interruptSpeech() { speech.cancel(); saveWave.cancel() }
     @objc private func refreshReminders() {
         send("refreshReminders", [])
         send("refreshAccess", [])
@@ -92,6 +95,12 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
             case "speechStop": speech.stop(id)
             default: speech.cancel(id)
             }
+        case "prepareSaveWave":
+            saveWave.prepare(body)
+        case "finishSaveWave":
+            if let id = body["id"] as? String { saveWave.reveal(id) }
+        case "cancelSaveWave":
+            if let id = body["id"] as? String { saveWave.cancel(id) }
         case "recognizeDocument":
             recognizeDocument(body)
         case "share":
