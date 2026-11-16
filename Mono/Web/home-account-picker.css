@@ -1,0 +1,28 @@
+/* Native select remains the source of truth; the compact button opens an accessible dialog. */
+.recording-block .account-picker{position:relative}
+.recording-block .account-picker .home-account-source{position:absolute!important;width:1px!important;height:1px!important;min-height:1px!important;max-width:1px!important;opacity:0!important;padding:0!important;border:0!important;pointer-events:none}
+:is(#home,[data-preview-id=home]) .account-picker .home-account-button{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-width:0;height:32px;min-height:32px;padding:4px 12px;background:transparent;border:1px solid var(--line);border-radius:18px;box-shadow:none;color:var(--ink);font-size:13px;line-height:20px;touch-action:manipulation}
+.home-account-button::before{content:"";position:absolute;inset:-6px 0;border-radius:inherit}
+.account-picker .home-account-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit;font-size:inherit}
+.home-account-button svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;flex:none}
+#homeAccountDialog.home-account-dialog{position:fixed;inset:auto 0 0;margin:0 auto;width:min(480px,100%);max-width:100%;max-height:calc(100dvh - env(safe-area-inset-top) - 20px);padding:12px 20px calc(24px + env(safe-area-inset-bottom));border:1px solid var(--card-edge);border-radius:28px 28px 0 0;background:var(--card-solid);color:var(--ink);box-shadow:0 -12px 40px var(--shadow);overflow:auto;transform:none;animation:none!important;transition:none!important;overscroll-behavior:contain}
+#homeAccountDialog::backdrop{background:color-mix(in srgb,var(--ink) 24%,transparent);backdrop-filter:none;-webkit-backdrop-filter:none;animation:none}
+.home-account-grip{width:32px;height:4px;margin:0 auto 14px;border-radius:3px;background:var(--line)}
+.home-account-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.home-account-heading h2{margin:0;font-size:23px;line-height:30px;letter-spacing:-.6px;font-weight:550}
+.home-account-heading .icon-btn{width:44px;height:44px;flex:none;font-size:25px}
+.home-account-group{margin:18px 0 8px;font-size:12px;line-height:18px;color:var(--muted)}
+.home-account-options{display:grid;gap:8px}
+.home-account-option{display:flex;align-items:center;gap:12px;width:100%;min-height:68px;padding:12px;text-align:left;background:var(--card-solid);border:1px solid var(--line);border-radius:18px;color:var(--ink)}
+.home-account-option[aria-pressed=true]{border-color:var(--accent);background:var(--soft)}
+.home-account-symbol{width:36px;height:36px;display:grid;place-items:center;flex:none;border-radius:12px;background:var(--soft);color:var(--accent)}
+.home-account-symbol svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.home-account-copy{flex:1;min-width:0;display:grid;gap:3px}
+.home-account-copy strong{font-weight:500;font-size:14px;line-height:21px;overflow-wrap:anywhere}
+.home-account-copy small{font-size:12px;line-height:18px;color:var(--muted);font-variant-numeric:tabular-nums}
+.home-account-check{display:grid;place-items:center;flex:none;width:20px;height:20px;border:1px solid var(--line);border-radius:50%;color:var(--accent)}
+.home-account-check svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;visibility:hidden}
+.home-account-option[aria-pressed=true] .home-account-check{border-color:var(--accent)}
+.home-account-option[aria-pressed=true] .home-account-check svg{visibility:visible}
+/* Keep the 44px picker hit area clear of the keyboard, including short screens. */
+:is(#home,[data-preview-id=home]) .recording-block :is(#textEntry,[data-preview-id=textEntry]){margin-top:8px}

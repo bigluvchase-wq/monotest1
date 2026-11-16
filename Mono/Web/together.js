@@ -34,6 +34,13 @@ async function poll(){
  try{const r=await request('status');receive(r);decorate();if(active())sync();return r;}catch{return null;}
 }
 function modeButton(){return group?`<button type="button" class="secondary together-mode" data-together="toggle" aria-label="Режим: ${active()?'Вместе':'Личный'}. Переключить" aria-pressed="${active()}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2"/>${active()?'<path d="M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v1"/>':''}</svg> ${active()?'Вместе':'Личный'}</button>`:'';}
+// Read-only account summaries for the home sheet, including both private/shared scopes.
+function pickerGroups(){
+ if(!group)return [{label:'Личные счета',accounts:state.accounts.map(a=>({...a,value:a.id,balance:E.balance(state,a.id)}))}];
+ const personal=active()?JSON.parse(localStorage.getItem(KEY)):state;
+ const shared=active()?state:(JSON.parse(localStorage.getItem('mono-together-'+group.id)||'null')?.local||group.state);
+ return [{key:'personal',label:'Личные счета',value:personal},{key:'shared',label:'Совместный счёт',value:shared}].map(scope=>({label:scope.label,accounts:scope.value.accounts.map(a=>({...a,name:scope.key==='shared'&&a.id==='main'?'Вместе':a.name,value:scope.key+':'+a.id,balance:E.balance(scope.value,a.id)}))}));
+}
 function decoratePicker(){
  const picker=document.querySelector('#voiceAccount');if(!picker||!group)return;
  const personal=active()?JSON.parse(localStorage.getItem(KEY)):state;
@@ -75,7 +82,7 @@ document.addEventListener('submit',async e=>{if(e.target.id!=='togetherInvite')r
 document.addEventListener('click',async e=>{const invite=e.target.closest('[data-invite]'),button=e.target.closest('[data-together]');try{if(invite){await request('respond',{id:invite.dataset.invite,accept:invite.dataset.accept==='1'});await poll();$('#actionDialog').close();notify(invite.dataset.accept==='1'?'Совместный счёт создан. Выберите его в счёте для записи.':'Приглашение отклонено.');return;}if(button){if(button.dataset.together==='manage')return manage();$('#actionDialog').close();if(switching)return;switching=true;try{await switchTo(button.dataset.together==='toggle'?!active():button.dataset.together==='shared');}finally{switching=false;}}if(e.target.closest('[data-together-leave]')){actionDialog('Выйти из пары?',`<p class="muted">Вы потеряете доступ к совместному счёту. Личные данные останутся; у партнёра совместные записи сохранятся.</p><button class="primary danger" id="confirmTogetherLeave">Выйти из пары</button>`);$('#confirmTogetherLeave').onclick=async()=>{try{if(active()&&dirty){await sync(true);if(dirty)throw Error('Сначала синхронизируйте последние изменения.');}const id=group.id;await request('leave');if(active())await switchTo(false);localStorage.removeItem('mono-together-'+id);localStorage.removeItem('mono-together-'+id+'-view');group=null;$('#actionDialog').close();decorate();notify('Вы вышли из пары.');}catch(error){notify(message(error));}};}}catch(error){notify(message(error));}});
 document.querySelector('#actionDialog').addEventListener('close',()=>{conflictOpen=false;setTimeout(showInvitation,200);});
 function otherNotifications(collect){if(!group)return [];const previous=state;try{state=active()?E.migrate(JSON.parse(localStorage.getItem(KEY))):display(JSON.parse(localStorage.getItem('mono-together-'+group.id)||'null')?.local||group.state);const items=collect();return active()?items:items.filter(i=>!/^(daily|smart|subscription)\|/.test(i.id));}catch{return [];}finally{state=previous;}}
-root.MonoTogether={otherNotifications,decoratePicker,selectAccount,saveLocal,active,storageKey:()=>current?storageKey()+'-view':null,queueSync,decorate,offer,offerAccount,manage,withCurrentScope,flush:()=>sync(true)};
+root.MonoTogether={pickerGroups,otherNotifications,decoratePicker,selectAccount,saveLocal,active,storageKey:()=>current?storageKey()+'-view':null,queueSync,decorate,offer,offerAccount,manage,withCurrentScope,flush:()=>sync(true)};
 new MutationObserver(()=>{if(page==='home')setTimeout(showInvitation,0);}).observe(document.body,{attributes:true,attributeFilter:['data-page']});
 setTimeout(poll,2500);setInterval(()=>active()?sync():poll(),12000);addEventListener('online',()=>active()?sync():poll());document.addEventListener('visibilitychange',()=>{if(!document.hidden)active()?sync():poll();});
 })(window);

@@ -1,0 +1,11 @@
+# Compact account picker and primary microphone
+
+The home recording-account control keeps its responsive 300px/85vw width and 32px visible height. The selected design uses a thin theme-colored outline, a single account label and a chevron. Its invisible hit extension supplies 44px vertically; the keyboard has enough spacing to avoid overlapping that target.
+
+The existing native select remains a visually hidden compatibility source, excluded from the tab order and accessibility tree. The real button opens a native modal dialog for focus containment, keyboard dismissal and scrolling. Personal and shared account summaries come from the same local sources as Together's native picker. Selections call the existing async select handler, preserving private/shared switching, offline behavior and the recording account. Balances use the finance engine; names and values are escaped. The sheet is busy during a switch and rejects duplicate requests.
+
+The bottom sheet moves up 100% on entry (280ms) and down 100% on exit (240ms), through WAAPI transform only and the existing ease-out curve. Close button, Escape and backdrop use the same exit. The global dialog-close animation and generic backdrop listener explicitly exclude this sheet, avoiding a second exit/focus delay. Reduced Motion uses 120/100ms opacity only; keyboard focus returns to the picker. A source update keeps the label/options current and preserves focused option when possible.
+
+The microphone grows from 152 to 168px on regular screens, 136 to 150px on short screens and 124 to 136px on very short screens. The existing lens uses stronger accent blends and static depth; its zone, hold-to-record interaction, recording animations and opaque base remain. All colors use existing theme variables. No palette regeneration, third-party UI library, Swift change or server deployment is required.
+
+Validation: 72 app tests; optional browser tools `verify-home-account-picker.cjs`, `verify-stable-surfaces.cjs`, `verify-mic-motion.cjs` and `verify-shared-ui.cjs` with `MONO_PLAYWRIGHT_MODULE`/`MONO_CHROMIUM_PATH`. The picker scenario covers personal/shared choices, private-history preservation, operations scope, Escape/backdrop/focus, four mobile screen sizes, seven themes and Reduce Motion. Verify sheet pacing and microphone emphasis in the next real iPhone build; Chromium is not WKWebView.

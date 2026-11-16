@@ -1,7 +1,7 @@
 'use strict';
 // Плавное появление и закрытие всех окон (кроме графика, обучения и блокировки)
 (()=>{const P=HTMLDialogElement.prototype,nShow=P.showModal,nClose=P.close,od=Object.getOwnPropertyDescriptor(P,'open');
- const skip=d=>['chartDialog','onboarding'].includes(d.id)||matchMedia('(prefers-reduced-motion:reduce)').matches;
+ const skip=d=>['chartDialog','onboarding','homeAccountDialog'].includes(d.id)||matchMedia('(prefers-reduced-motion:reduce)').matches;
  Object.defineProperty(P,'open',{configurable:true,enumerable:true,get(){return od.get.call(this)&&!this._closing;},set(v){od.set.call(this,v);}});
  P.showModal=function(){if(this._closing){this._exit?.cancel();this._exit=null;this._closing=false;this.classList.remove('closing');this.style.animation='none';void this.offsetWidth;this.style.animation='';return;}if(od.get.call(this))return;return nShow.call(this);};
  P.close=function(v){if(!od.get.call(this)||this._closing)return;if(skip(this))return nClose.call(this,v);this._closing=true;this.classList.add('closing');
@@ -498,7 +498,7 @@ window.MonoNative?.refreshReminders();
  vv.addEventListener('resize',sync);vv.addEventListener('scroll',sync);addEventListener('orientationchange',()=>setTimeout(sync,250));sync();})();
 // Смахивание вверх на главной открывает ввод текстом
 (()=>{const home=$('#home');let g=null;
- home.addEventListener('touchstart',e=>{if(page!=='home'||e.touches.length!==1||holding||listening||tourActive||e.target.closest('#mic,#voiceAccount,.reminder,.rem-carousel,.rem-arrow')){g=null;return;}const t=e.touches[0];g={x:t.clientX,y:t.clientY,t:performance.now()};},{passive:true});
+ home.addEventListener('touchstart',e=>{if(page!=='home'||e.touches.length!==1||holding||listening||tourActive||e.target.closest('#mic,#voiceAccount,#homeAccountButton,.reminder,.rem-carousel,.rem-arrow')){g=null;return;}const t=e.touches[0];g={x:t.clientX,y:t.clientY,t:performance.now()};},{passive:true});
  home.addEventListener('touchend',e=>{if(!g)return;const t=e.changedTouches[0],dx=t.clientX-g.x,dy=g.y-t.clientY,dt=performance.now()-g.t;g=null;if(dy>70&&Math.abs(dx)<dy*.6&&dt<800&&!document.querySelector('dialog[open]'))openEntry('','swipe');},{passive:true});
  home.addEventListener('touchcancel',()=>{g=null;},{passive:true});})();
 
