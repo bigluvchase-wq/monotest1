@@ -44,9 +44,9 @@ final class MonoSaveWave {
         web.takeSnapshot(with: config) { [weak self] image, _ in
             guard let self, self.id == key else { return }
             guard let image else { self.cancel(key); self.ready(key, false); return }
-            let image = self.opaque(image, background: parent.view.backgroundColor ?? .systemBackground)
-            self.before = image
-            let cover = UIImageView(image: image)
+            let snapshot = self.opaque(image, background: parent.view.backgroundColor ?? .systemBackground)
+            self.before = snapshot
+            let cover = UIImageView(image: snapshot)
             cover.frame = parent.view.bounds; cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             cover.contentMode = .scaleToFill; cover.isUserInteractionEnabled = true
             cover.isAccessibilityElement = false; cover.accessibilityViewIsModal = true
