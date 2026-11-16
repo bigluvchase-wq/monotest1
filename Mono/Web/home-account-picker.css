@@ -26,3 +26,9 @@
 .home-account-option[aria-pressed=true] .home-account-check svg{visibility:visible}
 /* Keep the 44px picker hit area clear of the keyboard, including short screens. */
 :is(#home,[data-preview-id=home]) .recording-block :is(#textEntry,[data-preview-id=textEntry]){margin-top:8px}
+
+/* The backdrop clears while the sheet leaves; keep the last offscreen frame until native close. */
+#homeAccountDialog::backdrop{transition:opacity 280ms cubic-bezier(.22,1,.36,1)}
+#homeAccountDialog[data-exiting]::backdrop{opacity:0}
+#homeAccountDialog[data-dragging]{user-select:none;-webkit-user-select:none}
+@media(prefers-reduced-motion:reduce){#homeAccountDialog::backdrop{transition:opacity 100ms}}
