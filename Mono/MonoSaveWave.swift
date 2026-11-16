@@ -14,8 +14,8 @@ final class MonoSaveWave {
     private var id: String?
     private var before: UIImage?
     private var source = CGRect.zero
-    private var panelFrame = CGRect.zero
-    private var panelRadius: CGFloat = 0
+    private var effectFrame = CGRect.zero
+    private var effectRadius: CGFloat = 0
     private var palette = DistortionWavePalette.mono
     private var cover: UIImageView?
     private var host: UIHostingController<MonoSaveWaveView>?
@@ -44,11 +44,11 @@ final class MonoSaveWave {
         let secondary = color(data["secondary"]) ?? accent
         palette = DistortionWavePalette(colors: [accent, secondary, accent], ahead: accent, behind: secondary)
         let sx = web.bounds.width / vw, sy = web.bounds.height / vh
-        panelFrame = CGRect(x: px * sx, y: py * sy, width: pw * sx, height: ph * sy)
-            .intersection(web.bounds)
-        guard !panelFrame.isNull, !panelFrame.isEmpty else { cancel(key); ready(key, false); return }
-        panelRadius = min(max(number(panel, "cornerRadius") ?? 0, 0) * sx, min(panelFrame.width, panelFrame.height) / 2)
-        source = CGRect(x: x * sx - panelFrame.minX, y: y * sy - panelFrame.minY, width: width * sx, height: height * sy)
+        let sheet = CGRect(x: px * sx, y: py * sy, width: pw * sx, height: ph * sy).intersection(web.bounds)
+        guard !sheet.isNull, !sheet.isEmpty else { cancel(key); ready(key, false); return }
+        // Full-screen perimeter glow was requested again; only the system clips the device corners.
+        effectFrame = web.bounds; effectRadius = 0
+        source = CGRect(x: x * sx, y: y * sy, width: width * sx, height: height * sy)
         armTimeout(key, seconds: 4)
         let config = snapshotConfig(web)
         web.takeSnapshot(with: config) { [weak self] image, _ in
@@ -71,27 +71,28 @@ final class MonoSaveWave {
             guard let self, self.id == key else { return }
             guard let after else { self.cancel(key); return }
             var style = DistortionWaveStyle.center
-            style.cornerRadius = Double(self.panelRadius)
+            style.cornerRadius = Double(self.effectRadius)
             style.anticipation = 0.16 * 1.15; style.travel = 1.15
             // Keep the visible movement 15% slower, without a frozen tail after it clears.
             style.linger = -0.1; style.rimFade = 0.65
             style.hairlineLinger = 0; style.hairlineFade = 0.65
             style.particleLife = style.travel * 0.6
-            style.amplitude *= 0.85; style.swell *= 0.85; style.blur *= 0.85
-            style.aberration *= 0.85; style.strength *= 0.85
-            style.rimStrength *= 0.85; style.hairlineOpacity *= 0.85
-            style.pull *= 0.85; style.inhale *= 0.85; style.gatherGlow *= 0.85
-            style.particleSize *= 0.85
+            style.amplitude *= 0.85 * 1.10; style.swell *= 0.85 * 1.10; style.blur *= 0.85 * 1.10
+            style.aberration *= 0.85 * 1.10; style.strength *= 0.85 * 1.10
+            style.rimStrength *= 0.85 * 1.05; style.hairlineOpacity *= 0.85 * 1.05
+            style.pull *= 0.85 * 1.10; style.inhale *= 0.85 * 1.10; style.gatherGlow *= 0.85 * 1.05
+            style.particleSize *= 0.85 * 1.10
+            style.easing = DistortionWaveEasing(0.22, 0.85, 0.36, 1)
             style.palette = self.palette
             let image = self.opaque(after, background: parent.view.backgroundColor ?? .systemBackground)
-            let scene = MonoSaveWaveView(before: self.crop(before), after: self.crop(image), source: self.source,
-                                         size: self.panelFrame.size, style: style,
+            let scene = MonoSaveWaveView(before: self.fittedSnapshot(before), after: self.fittedSnapshot(image), source: self.source,
+                                         size: self.effectFrame.size, style: style,
                                          onFinish: { [weak self] in self?.complete(key) })
             let host = UIHostingController(rootView: scene)
             host.safeAreaRegions = [] // Match the full WKWebView snapshot coordinate space.
             host.view.backgroundColor = .clear
-            parent.addChild(host); host.view.frame = self.panelFrame
-            host.view.layer.cornerRadius = self.panelRadius; host.view.clipsToBounds = true
+            parent.addChild(host); host.view.frame = self.effectFrame
+            host.view.layer.cornerRadius = self.effectRadius; host.view.clipsToBounds = true
             parent.view.addSubview(host.view); host.didMove(toParent: parent)
             self.host = host; self.armTimeout(key, seconds: 3)
         }
@@ -130,11 +131,11 @@ final class MonoSaveWave {
         }
     }
 
-    private func crop(_ image: UIImage) -> UIImage {
+    private func fittedSnapshot(_ image: UIImage) -> UIImage {
         let format = UIGraphicsImageRendererFormat(); format.opaque = true; format.scale = image.scale
         let viewport = web?.bounds.size ?? image.size
-        return UIGraphicsImageRenderer(size: panelFrame.size, format: format).image { _ in
-            image.draw(in: CGRect(x: -panelFrame.minX, y: -panelFrame.minY,
+        return UIGraphicsImageRenderer(size: effectFrame.size, format: format).image { _ in
+            image.draw(in: CGRect(x: -effectFrame.minX, y: -effectFrame.minY,
                                   width: viewport.width, height: viewport.height))
         }
     }
