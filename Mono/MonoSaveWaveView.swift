@@ -23,7 +23,8 @@ struct MonoSaveWaveView: View {
                 .background(Color.black)
         }
         .frame(width: size.width, height: size.height)
-        .ignoresSafeArea()
+        // Bound the shader output to the screen as well as clipping its UIKit host.
+        .clipShape(RoundedRectangle(cornerRadius: CGFloat(style.cornerRadius), style: .circular))
         .accessibilityHidden(true)
         .task {
             // Let the kit warm its Metal shaders before the first visible movement.

@@ -92,6 +92,7 @@ const reducedMotion=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
 // Копия страницы для анимации перехода: выкидываем то, что ниже экрана — меньше работы телефону
 function trimOffscreen(orig,clone){const sel='.entry-day,.entry,#pageBody>*,.card';const a=orig.querySelectorAll(sel),b=clone.querySelectorAll(sel);if(a.length!==b.length)return;const limit=innerHeight*1.15;const drop=[];for(let i=0;i<a.length;i++){if(a[i].getBoundingClientRect().top>limit)drop.push(b[i]);}drop.forEach(el=>el.remove());}
 function navigate(p,options={}){
+ window.MonoReminderMotion?.cancel();
  if(!options.noPageMotion&&!tourActive&&rootPages.includes(page)&&rootPages.includes(p)&&page!==p&&window.MonoPageMotion)return MonoPageMotion.go(p,options);
  window.MonoGoalDrag?.cancel();
  window.MonoCategoryDrag?.cancel();
@@ -126,11 +127,8 @@ function navigate(p,options={}){
    ghost.animate([{opacity:1,transform:'none',transformOrigin:`${ox}px ${oy+oldScroll}px`},{opacity:0,transform:'scale(1.35)',transformOrigin:`${ox}px ${oy+oldScroll}px`}],{duration:420,easing:'cubic-bezier(.4,0,.6,1)',fill:'forwards'}).finished.catch(()=>{}).finally(()=>ghost.remove());
    app.animate([{opacity:0,transform:'scale(.82)',transformOrigin:`${ox}px ${oy}px`},{opacity:1,transform:'none',transformOrigin:`${ox}px ${oy}px`}],{duration:620,delay:90,easing:soft,fill:'backwards'});
   }else if(zoomFrom){
-   // Вход в напоминания с главной: главная мягко отступает, страница плавно приближается — одним движением, без ступенек
-   const soft='cubic-bezier(.32,.72,0,1)',ox=zoomFrom.left+zoomFrom.width/2,oy=zoomFrom.top+zoomFrom.height/2;
-   ghost.querySelector('.intro')?.animate([{opacity:1},{opacity:0}],{duration:120,easing:'ease-out',fill:'forwards'});
-   ghost.animate([{opacity:1,transform:'none'},{opacity:0,transform:'scale(1.04)'}],{duration:220,easing:'cubic-bezier(.4,0,.6,1)',fill:'forwards'}).finished.catch(()=>{}).finally(()=>ghost.remove());
-   app.animate([{transform:'scale(.92)',transformOrigin:`${ox}px ${oy}px`},{transform:'none',transformOrigin:`${ox}px ${oy}px`}],{duration:620,easing:soft});
+   if(window.MonoReminderMotion)MonoReminderMotion.enter(app,ghost,zoomFrom).then(()=>{if(page==='reminders'&&options.reminderId)window.MonoReminders?.focus(options.reminderId);});
+   else ghost.remove();
   }else if(profileMotion){
    // Профиль: главная мягко уходит, затем профиль плавно проявляется — без наложения страниц
    const soft='cubic-bezier(.33,0,.15,1)';
@@ -296,7 +294,7 @@ function renderHomeReminders(){
  $('#home').classList.toggle('home-no-reminders',notes.length+payments.length===0);
  box.innerHTML=[...notes,...payments].join('');
  window.MonoHomeCarousel?.mount(box);
- box.onclick=e=>{const n=e.target.closest('[data-home-note]');if(n){const id=n.dataset.homeNote,r=n.getBoundingClientRect();navigate('reminders',{zoomFrom:{left:r.left,top:r.top,width:r.width,height:r.height}});requestAnimationFrame(()=>window.MonoReminders?.focus(id));return;}const b=e.target.closest('[data-home-payment]');if(b)window.MonoPayments?.show(b.dataset.homePayment,b.dataset.homeDue,{home:true});};
+ box.onclick=e=>{const n=e.target.closest('[data-home-note]');if(n){const id=n.dataset.homeNote,r=n.getBoundingClientRect();navigate('reminders',{zoomFrom:{left:r.left,top:r.top,width:r.width,height:r.height},reminderId:id});if(reducedMotion())window.MonoReminders?.focus(id);return;}const b=e.target.closest('[data-home-payment]');if(b)window.MonoPayments?.show(b.dataset.homePayment,b.dataset.homeDue,{home:true});};
 }
 
 function bindPage(){
