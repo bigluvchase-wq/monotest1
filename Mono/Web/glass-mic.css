@@ -33,3 +33,27 @@ body[data-page=home]{height:100dvh;overflow:hidden;overscroll-behavior:none}
 @media(max-height:650px){
  html:has(#home.home-dash) body[data-page=home] .app>footer{position:fixed;bottom:calc(94px + env(safe-area-inset-bottom));left:20px;right:20px;width:auto;height:14px;margin:0;padding:0;font-size:8px;pointer-events:none}
 }
+/* Idle specular sweep and live recording light: only transform / opacity move. */
+:is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){transition:transform 180ms cubic-bezier(.2,.8,.2,1)!important}
+:is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]) svg{position:relative;z-index:2;animation:none!important}
+.mic-glint,.mic-core{position:absolute;pointer-events:none}
+.mic-glint{inset:-60%;background:linear-gradient(110deg,transparent 37%,color-mix(in srgb,var(--paper) 44%,transparent) 49%,transparent 61%);opacity:0;transform:translateX(-65%) rotate(-15deg)}
+body[data-page=home]:not(.holding):not(.listening) #mic .mic-glint{animation:mic-specular 4200ms cubic-bezier(.4,0,.2,1) 1}
+.mic-core{inset:16%;border-radius:50%;opacity:0;transition:opacity 240ms}
+.mic-core::before,.mic-core::after{content:"";position:absolute;inset:-12%;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 67%,transparent),color-mix(in srgb,var(--accent) 14%,transparent) 42%,transparent 70%)}
+.mic-core::after{inset:5%;background:radial-gradient(circle,color-mix(in srgb,var(--paper) 85%,transparent),transparent 65%)}
+body.holding .voice-zone #mic{transform:scale(.94)!important}
+body[data-voice-phase=listening] .voice-zone #mic{transform:scale(1)!important}
+body[data-voice-phase=listening] #mic .mic-core{opacity:1}
+body[data-voice-phase=listening] #mic .mic-core::before{animation:mic-voice-light 2400ms ease-in-out infinite}
+body[data-voice-phase=listening] #mic .mic-core::after{animation:mic-voice-highlight 2900ms ease-in-out infinite}
+body:not([data-page=home]) .mic-core::before,body:not([data-page=home]) .mic-core::after{animation:none!important}
+body:has(dialog[open]) .mic-glint,body.mic-motion-paused .mic-glint,body.mic-motion-paused .mic-core::before,body.mic-motion-paused .mic-core::after{animation-play-state:paused!important}
+@keyframes mic-specular{0%{transform:translateX(-65%) rotate(-15deg);opacity:0}35%{opacity:.5}100%{transform:translateX(65%) rotate(-15deg);opacity:0}}
+@keyframes mic-voice-light{0%,100%{transform:translate(-9px,7px) scale(.8);opacity:.55}35%{transform:translate(9px,-6px) scale(1.15);opacity:1}65%{transform:translate(-3px,2px) scale(.94);opacity:.7}}
+@keyframes mic-voice-highlight{0%,100%{transform:translate(9px,-6px) scale(.65);opacity:.3}50%{transform:translate(-7px,8px) scale(1.1);opacity:.8}}
+@media(prefers-reduced-motion:reduce){
+ .mic-glint,.mic-core::before,.mic-core::after{animation:none!important}
+ body.holding .voice-zone #mic,body[data-voice-phase=listening] .voice-zone #mic{transform:none!important}
+ :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){transition:none!important}
+}
