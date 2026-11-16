@@ -99,6 +99,12 @@ function recognizeDocument(file){return new Promise(async(resolve,reject)=>{
 });}
 function documentResult(id,text,error){const job=documents.get(id);if(!job)return;clearTimeout(job.timer);documents.delete(id);if(error)job.reject(Error(error));else job.resolve(text);}
 root.MonoNative={
+ saveWaveSupported:root.monoSaveWaveSupported===true,
+ prepareSaveWave:data=>post('prepareSaveWave',data),
+ finishSaveWave:id=>post('finishSaveWave',{id}),
+ cancelSaveWave:id=>post('cancelSaveWave',{id}),
+ saveWaveReady:(id,captured)=>root.MonoSaveWave?.ready(id,captured),
+ saveWaveFinished:id=>root.MonoSaveWave?.finished(id),
  pushWidget,deepLink,recognizeDocument,documentResult,
  Recognition:NativeRecognition,speechEvent,refreshReminders,
  storeAccess:access=>post('storeAccess',{access}),

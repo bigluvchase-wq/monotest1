@@ -1,0 +1,21 @@
+/* Libraries.dev Border Beam 1.4.1 / MIT; circle adaptation uses only compositor rotation.
+   The React package animates custom angles/filters. Here the gradients and blur are static. */
+.mic-beam-host{position:relative;display:grid;place-items:center;width:max-content;height:max-content}
+.mic-beam{--beam-a:#ff3264;--beam-b:#288cff;--beam-c:#32c850;--beam-d:#6446ff;--beam-e:#f032b4;position:absolute;inset:0;pointer-events:none;border-radius:50%;z-index:3;opacity:.7;transition:transform 180ms cubic-bezier(.2,.8,.2,1)}
+.mic-beam-aura,.mic-beam-rim{position:absolute;border-radius:50%;pointer-events:none;overflow:hidden;-webkit-mask-image:radial-gradient(closest-side,transparent calc(100% - 14px),#000 calc(100% - 9px),transparent 100%);mask-image:radial-gradient(closest-side,transparent calc(100% - 14px),#000 calc(100% - 9px),transparent 100%)}
+.mic-beam-aura{inset:-10px;opacity:.75}
+.mic-beam-rim{inset:-1px;-webkit-mask-image:radial-gradient(closest-side,transparent calc(100% - 2px),#000 calc(100% - 1px));mask-image:radial-gradient(closest-side,transparent calc(100% - 2px),#000 calc(100% - 1px))}
+.mic-beam-rotor{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 20deg,transparent 0 12%,var(--beam-a) 19%,var(--beam-b) 30%,transparent 37% 45%,var(--beam-c) 53%,var(--beam-d) 66%,var(--beam-e) 77%,transparent 88% 100%);animation:mono-beam-turn 8s linear infinite}
+.mic-beam-aura .mic-beam-rotor{filter:blur(4px)}
+body.holding .mic-beam{transform:scale(.94)}
+body[data-voice-phase=listening] .mic-beam{transform:scale(1)}
+body:not([data-page=home]) .mic-beam-rotor,body:has(dialog[open]) .mic-beam-rotor,body.mic-motion-paused .mic-beam-rotor,.root-preview .mic-beam-rotor{animation-play-state:paused}
+body:not([data-page=home]) .mic-beam{visibility:hidden}
+html[data-palette=blue] .mic-beam{--beam-a:#6478ff;--beam-b:#3c78ff;--beam-c:#328cdc;--beam-d:#7850ff;--beam-e:#8250dc}
+html[data-palette=green] .mic-beam{--beam-a:#2ea05a;--beam-b:#1ebe78;--beam-c:#46b446;--beam-d:#149682;--beam-e:#5ac850}
+html[data-palette=burgundy] .mic-beam{--beam-a:#ff5032;--beam-b:#ffa028;--beam-c:#ffc832;--beam-d:#ff6450;--beam-e:#ff3c3c}
+html[data-palette=black] .mic-beam{--beam-a:var(--ink);--beam-b:var(--muted);--beam-c:var(--ink);--beam-d:var(--muted);--beam-e:var(--ink)}
+.mic-beam-disabled .mic-beam{display:none}
+@keyframes mono-beam-turn{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.mic-beam-rotor{animation:none!important}.mic-beam{transition:none;transform:none!important;opacity:.4}}
+.root-preview[data-page=home] .mic-beam{visibility:visible}

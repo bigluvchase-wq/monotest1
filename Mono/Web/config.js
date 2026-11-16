@@ -1,5 +1,6 @@
 // Настройки подключения к серверу и оплате. Меняется только этот файл.
 window.MONO_CONFIG={
+ effects:{microphoneBeam:true,saveWave:true}, // независимые выключатели экспериментальных эффектов
  voiceAIUrl:'', // серверный ИИ-разбор отключён
  apiBase:'',      // адрес вашего сервера, например 'https://api.example.com'. Пусто = всё хранится только на телефоне
  premiumUrl:'', // ссылки на оплату в приложении нет (правила App Store)
@@ -7,3 +8,5 @@ window.MONO_CONFIG={
  publicKey:null,  // публичный ключ сервера (ECDSA P-256, формат JWK) — им приложение проверяет, что Премиум выдан сервером
  devMode:false    // true только для тестов: включает MonoAccess.devGrant(дней) в консоли
 };
+
+if(window.MONO_CONFIG.effects.microphoneBeam===false)document.documentElement.classList.add('mic-beam-disabled');

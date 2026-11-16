@@ -32,3 +32,6 @@
 #homeAccountDialog[data-exiting]::backdrop{opacity:0}
 #homeAccountDialog[data-dragging]{user-select:none;-webkit-user-select:none}
 @media(prefers-reduced-motion:reduce){#homeAccountDialog::backdrop{transition:opacity 100ms}}
+/* Global modal styles otherwise keep a 10px backdrop blur and a filled entrance animation alive. */
+#homeAccountDialog::backdrop{animation:none!important}
+#homeAccountDialog[data-exiting]::backdrop{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;transition-duration:160ms}
