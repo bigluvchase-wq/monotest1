@@ -9,3 +9,15 @@
 /* Each card already has its own opaque swipe-content; do not sample the cards behind it. */
 .account-stack>.swipe-shell{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 .account-stack .account-balance{overflow-wrap:anywhere}
+/* The exposed card header carries both its name and its current balance. */
+.account-stack .category-head{position:relative}
+.account-stack .account-stack-select{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}
+.account-stack-name{flex:1;min-width:0}
+.account-stack-amount{flex:none;max-width:60%;min-width:84px;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.account-stack .category-head>[data-edit-account]{position:absolute;right:0}
+.account-stack [data-stack-front=true] .account-stack-amount{visibility:hidden}
+/* Keep shadows static while transforms animate: stronger front, quieter rear edges. */
+html[data-theme] .account-stack>[data-stack-front=true]{box-shadow:var(--depth-shadow),0 -10px 18px -8px var(--shadow),0 20px 30px -10px var(--shadow)!important}
+html[data-theme] .account-stack>[data-stack-front=false]{box-shadow:0 -4px 10px -6px var(--shadow),0 1px 0 var(--depth-edge) inset!important}
+
+.account-stack>[data-stack-front=false]{cursor:pointer}
