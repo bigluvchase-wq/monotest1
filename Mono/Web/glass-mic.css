@@ -57,3 +57,9 @@ body:has(dialog[open]) .mic-glint,body.mic-motion-paused .mic-glint,body.mic-mot
  body.holding .voice-zone #mic,body[data-voice-phase=listening] .voice-zone #mic{transform:none!important}
  :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){transition:none!important}
 }
+/* Stable account picker: optgroups and long account names must not resize the home control. */
+:is(#home,[data-preview-id=home]) .recording-block .account-picker{width:min(300px,85vw);max-width:100%;align-self:center}
+:is(#home,[data-preview-id=home]) .recording-block .account-picker select{display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;text-overflow:ellipsis}
+/* Bake the frosted surface onto the theme's paper. No late backdrop sampling in moving page clones. */
+:is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){background-color:var(--paper)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html[data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile{background-color:var(--paper)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;transition-property:transform!important}
