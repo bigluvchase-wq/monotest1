@@ -32,18 +32,19 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  await p.emulateMedia({reducedMotion:'reduce'});assert.equal(await p.locator('.mic-beam-rotor').first().evaluate(el=>getComputedStyle(el).animationName),'none');await p.emulateMedia({reducedMotion:'no-preference'});
  await p.evaluate(()=>document.documentElement.classList.add('mic-beam-disabled'));assert.equal(await p.locator('.mic-beam').evaluate(el=>getComputedStyle(el).display),'none');
  // Mock only the native transport; use the actual entry form and persistence engine.
- await p.evaluate(()=>{window.nativeMessages=[];window.MonoNative={saveWaveSupported:true,refreshReminders(){},prepareSaveWave(data){window.waveRequest=data;nativeMessages.push(['prepare',data.id]);setTimeout(()=>MonoSaveWave.ready(data.id,true),20);},finishSaveWave(id){nativeMessages.push(['finish',id]);MonoSaveWave.ready(id,true);window.waveReceiptVisible=$('#entryDialog').open&&!!document.querySelector('.save-wave-receipt');window.pendingWave=id;},cancelSaveWave(id){nativeMessages.push(['cancel',id]);}};openEntry('Кофе 350');});
+ await p.evaluate(()=>{window.successNotices=[];const notifyOriginal=notify;window.notify=(message,success,...rest)=>{if(success)successNotices.push(message);return notifyOriginal(message,success,...rest);};window.nativeMessages=[];window.MonoNative={saveWaveSupported:true,refreshReminders(){},prepareSaveWave(data){window.waveRequest=data;nativeMessages.push(['prepare',data.id]);setTimeout(()=>MonoSaveWave.ready(data.id,true),20);},finishSaveWave(id){nativeMessages.push(['finish',id]);MonoSaveWave.ready(id,true);window.waveReceiptVisible=$('#entryDialog').open&&!!document.querySelector('.save-wave-receipt');window.pendingWave=id;},cancelSaveWave(id){nativeMessages.push(['cancel',id]);}};openEntry('Кофе 350');});
  await p.waitForTimeout(400);await p.locator('#saveButton').click();await p.waitForSelector('.save-wave-receipt');
  await p.screenshot({path:path.join(screenshots,'saved-receipt.png')});
  assert.equal(await p.locator('#entryDialog').evaluate(el=>el.open),true);
- await p.evaluate(()=>MonoSaveWave.finished(pendingWave));
+ await p.evaluate(()=>{window.receiptTrace=[];let frames=0;function sample(){receiptTrace.push({open:$('#entryDialog').hasAttribute('open'),visibility:getComputedStyle($('#drafts')).visibility});if(++frames<45)requestAnimationFrame(sample);}requestAnimationFrame(sample);MonoSaveWave.finished(pendingWave);});
  assert.equal(await p.locator('#entryDialog').evaluate(el=>el.hasAttribute('data-save-dismissing')&&el.inert),true);
  await p.waitForFunction(()=>!document.querySelector('#entryDialog').open);
  assert.equal(await p.locator('#entryDialog').evaluate(el=>el.open),false);
  assert.deepEqual(await p.evaluate(()=>state.entries.map(e=>e.amount)),[35000]);
  assert.deepEqual(await p.evaluate(()=>nativeMessages.map(x=>x[0])),['prepare','finish']);
  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('mono-v2')).entries.length),1);
- assert.equal(await p.evaluate(()=>waveReceiptVisible),true);assert.equal(await p.locator('.save-wave-receipt').count(),0);
+ assert.equal(await p.evaluate(()=>waveReceiptVisible),true);await p.waitForFunction(()=>!document.querySelector('.save-wave-receipt'));
+ assert.deepEqual(await p.evaluate(()=>successNotices),[]);assert(await p.evaluate(()=>receiptTrace.filter(x=>x.open).every(x=>x.visibility==='hidden')));
  assert(await p.evaluate(()=>waveRequest.panel.width>0&&waveRequest.panel.height>0&&/^#[0-9a-f]{6}$/i.test(waveRequest.accent)));
  await p.evaluate(()=>{openEntry('Такси 200');const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='mono-v2')throw Error('full');return original.call(this,key,value);};});
  await p.waitForTimeout(400);await p.locator('#saveButton').click();await p.waitForTimeout(500);

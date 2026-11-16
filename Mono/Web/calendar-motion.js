@@ -1,29 +1,46 @@
-/* Independent WAAPI adaptation of the supplied calendar references; Mono's dates and layout stay intact. */
+/* Calendar layout changes once; only its surface and neighbouring blocks move per frame. */
 (function(){
 'use strict';
-const states=new WeakMap(),motions=new WeakMap(),directions=new WeakMap(),reduce=matchMedia('(prefers-reduced-motion:reduce)');
-function stop(el){(motions.get(el)||[]).forEach(a=>a.cancel());motions.delete(el);}
-function play(owner,el,frames,options){const a=el.animate(frames,options),list=motions.get(owner)||[];list.push(a);motions.set(owner,list);a.finished.catch(()=>{});}
-function open(owner,panel){
- stop(owner);if(reduce.matches)return;
- play(owner,panel,[{opacity:0,transform:'translateY(-8px) scale(.94)'},{opacity:1,transform:'none'}],{duration:620,easing:'cubic-bezier(.34,1.32,.64,1)',fill:'backwards'});
- panel.querySelectorAll('.agenda-day').forEach((day,i)=>play(owner,day,[{opacity:0,transform:'translateY(3px)'},{opacity:1,transform:'none'}],{duration:360,delay:80+i*4.5,easing:'ease-out',fill:'backwards'}));
- panel.querySelectorAll('.agenda-day:has(.agenda-dots b)').forEach((day,i)=>play(owner,day.querySelector('.agenda-dots'),[{opacity:0,transform:'scale(.55)'},{opacity:1,transform:'scale(1.08)'},{opacity:1,transform:'none'}],{duration:540,delay:140+i*35,easing:'ease-out',fill:'backwards'}));
+const states=new WeakMap(),motions=new WeakMap(),captures=new WeakMap(),directions=new WeakMap(),reduce=matchMedia('(prefers-reduced-motion:reduce)');
+function stop(el){motions.get(el)?.();motions.delete(el);}
+function animate(owner,entries){
+ stop(owner);const animations=entries.map(([el,frames,options])=>el.animate(frames,options));let cleaned=false;
+ const clean=()=>{if(cleaned)return;cleaned=true;animations.forEach(a=>a.cancel());owner.querySelector(':scope>.calendar-motion-surface')?.remove();owner.classList.remove('calendar-layout-motion');if(motions.get(owner)===clean)motions.delete(owner);};
+ motions.set(owner,clean);Promise.all(animations.map(a=>a.finished.catch(()=>{}))).then(clean);
+}
+const ease='cubic-bezier(.22,.8,.3,1)';
+function snapshot(card){return {height:card.getBoundingClientRect().height,siblings:[...card.parentElement.children].filter(el=>el!==card).map(el=>[el,el.getBoundingClientRect().top])};}
+function layout(card,panel,shown,before){
+ stop(card);if(reduce.matches)return;
+ const after=card.getBoundingClientRect(),entries=[];
+ if(before){
+  const height=Math.max(before.height,after.height),surface=document.createElement('div');surface.className='calendar-motion-surface';surface.setAttribute('aria-hidden','true');surface.style.height=height+'px';
+  card.classList.add('calendar-layout-motion');card.append(surface);
+  entries.push([surface,[{transform:`scaleY(${before.height/height})`},{transform:`scaleY(${after.height/height})`}],{duration:420,easing:ease,fill:'both'}]);
+  for(const [el,top] of before.siblings){if(!el.isConnected)continue;const dy=top-el.getBoundingClientRect().top;if(Math.abs(dy)>1)entries.push([el,[{transform:`translateY(${dy}px)`},{transform:'none'}],{duration:420,easing:ease}]);}
+ }
+ if(shown)entries.push([panel,[{opacity:0,transform:'translateY(-5px)'},{opacity:1,transform:'none'}],{duration:360,delay:60,easing:ease,fill:'backwards'}]);
+ animate(card,entries);
 }
 function refresh(){
  for(const card of document.querySelectorAll('.payments-agenda')){
   const panel=card.querySelector('.agenda-calendar-inner');if(!panel)continue;
-  const shown=card.classList.contains('is-open'),month=panel.querySelector('.agenda-calendar-head strong')?.textContent,selected=panel.querySelector('.agenda-day.selected')?.getAttribute('aria-label'),prev=states.get(card);
+  const shown=card.classList.contains('is-open'),month=panel.querySelector('.agenda-calendar-head strong')?.textContent,selected=panel.querySelector('.agenda-day.selected')?.getAttribute('aria-label'),prev=states.get(card),before=captures.get(card);captures.delete(card);
   states.set(card,{shown,month,selected});
-  if(!shown){stop(card);continue;}
-  if(!prev?.shown){open(card,panel);continue;}
-  if(prev.month!==month){stop(card);if(!reduce.matches)play(card,panel,[{opacity:0,transform:`translateX(${(directions.get(card)||1)*12}px)`},{opacity:1,transform:'none'}],{duration:420,easing:'cubic-bezier(.22,1,.36,1)'});}
-  else if(prev.selected!==selected&&!reduce.matches){stop(card);const number=panel.querySelector('.agenda-day.selected>span');if(number)play(card,number,[{transform:'scale(1)'},{transform:'scale(1.12)'},{transform:'scale(1)'}],{duration:380,easing:'ease-out'});}
+  if(prev&&shown!==prev.shown){layout(card,panel,shown,before);continue;}
+  if(!shown)continue;
+  if(!prev){layout(card,panel,true,null);continue;}
+  if(prev.month!==month){if(!reduce.matches)animate(card,[[panel,[{opacity:0,transform:`translateX(${(directions.get(card)||1)*10}px)`},{opacity:1,transform:'none'}],{duration:300,easing:ease}]]);}
+  else if(prev.selected!==selected&&!reduce.matches){const number=panel.querySelector('.agenda-day.selected>span');if(number)animate(card,[[number,[{transform:'scale(1)'},{transform:'scale(1.08)'},{transform:'scale(1)'}],{duration:260,easing:'ease-out'}]]);}
  }
- const picker=document.querySelector('#periodDialog');if(picker){const shown=picker.hasAttribute('open'),prev=states.get(picker);states.set(picker,{shown});if(shown&&!prev?.shown)open(picker,picker);if(!shown)stop(picker);}
+ const picker=document.querySelector('#periodDialog');if(picker){const shown=picker.hasAttribute('open'),prev=states.get(picker);states.set(picker,{shown});if(shown&&!prev?.shown&&!reduce.matches)animate(picker,[[picker,[{opacity:0,transform:'translateY(-6px) scale(.97)'},{opacity:1,transform:'none'}],{duration:420,easing:ease}]]);if(!shown)stop(picker);}
 }
 let queued=false;function queue(){if(queued)return;queued=true;queueMicrotask(()=>{queued=false;refresh();});}
 new MutationObserver(records=>{if(records.some(r=>r.target.closest?.('.payments-agenda,#periodDialog')||[...r.addedNodes].some(n=>n.nodeType===1&&(n.matches('.payments-agenda')||n.querySelector('.payments-agenda')))))queue();}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','open']});
-document.addEventListener('click',e=>{const nav=e.target.closest('[data-rem-month],[data-payment-month]');if(nav)directions.set(nav.closest('.payments-agenda'),Number(nav.dataset.remMonth||nav.dataset.paymentMonth));},{capture:true});
-reduce.addEventListener('change',()=>document.querySelectorAll('.payments-agenda,#periodDialog').forEach(stop));refresh();
+document.addEventListener('click',e=>{
+ const card=e.target.closest('.payments-agenda');if(!card)return;
+ if(e.target.closest('.agenda-toggle')||!e.target.closest('button,.agenda-calendar-reveal'))captures.set(card,snapshot(card));
+ const nav=e.target.closest('[data-rem-month],[data-payment-month]');if(nav)directions.set(card,Number(nav.dataset.remMonth||nav.dataset.paymentMonth));
+},{capture:true});
+reduce.addEventListener('change',()=>document.querySelectorAll('.payments-agenda,#periodDialog').forEach(stop));document.addEventListener('visibilitychange',()=>{if(document.hidden)document.querySelectorAll('.payments-agenda,#periodDialog').forEach(stop);});refresh();
 })();
