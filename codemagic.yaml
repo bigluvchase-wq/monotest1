@@ -6,6 +6,11 @@ workflows:
     environment:
       xcode: latest
     scripts:
+      - name: Install Metal toolchain
+        script: |
+          set -eu
+          xcodebuild -downloadComponent MetalToolchain
+          xcrun --sdk iphoneos metal --version
       - name: Build unsigned IPA
         script: |
           set -eu
