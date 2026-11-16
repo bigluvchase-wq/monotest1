@@ -19,9 +19,7 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
    await p.evaluate(theme=>{state.settings.theme=theme;applyTheme();},theme);
    const rects=await p.evaluate(()=>['#mic','.mic-beam-host'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return [r.x,r.y,r.width,r.height];}));
    for(let i=0;i<4;i++)assert(Math.abs(rects[0][i]-rects[1][i])<0.1,JSON.stringify(rects));
-   assert.equal(await p.locator('.mic-beam').evaluate(el=>getComputedStyle(el).pointerEvents),'none');
-   const frames=await p.locator('.mic-beam-rotor').first().evaluate(el=>el.getAnimations()[0].effect.getKeyframes());
-   for(const frame of frames)for(const key of Object.keys(frame))assert(['transform','offset','computedOffset','easing','composite'].includes(key),key);
+   assert.equal(await p.locator('.mic-beam').evaluate(el=>getComputedStyle(el).display),'none');
    if(width===390)await p.screenshot({path:path.join(screenshots,theme+'.png')});
   }
  }
@@ -30,22 +28,27 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  assert.equal(await p.evaluate(()=>getComputedStyle($('#homeAccountDialog'),'::backdrop').animationName),'none');
  await p.evaluate(()=>{MonoHomeAccountPicker.hide();});
  assert.equal(await p.evaluate(()=>getComputedStyle($('#homeAccountDialog'),'::backdrop').backdropFilter),'none');
- await p.waitForTimeout(320);assert.equal(await p.locator('#homeAccountDialog').evaluate(el=>el.open),false);
+ await p.waitForFunction(()=>!document.querySelector('#homeAccountDialog').open);
  await p.emulateMedia({reducedMotion:'reduce'});assert.equal(await p.locator('.mic-beam-rotor').first().evaluate(el=>getComputedStyle(el).animationName),'none');await p.emulateMedia({reducedMotion:'no-preference'});
- await p.evaluate(()=>document.documentElement.classList.add('mic-beam-disabled'));assert.equal(await p.locator('.mic-beam').evaluate(el=>getComputedStyle(el).display),'none');await p.evaluate(()=>document.documentElement.classList.remove('mic-beam-disabled'));
+ await p.evaluate(()=>document.documentElement.classList.add('mic-beam-disabled'));assert.equal(await p.locator('.mic-beam').evaluate(el=>getComputedStyle(el).display),'none');
  // Mock only the native transport; use the actual entry form and persistence engine.
- await p.evaluate(()=>{window.nativeMessages=[];window.MonoNative={saveWaveSupported:true,refreshReminders(){},prepareSaveWave(data){nativeMessages.push(['prepare',data.id]);setTimeout(()=>MonoSaveWave.ready(data.id,true),20);},finishSaveWave(id){nativeMessages.push(['finish',id]);MonoSaveWave.ready(id,true);MonoSaveWave.finished(id);},cancelSaveWave(id){nativeMessages.push(['cancel',id]);}};openEntry('Кофе 350');});
- await p.waitForTimeout(400);await p.locator('#saveButton').click();await p.waitForTimeout(500);
+ await p.evaluate(()=>{window.nativeMessages=[];window.MonoNative={saveWaveSupported:true,refreshReminders(){},prepareSaveWave(data){window.waveRequest=data;nativeMessages.push(['prepare',data.id]);setTimeout(()=>MonoSaveWave.ready(data.id,true),20);},finishSaveWave(id){nativeMessages.push(['finish',id]);MonoSaveWave.ready(id,true);window.waveReceiptVisible=$('#entryDialog').open&&!!document.querySelector('.save-wave-receipt');window.pendingWave=id;},cancelSaveWave(id){nativeMessages.push(['cancel',id]);}};openEntry('Кофе 350');});
+ await p.waitForTimeout(400);await p.locator('#saveButton').click();await p.waitForSelector('.save-wave-receipt');
+ await p.screenshot({path:path.join(screenshots,'saved-receipt.png')});
+ assert.equal(await p.locator('#entryDialog').evaluate(el=>el.open),true);
+ await p.evaluate(()=>MonoSaveWave.finished(pendingWave));
  assert.equal(await p.locator('#entryDialog').evaluate(el=>el.open),false);
  assert.deepEqual(await p.evaluate(()=>state.entries.map(e=>e.amount)),[35000]);
  assert.deepEqual(await p.evaluate(()=>nativeMessages.map(x=>x[0])),['prepare','finish']);
  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('mono-v2')).entries.length),1);
+ assert.equal(await p.evaluate(()=>waveReceiptVisible),true);assert.equal(await p.locator('.save-wave-receipt').count(),0);
+ assert(await p.evaluate(()=>waveRequest.panel.width>0&&waveRequest.panel.height>0&&/^#[0-9a-f]{6}$/i.test(waveRequest.accent)));
  await p.evaluate(()=>{openEntry('Такси 200');const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='mono-v2')throw Error('full');return original.call(this,key,value);};});
  await p.waitForTimeout(400);await p.locator('#saveButton').click();await p.waitForTimeout(500);
  assert.equal(await p.locator('#entryDialog').evaluate(el=>el.open&&!el.inert),true);
  assert.equal(await p.locator('#saveButton').isEnabled(),true);assert.equal(await p.evaluate(()=>state.entries.length),1);
  assert.deepEqual(await p.evaluate(()=>nativeMessages.map(x=>x[0])),['prepare','finish','prepare','cancel']);
  assert.deepEqual(errors,[]);
- console.log('PASS: 21 theme/size combinations; compositor-only beam; reduced motion; immediate blur removal; native handshake saves once; storage failure keeps editor interactive. Screenshots: '+screenshots);
+ console.log('PASS: 21 theme/size combinations; microphone beam disabled; themed sheet receipt; reduced motion; immediate blur removal; native handshake saves once; storage failure keeps editor interactive. Screenshots: '+screenshots);
  }finally{await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
