@@ -101,7 +101,7 @@ function toggle(id){
 // Для главного экрана: сегодняшние и просроченные невыполненные
 function forHome(){roll();const today=E.dateString(new Date());return list().filter(r=>!r.done&&r.date<=today).sort((a,b)=>stamp(a).localeCompare(stamp(b)));}
 // Подсветить карточку после перехода с главного экрана
-function focus(id){const el=document.querySelector(`[data-reminder-id="${CSS.escape(id)}"]`);if(!el)return;const y=el.getBoundingClientRect().top+scrollY-innerHeight/3;if(y>0)scrollTo({top:y,behavior:reducedMotion()?'auto':'smooth'});el.classList.add('reminder-flash');setTimeout(()=>el.classList.remove('reminder-flash'),1600);}
+function focus(id,{scroll=true}={}){const el=document.querySelector(`[data-reminder-id="${CSS.escape(id)}"]`);if(!el)return;const y=el.getBoundingClientRect().top+scrollY-innerHeight/3;if(scroll&&y>0)scrollTo({top:y,behavior:reducedMotion()?'auto':'smooth'});el.classList.add('reminder-flash');setTimeout(()=>el.classList.remove('reminder-flash'),1600);}
 // Уведомления iPhone
 function nativeItems(){
  const now=nowStamp();

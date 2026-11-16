@@ -37,6 +37,8 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  await p.screenshot({path:path.join(screenshots,'saved-receipt.png')});
  assert.equal(await p.locator('#entryDialog').evaluate(el=>el.open),true);
  await p.evaluate(()=>MonoSaveWave.finished(pendingWave));
+ assert.equal(await p.locator('#entryDialog').evaluate(el=>el.hasAttribute('data-save-dismissing')&&el.inert),true);
+ await p.waitForFunction(()=>!document.querySelector('#entryDialog').open);
  assert.equal(await p.locator('#entryDialog').evaluate(el=>el.open),false);
  assert.deepEqual(await p.evaluate(()=>state.entries.map(e=>e.amount)),[35000]);
  assert.deepEqual(await p.evaluate(()=>nativeMessages.map(x=>x[0])),['prepare','finish']);

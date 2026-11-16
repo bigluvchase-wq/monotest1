@@ -93,6 +93,8 @@ const reducedMotion=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
 function trimOffscreen(orig,clone){const sel='.entry-day,.entry,#pageBody>*,.card';const a=orig.querySelectorAll(sel),b=clone.querySelectorAll(sel);if(a.length!==b.length)return;const limit=innerHeight*1.15;const drop=[];for(let i=0;i<a.length;i++){if(a[i].getBoundingClientRect().top>limit)drop.push(b[i]);}drop.forEach(el=>el.remove());}
 function navigate(p,options={}){
  window.MonoReminderMotion?.cancel();
+ document.documentElement.classList.remove('reminder-opening');
+ if(options.zoomFrom&&!options.noAnimation&&!reducedMotion()){document.activeElement?.blur?.();document.documentElement.classList.add('reminder-opening');}
  if(!options.noPageMotion&&!tourActive&&rootPages.includes(page)&&rootPages.includes(p)&&page!==p&&window.MonoPageMotion)return MonoPageMotion.go(p,options);
  window.MonoGoalDrag?.cancel();
  window.MonoCategoryDrag?.cancel();
@@ -127,7 +129,7 @@ function navigate(p,options={}){
    ghost.animate([{opacity:1,transform:'none',transformOrigin:`${ox}px ${oy+oldScroll}px`},{opacity:0,transform:'scale(1.35)',transformOrigin:`${ox}px ${oy+oldScroll}px`}],{duration:420,easing:'cubic-bezier(.4,0,.6,1)',fill:'forwards'}).finished.catch(()=>{}).finally(()=>ghost.remove());
    app.animate([{opacity:0,transform:'scale(.82)',transformOrigin:`${ox}px ${oy}px`},{opacity:1,transform:'none',transformOrigin:`${ox}px ${oy}px`}],{duration:620,delay:90,easing:soft,fill:'backwards'});
   }else if(zoomFrom){
-   if(window.MonoReminderMotion)MonoReminderMotion.enter(app,ghost,zoomFrom).then(()=>{if(page==='reminders'&&options.reminderId)window.MonoReminders?.focus(options.reminderId);});
+   if(window.MonoReminderMotion)MonoReminderMotion.enter(app,ghost,zoomFrom).then(()=>{if(page==='reminders'&&options.reminderId)window.MonoReminders?.focus(options.reminderId,{scroll:false});});
    else ghost.remove();
   }else if(profileMotion){
    // Профиль: главная мягко уходит, затем профиль плавно проявляется — без наложения страниц
@@ -294,7 +296,7 @@ function renderHomeReminders(){
  $('#home').classList.toggle('home-no-reminders',notes.length+payments.length===0);
  box.innerHTML=[...notes,...payments].join('');
  window.MonoHomeCarousel?.mount(box);
- box.onclick=e=>{const n=e.target.closest('[data-home-note]');if(n){const id=n.dataset.homeNote,r=n.getBoundingClientRect();navigate('reminders',{zoomFrom:{left:r.left,top:r.top,width:r.width,height:r.height},reminderId:id});if(reducedMotion())window.MonoReminders?.focus(id);return;}const b=e.target.closest('[data-home-payment]');if(b)window.MonoPayments?.show(b.dataset.homePayment,b.dataset.homeDue,{home:true});};
+ box.onclick=e=>{const n=e.target.closest('[data-home-note]');if(n){const id=n.dataset.homeNote,r=n.getBoundingClientRect();navigate('reminders',{zoomFrom:{left:r.left,top:r.top,width:r.width,height:r.height},reminderId:id});if(reducedMotion())window.MonoReminders?.focus(id,{scroll:false});return;}const b=e.target.closest('[data-home-payment]');if(b)window.MonoPayments?.show(b.dataset.homePayment,b.dataset.homeDue,{home:true});};
 }
 
 function bindPage(){
@@ -413,7 +415,7 @@ $('#drafts').onclick=e=>{const b=e.target.closest('[data-remove]');if(b){drafts.
 $('#saveButton').onclick=()=>{if(!drafts.length||parseErrors.length)return;if(drafts.some(d=>d.type==='saving')&&!requireAccess('goals'))return;if(drafts.some(d=>d.installmentTotal!==undefined)&&!requireAccess('payments'))return;for(const input of $('#drafts').querySelectorAll('input,select'))if(!input.reportValidity())return;let next,added;try{({next,added}=E.saveDrafts(state,drafts));}catch(error){notify(error.message);return;}
  if(added.some(e=>e.type==='saving'&&E.balance(next,e.account)<0)&&!confirm('Пополнение цели сделает остаток счёта отрицательным. Продолжить?'))return;
  for(const entry of added)window.MonoBankMerchants?.remember(next,entry);
- const base=state;const finish=captured=>{if(state!==base){notify('Данные изменились. Проверьте запись и сохраните ещё раз.');return false;}if(!persist(next))return false;drafts=[];const dialog=$('#entryDialog'),message=added.some(e=>e.type==='saving')?'Накопления пополнены. В расходы не включены.':'Записано. Всё на своих местах.';const close=()=>{if(captured)dialog.dataset.saveWave='true';dialog.close();delete dialog.dataset.saveWave;};if(captured){const clear=MonoSaveWave.showReceipt(dialog,message);MonoSaveWave.afterFinish(()=>{close();clear();notify(message,true);});}else{close();notify(message,true);}refreshAccounts();renderHomeReminders();window.MonoHome?.render();if(page!=='home')render();return true;};
+ const base=state;const finish=captured=>{if(state!==base){notify('Данные изменились. Проверьте запись и сохраните ещё раз.');return false;}if(!persist(next))return false;drafts=[];const dialog=$('#entryDialog'),message=added.some(e=>e.type==='saving')?'Накопления пополнены. В расходы не включены.':'Записано. Всё на своих местах.';const close=()=>{if(captured)dialog.dataset.saveWave='true';dialog.close();delete dialog.dataset.saveWave;};if(captured){const clear=MonoSaveWave.showReceipt(dialog,message);MonoSaveWave.afterFinish(()=>MonoSaveWave.dismissReceipt(dialog,clear,message));}else{close();notify(message,true);}refreshAccounts();renderHomeReminders();window.MonoHome?.render();if(page!=='home')render();return true;};
  if(window.MonoSaveWave&&added.some(e=>e.type==='expense'||e.type==='income'))MonoSaveWave.run($('#saveButton'),finish);else finish(false);
 };
 let recognition;
