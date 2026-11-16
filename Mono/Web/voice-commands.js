@@ -69,12 +69,12 @@ function amountOf(text){
  try{const r=E.parse(text,new Date(),[],state,state.accounts[0].id);const e=r.entries[0];return e?.amount||null;}catch{return null;}
 }
 const amountRe=/(?:^|\s)((?:\d[\d\s]*(?:[.,]\d+)?|(?:сто|двести|триста|четыреста|пятьсот|шестьсот|семьсот|восемьсот|девятьсот|тысяч[ауи]?|миллион(?:а|ов)?|полтора|полторы|один|одна|две|два|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать|тринадцать|четырнадцать|пятнадцать|шестнадцать|семнадцать|восемнадцать|девятнадцать|двадцать|тридцать|сорок|пятьдесят|шестьдесят|семьдесят|восемьдесят|девяносто|\d+)(?:\s+|$))+)\s*(?:тыс\.?|тысяч[ауи]?|к|млн)?\s*(?:руб(?:лей|ля|ль)?|р\.?|₽|долларов|доллара|евро)?(?=\s|$)/;
-function takeAmount(ctx){let amount=null;cut(ctx,amountRe,m=>{const a=amountOf(m[0].trim());if(!a)return false;amount=a;});return amount;}
+function takeAmount(ctx){let amount=null;if(cut(ctx,/(?:^|\s)(?:пару|пара)\s+тысяч[аиу]?(?=\s|$)/u,m=>{const a=amountOf(m[0].trim());if(!a)return false;amount=a;}))return amount;cut(ctx,amountRe,m=>{const a=amountOf(m[0].trim());if(!a)return false;amount=a;});return amount;}
 function currencyOf(ctx){let c=null;cut(ctx,/(?:^|\s)(?:в\s+)?(рубл(?:ях|ей|ь)|долларах|доллар(?:ов|а)?|usd|евро|eur|тенге|юан(?:ях|ей)|лир(?:ах)?|лари|драм(?:ах)?|дирхам(?:ах)?|фунт(?:ах|ов)?)(?=\s|$)/,m=>{const w=m[1];c=/рубл/.test(w)?'RUB':/доллар|usd/.test(w)?'USD':/евро|eur/.test(w)?'EUR':/тенге/.test(w)?'KZT':/юан/.test(w)?'CNY':/лир/.test(w)?'TRY':/лари/.test(w)?'GEL':/драм/.test(w)?'AMD':/дирхам/.test(w)?'AED':'GBP';});return c;}
 const stripLead=t=>t.replace(/\s+(?:на|в|во|за|по|с|со|для|к|и)$/,'').replace(/^(?:мне|нам|пожалуйста|что|чтобы|о том что|о том чтобы|про|об?|надо|нужно)\s+/,'').replace(/^(?:мне|надо|нужно|что|чтобы)\s+/,'').replace(/\s+(?:пожалуйста)$/,'').replace(/[.,!?;:]+$/,'').trim();
 const stem=w=>{w=norm(w);const r=w.replace(/(?:ами|ями|ого|ему|ому|ыми|ими|ая|яя|ую|юю|ое|ее|ий|ый|ой|ов|ев|ам|ям|ах|ях|ом|ем|ы|и|а|я|у|ю|е)$/u,'');return r.length>=3?r:w;};
 function matchCategory(text,list){const words=norm(text).split(/[^\p{L}]+/u).filter(Boolean).map(stem);let best=null;for(const c of list){const cw=norm(c).split(/[^\p{L}]+/u).filter(Boolean).map(stem);if(cw.length&&cw.every(w=>words.some(x=>x.startsWith(w)||w.startsWith(x)&&x.length>=4))&&(!best||c.length>best.length))best=c;}return best;}
-const CREATE='(?:создай(?:те)?|добавь(?:те)?|заведи(?:те)?|открой(?:те)?|сделай(?:те)?|запиши|новый|новая|новое|хочу)';
+const CREATE='(?:создай(?:те)?|добавь(?:те)?|заведи(?:те)?|открой(?:те)?|сделай(?:те)?|создать|добавить|завести|открыть|поставь|установи|запланируй|запиши|новый|новая|новое|хочу)';
 // Удаление голосом: «убери лимит на кафе», «удали цель отпуск», «удали последнюю операцию»
 const REMOVE_VERB=/^(?:пожалуйста\s+)?(?:убери|удали|сними|отмени|убрать|удалить|снять|отменить)(?:те)?\s+/;
 const REMOVE_KINDS=[
@@ -113,8 +113,9 @@ const commands=[
   return {name:rest?'Вклад '+rest:'',principal,rate,term,payout};
  }},
  {kind:'payment',re:new RegExp('^(?:'+CREATE+'\\s+)?(?:обязательный\\s+|ежемесячный\\s+|регулярный\\s+)?платеж(?:\\s|$)'),parse(ctx){
+  const monthly=/(?:^|\s)ежемесячный\s+платеж/u.test(ctx.text);
   ctx.text=ctx.text.replace(new RegExp('^(?:'+CREATE+'\\s+)?(?:обязательный\\s+|ежемесячный\\s+|регулярный\\s+)?платеж\\s*'),'');
-  let repeat=null;
+  let repeat=monthly?'monthly':null;
   cut(ctx,/(?:^|\s)(каждый месяц|ежемесячно|раз в месяц|каждую неделю|еженедельно|каждые две недели|раз в две недели|каждый день|ежедневно|один раз|разово|однократно)(?=\s|$)/,m=>{const w=m[1];repeat=/месяц|ежемесяч/.test(w)?'monthly':/две недели/.test(w)?'fortnightly':/недел/.test(w)?'weekly':/день|ежеднев/.test(w)?'daily':'once';});
   const when=parseWhen(ctx);const amount=takeAmount(ctx);
   const name=cap(stripLead(ctx.text.replace(/^(?:за|на|по)\s+/,'')));
@@ -144,11 +145,27 @@ const commands=[
   return {name,currency,initial};
  }}
 ];
+// Conversational aliases still open the ordinary confirmation forms.
+function commandText(raw){
+ return norm(raw).replace(/[.!?]+$/,'')
+  .replace(/^(?:моно[, ]+)?(?:пожалуйста[, ]+)?/u,'')
+  .replace(/^(?:напоминай(?:те)?|не забудь(?:те)?|не дай мне забыть|(?:мне )?нужно напомнить)\s+/u,'напомни ')
+  .replace(/^(?:(?:поставь|создай|добавь|установи|сделай|хочу)\s+)?напоминалк[ау]\s+/u,'напомни ')
+  .replace(/^(?:создать|добавить) напоминание\s+/u,'напомни ')
+  .replace(/^(?:установи|хочу) напоминание\s+/u,'напомни ')
+  .replace(/^(?:начни копить|хочу откладывать|начать копить) на\s+/u,'коплю на ')
+  .replace(/^(создай|добавь|заведи|завести) копилку(?:\s+на)?\s+/u,'$1 цель ')
+  .replace(/^(добавь|создай|запланируй) (ежемесячный|регулярный|обязательный) расход\s+/u,'$1 $2 платеж ')
+  .replace(/^(?:(поставь|установи|задай) )?лимит расходов на\s+/u,(_,verb)=>(verb?verb+' ':'')+'лимит на ')
+  .replace(/\s+пожалуйста$/u,'');
+}
 function detect(raw){
- const text=norm(raw).replace(/[.!?]+$/,'');if(!text)return null;
+ const text=commandText(raw);if(!text)return null;
  for(const c of commands){if(c.re.test(text)){const ctx={text};try{return {kind:c.kind,data:c.parse(ctx),source:raw};}catch(error){console.error(error);return null;}}}
  return null;
 }
+// Explicit command joins can coexist with financial records in one dictation.
+function split(raw){return String(raw).split(/(?<=[.!?])\s+|\n+|\s+(?:а\s+ещ[её]|и\s+ещ[её]|а\s+также|и)\s+(?=(?:напомни(?:те)?|напоминай|не забудь|(?:создай|добавь|поставь|установи|открой|заведи|запланируй)\s+(?:(?:обязательный|ежемесячный|регулярный)\s+)?(?:напоминание|напоминалку|цель|сч[её]т|лимит|плат[её]ж|вклад|копилку))(?:\s|$))/iu).map(s=>s.trim()).filter(Boolean);}
 // Заполняет поля открытого окна и обновляет подписи у полей даты и времени
 function fill(values){
  const body=$('#actionBody');if(!body)return;
@@ -214,12 +231,12 @@ function run(cmd){
 }
 // Список фраз, которыми можно управлять моно
 const phrases=[
- ['Расходы и доходы',['Кофе 280','Продукты 1500 и такси 400','Получил зарплату 80 тысяч','Вчера оплатил долями куртку за 8 тысяч']],
- ['Напоминания',['Напомни накормить кота сегодня в 6 вечера','Напомни позвонить маме завтра в 10 утра','Напомни через 2 часа выключить духовку','Напомни в пятницу забрать посылку']],
- ['Цели',['Создай цель отпуск 200 тысяч','Хочу накопить на машину миллион','На отпуск 10 тысяч — пополнить цель']],
+ ['Расходы и доходы',['Кофе 280','Продукты 1500 и такси 400','Получил зарплату 80 тысяч','Вчера оплатил долями куртку за 8 тысяч','Кофе полтос','Такси 1,5к','Списали за инет 650','Зачислили стипендию 4500','Подработка принесла 4500']],
+ ['Напоминания',['Поставь напоминалку завтра в 9 позвонить маме','Напомни накормить кота сегодня в 6 вечера','Напомни позвонить маме завтра в 10 утра','Напомни через 2 часа выключить духовку','Напомни в пятницу забрать посылку']],
+ ['Цели',['Начни копить на отпуск 100 тысяч','Создай цель отпуск 200 тысяч','Хочу накопить на машину миллион','На отпуск 10 тысяч — пополнить цель']],
  ['Счета',['Добавь счёт наличные 5000','Создай счёт в долларах','Новый счёт карта Т-Банк с остатком 20 тысяч']],
- ['Лимиты',['Лимит на кафе 10 тысяч','Поставь лимит на продукты 25 тысяч']],
- ['Платежи',['Добавь платёж аренда 40 тысяч 5 числа каждый месяц','Платёж интернет 700 рублей 20 ноября']],
+ ['Лимиты',['Лимит на кафе 10 тысяч','Поставь лимит на продукты 25 тысяч','Установи лимит расходов на кафе 5к']],
+ ['Платежи',['Добавь ежемесячный расход интернет 700 рублей 20 ноября','Добавь платёж аренда 40 тысяч 5 числа каждый месяц','Платёж интернет 700 рублей 20 ноября']],
  ['Вклады',['Открой вклад 100 тысяч под 16% на год','Вклад в Сбере 50 тысяч под 15 процентов на 6 месяцев']],
  ['Удаление',['Убери лимит на кафе','Удали цель отпуск','Удали напоминание позвонить маме','Удали последнюю операцию']]
 ];
@@ -231,5 +248,5 @@ document.addEventListener('click',e=>{
  const b=e.target.closest('[data-try-phrase]');if(b){const text=b.dataset.tryPhrase;$('#actionDialog').close();setTimeout(()=>openEntry(text.replace(/ — .*$/,'')),280);return;}
  if(e.target.closest('[data-voice-phrases]')){e.preventDefault();if($('#entryDialog').open)$('#entryDialog').close();showPhrases();}
 });
-root.MonoCommands={detect,run:cmd=>root.MonoTogether?.withCurrentScope?root.MonoTogether.withCurrentScope(()=>run(cmd)):run(cmd),showPhrases,phrasesHTML,parseWhen:t=>parseWhen({text:norm(t)})};
+root.MonoCommands={detect,split,run:cmd=>root.MonoTogether?.withCurrentScope?root.MonoTogether.withCurrentScope(()=>run(cmd)):run(cmd),showPhrases,phrasesHTML,parseWhen:t=>parseWhen({text:norm(t)})};
 })(window);
