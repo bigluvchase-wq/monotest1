@@ -48,6 +48,7 @@ function remove(info){
 document.addEventListener('pointerdown',event=>{
  if(!event.isPrimary||event.button!==0)return;const shell=event.target.closest('.swipe-shell');
  if(!shell){if(openShell)closeShell();return;}
+ if(shell.dataset.stackFront==='false')return;
  if(holding||listening||tourActive||event.target.closest('input,select,textarea,.category-drag-handle,.swipe-delete,.entity-x,.delete-entry'))return;
  if(openShell&&openShell!==shell)closeShell();gesture={shell,id:event.pointerId,x:event.clientX,y:event.clientY,offset:shell.classList.contains('swipe-open')?-revealWidth:0,dx:0,horizontal:false,cancelled:false};
 },{passive:true});
