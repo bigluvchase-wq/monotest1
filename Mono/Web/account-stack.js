@@ -25,6 +25,7 @@ function layout(controller,animate=false){
   item.card.querySelector('[data-account-select]').setAttribute('aria-pressed',String(front));
   for(const control of item.card.querySelectorAll('[data-edit-account],.entity-x'))control.inert=!front;
   const balance=item.card.querySelector('.account-balance');balance.setAttribute('aria-hidden',String(!front));
+  item.card.querySelector('.account-stack-amount').setAttribute('aria-hidden',String(front));
   if(!animate||typeof item.shell.animate!=='function')return;
   const frames=reduce.matches?[{opacity:.65},{opacity:1}]:front?
    [{transform:starts[index]},{transform:`translate(12px,${target.y-12}px) scale(1)`,offset:.65},{transform}]:
@@ -46,7 +47,8 @@ function decorate(){
  });
 }
 document.addEventListener('click',event=>{
- const button=event.target.closest('[data-account-select]');if(!button)return;
+ const rear=event.target.closest('.account-stack>[data-stack-front=false]');
+ const button=event.target.closest('[data-account-select]')||rear?.querySelector('[data-account-select]');if(!button)return;
  const controller=controllers.get(button.closest('[data-account-stack]'));if(!controller||controller.selected===button.dataset.accountSelect)return;
  root.MonoSwipe?.close();controller.selected=button.dataset.accountSelect;selections.set(controller.key,controller.selected);
  // Keyboard selection is immediate; touch/mouse preserves the spatial movement.

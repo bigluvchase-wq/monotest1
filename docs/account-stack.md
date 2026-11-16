@@ -1,6 +1,6 @@
 # Account wallet stack
 
-The Accounts section stacks existing account cards separately for each currency. The selected card is fully visible at the front; the other names stay exposed as native buttons. Existing theme surfaces, type, borders, edit forms, front-card swipe deletion and delete confirmation/undo remain in use. One account renders as a single ordinary card.
+The Accounts section stacks existing account cards separately for each currency. The selected card is fully visible at the front; the other names and current balances stay exposed as native buttons. The entire exposed rear card surface (including the right margin) selects it. The active card has a stronger static contact shadow above and a wider cast shadow below; rear shadows stay softer. Existing theme surfaces, type, borders, edit forms, front-card swipe deletion and delete confirmation/undo remain in use. One account renders as a single ordinary card.
 
 Selection changes only the visual ordering, not `state.accounts`, balances, the microphone's recording account, or the personal/shared mode. In-memory choices are scoped to the personal/shared storage key and currency, survive re-rendering, and fall back to an existing card if an account is removed. Every rear card remains reachable, including long names and larger collections.
 
