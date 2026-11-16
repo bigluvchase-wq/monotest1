@@ -6,3 +6,4 @@
 .save-wave-check svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .save-wave-receipt h2{margin:0;font-size:26px;line-height:1.2}
 .save-wave-receipt p{margin:0;max-width:280px;color:var(--muted);font-size:14px;line-height:1.5}
+#entryDialog[data-save-dismissing]::backdrop{animation:none!important;opacity:0;transition:opacity 380ms ease}

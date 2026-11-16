@@ -32,6 +32,15 @@ function ready(id,captured){
 }
 function finished(id){const session=current;if(session?.id===id){if(!session.done)ready(id,false);else release(session);}}
 function afterFinish(callback){if(current)current.after=callback;else callback();}
+function dismissReceipt(panel,clear,message){
+ panel.inert=true;panel.dataset.saveDismissing='true';
+ const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
+ const animation=panel.animate(reduced?[{opacity:1},{opacity:0}]:[{opacity:1,transform:'none'},{opacity:0,transform:'translateY(20px) scale(.985)'}],{duration:reduced?120:380,easing:'cubic-bezier(.32,0,.4,1)',fill:'forwards'});
+ animation.finished.catch(()=>{}).then(()=>{
+  panel.dataset.saveWave='true';panel.close();delete panel.dataset.saveWave;
+  animation.cancel();clear();delete panel.dataset.saveDismissing;panel.inert=false;notify(message,true);
+ });
+}
 function showReceipt(panel,message){
  const receipt=document.createElement('div');receipt.className='save-wave-receipt';receipt.setAttribute('role','status');
  receipt.style.top=panel.scrollTop+'px';receipt.style.height=panel.clientHeight+'px';
@@ -39,5 +48,5 @@ function showReceipt(panel,message){
  receipt.querySelector('p').textContent=message.replace(/^Записано\.\s*/,'');panel.append(receipt);panel.classList.add('save-wave-sent');
  return ()=>{receipt.remove();panel.classList.remove('save-wave-sent');};
 }
-root.MonoSaveWave={run,ready,finished,afterFinish,showReceipt};
+root.MonoSaveWave={run,ready,finished,afterFinish,showReceipt,dismissReceipt};
 })(window);
