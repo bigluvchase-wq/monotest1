@@ -1,25 +1,22 @@
-/* Calendar layout changes once; only its surface and neighbouring blocks move per frame. */
+/* Keep the actual calendar surface intact; only content and neighbouring blocks move. */
 (function(){
 'use strict';
 const states=new WeakMap(),motions=new WeakMap(),captures=new WeakMap(),directions=new WeakMap(),reduce=matchMedia('(prefers-reduced-motion:reduce)');
 function stop(el){motions.get(el)?.();motions.delete(el);}
 function animate(owner,entries){
  stop(owner);const animations=entries.map(([el,frames,options])=>el.animate(frames,options));let cleaned=false;
- const clean=()=>{if(cleaned)return;cleaned=true;animations.forEach(a=>a.cancel());owner.querySelector(':scope>.calendar-motion-surface')?.remove();owner.classList.remove('calendar-layout-motion');if(motions.get(owner)===clean)motions.delete(owner);};
+ const clean=()=>{if(cleaned)return;cleaned=true;animations.forEach(a=>a.cancel());if(motions.get(owner)===clean)motions.delete(owner);};
  motions.set(owner,clean);Promise.all(animations.map(a=>a.finished.catch(()=>{}))).then(clean);
 }
 const ease='cubic-bezier(.22,.8,.3,1)';
-function snapshot(card){return {height:card.getBoundingClientRect().height,siblings:[...card.parentElement.children].filter(el=>el!==card).map(el=>[el,el.getBoundingClientRect().top])};}
+function snapshot(card){return {siblings:[...card.parentElement.children].filter(el=>el!==card).map(el=>[el,el.getBoundingClientRect().top])};}
 function layout(card,panel,shown,before){
  stop(card);if(reduce.matches)return;
- const after=card.getBoundingClientRect(),entries=[];
+ const entries=[];
  if(before){
-  const height=Math.max(before.height,after.height),surface=document.createElement('div');surface.className='calendar-motion-surface';surface.setAttribute('aria-hidden','true');surface.style.height=height+'px';
-  card.classList.add('calendar-layout-motion');card.append(surface);
-  entries.push([surface,[{transform:`scaleY(${before.height/height})`},{transform:`scaleY(${after.height/height})`}],{duration:420,easing:ease,fill:'both'}]);
-  for(const [el,top] of before.siblings){if(!el.isConnected)continue;const dy=top-el.getBoundingClientRect().top;if(Math.abs(dy)>1)entries.push([el,[{transform:`translateY(${dy}px)`},{transform:'none'}],{duration:420,easing:ease}]);}
+  for(const [el,top] of before.siblings){if(!el.isConnected)continue;const dy=top-el.getBoundingClientRect().top;if(Math.abs(dy)>1)entries.push([el,[{transform:`translateY(${dy}px)`},{transform:'none'}],{duration:320,easing:ease}]);}
  }
- if(shown)entries.push([panel,[{opacity:0,transform:'translateY(-5px)'},{opacity:1,transform:'none'}],{duration:360,delay:60,easing:ease,fill:'backwards'}]);
+ if(shown)entries.push([panel,[{opacity:0,transform:'translateY(-5px)'},{opacity:1,transform:'none'}],{duration:260,delay:40,easing:ease,fill:'backwards'}]);
  animate(card,entries);
 }
 function refresh(){

@@ -15,7 +15,11 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  for(const theme of ['light','dark','purple','blue','green','burgundy','black']){
   await p.evaluate(theme=>{state.settings.theme=theme;applyTheme();navigate('home',{noAnimation:true,noPageMotion:true});},theme);
   await p.evaluate(()=>{window.observedScroll=[];let frames=0;function sample(){observedScroll.push(scrollY);if(++frames<90)requestAnimationFrame(sample);}requestAnimationFrame(sample);});
+  const originalCard=await p.locator('[data-home-note="open-test"]').boundingBox();
   await p.locator('[data-home-note="open-test"]').click();
+  const mirroredCard=await p.locator('.nav-ghost [data-home-note="open-test"]').boundingBox();
+  assert(Math.abs(originalCard.width-mirroredCard.width)<1,'preview card width changed');assert(Math.abs(originalCard.height-mirroredCard.height)<1,'preview card height changed');
+  assert(Math.abs(originalCard.x-mirroredCard.x)<1&&Math.abs(originalCard.y-mirroredCard.y)<1,'preview card moved');
   assert.equal(await p.evaluate(()=>page),'reminders');
   assert.equal(await p.locator('.reminder-expand-shell').count(),0);
   const shell=p.locator('.app').first();
@@ -26,20 +30,31 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
   assert.equal(await p.evaluate(()=>document.querySelector('.app').style.pointerEvents),'');
   assert.equal(await p.locator('.nav-ghost').count(),0);
   await p.waitForTimeout(450);assert(await p.evaluate(()=>Math.max(...observedScroll)-Math.min(...observedScroll)<2),'page scrolled after reveal');
+  const calendarPaint=await p.locator('.payments-agenda').evaluate(el=>({background:getComputedStyle(el).background,borderRadius:getComputedStyle(el).borderRadius}));
   await p.locator('.agenda-toggle').click();await p.waitForTimeout(160);
+  assert.deepEqual(await p.locator('.payments-agenda').evaluate(el=>({background:getComputedStyle(el).background,borderRadius:getComputedStyle(el).borderRadius})),calendarPaint);
   assert.equal(await p.locator('.reminders-agenda').evaluate(el=>el.classList.contains('is-open')),true);
   const calendarFrames=await p.locator('.agenda-calendar-inner').evaluate(el=>el.getAnimations().flatMap(a=>a.effect.getKeyframes()));
   assert(calendarFrames.length);for(const f of calendarFrames)for(const k of Object.keys(f))assert(['opacity','transform','offset','computedOffset','easing','composite'].includes(k),k);
   assert.equal(await p.locator('.agenda-calendar-reveal').evaluate(el=>getComputedStyle(el).transitionDuration),'0s');
   assert.equal(await p.locator('.agenda-day').evaluateAll(days=>days.flatMap(el=>el.getAnimations()).length),0);
-  assert.equal(await p.locator('.calendar-motion-surface').count(),1);
-  assert.equal(await p.locator('.payments-agenda').evaluate(el=>getComputedStyle(el).transitionDuration),'0s');
+  assert.equal(await p.locator('.calendar-motion-surface').count(),0);
+  assert.equal(await p.locator('.payments-agenda').evaluate(el=>el.classList.contains('calendar-layout-motion')),false);
   if(theme==='purple')await p.screenshot({path:path.join(screenshots,'calendar.png')});
   const month=await p.locator('.agenda-calendar-head strong').innerText();await p.locator('[data-rem-month="1"]').click();assert.notEqual(await p.locator('.agenda-calendar-head strong').innerText(),month);
   await p.locator('[data-rem-day]').first().click();assert.equal(await p.locator('.agenda-day.selected').count(),1);
   await p.locator('.agenda-toggle').click();
   await p.locator('#backToMenu').click();await p.waitForFunction(()=>document.body.dataset.page==='home');await p.waitForTimeout(650);
  }
+ // Freeze the source geometry for a carousel too, including its neighbouring cards.
+ await p.evaluate(()=>{const r=state.reminders[0];state.reminders.push({...r,id:'carousel-b'},{...r,id:'carousel-c'});renderHomeReminders();});await p.waitForTimeout(80);
+ await p.locator('#homeReminders [data-home-note="open-test"]').evaluate(el=>el.addEventListener('click',()=>{window.carouselTap=el.getBoundingClientRect().toJSON();},{capture:true,once:true}));
+ await p.locator('#homeReminders [data-home-note="open-test"]').click();
+ const carouselSource=await p.evaluate(()=>carouselTap);
+ const carouselCopy=await p.locator('.nav-ghost [data-home-note="open-test"]').boundingBox();
+ for(const key of ['x','y','width','height'])assert(Math.abs(carouselSource[key]-carouselCopy[key])<1,'carousel preview changed '+key);
+ await p.waitForFunction(()=>document.querySelector('.app').style.pointerEvents!=='none');
+ await p.evaluate(()=>{navigate('home',{noAnimation:true,noPageMotion:true});state.reminders=state.reminders.filter(r=>r.id==='open-test');renderHomeReminders();});
  // An interrupted navigation cannot leave a blocking layer or stale app styles.
  await p.locator('[data-home-note="open-test"]').click();await p.evaluate(()=>navigate('home',{noAnimation:true,noPageMotion:true}));
  assert.equal(await p.locator('.reminder-expand-shell').count(),0);
@@ -52,6 +67,10 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  await p.evaluate(()=>document.querySelector('#periodDialog').showModal());await p.waitForTimeout(50);
  assert(await p.locator('#periodDialog').evaluate(el=>el.getAnimations().some(a=>a.effect.getTiming().duration===420)));
  await p.evaluate(()=>document.querySelector('#periodDialog').close());await p.waitForFunction(()=>!document.querySelector('#periodDialog').hasAttribute('open'));
+ await p.evaluate(()=>navigate('home',{noPageMotion:true,noAnimation:true}));
+ await p.locator('.bottom-nav [data-nav=history]').click();await p.locator('.bottom-nav [data-nav=menu]').click();
+ await p.waitForFunction(()=>page==='menu'&&!MonoPageMotion.isBusy());
+ assert.equal(await p.locator('.root-preview').count(),0);assert.equal(await p.evaluate(()=>document.querySelector('.app').inert),false);
  assert.equal(await p.evaluate(()=>state.reminders.length),1);assert.equal(await p.evaluate(()=>state.entries.length),0);assert.deepEqual(errors,[]);
  console.log('PASS: seven themes, real reminder navigation and return, transform/opacity only, interruption cleanup, no post-transition scroll, calendar opening/month/date selection, Reduce Motion, unchanged data. Screenshots: '+screenshots);
  }finally{await browser.close();server.close();}
