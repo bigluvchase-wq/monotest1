@@ -12,6 +12,7 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         self?.send("speechEvent", [id, event, info])
     }
     private let reminders = MonoReminders()
+    private let saveFeedback = UIImpactFeedbackGenerator(style: .soft)
     private lazy var saveWave = MonoSaveWave(parent: self, web: web,
         ready: { [weak self] id, captured in self?.send("saveWaveReady", [id, captured]) },
         finished: { [weak self] id in self?.send("saveWaveFinished", [id]) })
@@ -88,6 +89,9 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         guard message.frameInfo.isMainFrame, message.frameInfo.request.url?.isFileURL == true,
               let body = message.body as? [String: Any], let action = body["action"] as? String else { return }
         switch action {
+        case "saveFeedback":
+            saveFeedback.prepare()
+            saveFeedback.impactOccurred(intensity: 0.35)
         case "speechStart", "speechStop", "speechAbort":
             guard let id = body["id"] as? String else { return }
             switch action {

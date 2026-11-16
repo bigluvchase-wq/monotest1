@@ -46,8 +46,8 @@ final class MonoSaveWave {
         let sx = web.bounds.width / vw, sy = web.bounds.height / vh
         let sheet = CGRect(x: px * sx, y: py * sy, width: pw * sx, height: ph * sy).intersection(web.bounds)
         guard !sheet.isNull, !sheet.isEmpty else { cancel(key); ready(key, false); return }
-        // Full-screen perimeter glow was requested again; only the system clips the device corners.
-        effectFrame = web.bounds; effectRadius = 0
+        // A soft inset screen rim follows the reference without querying private device-corner APIs.
+        effectFrame = web.bounds; effectRadius = min(48, web.bounds.width * 0.11)
         source = CGRect(x: x * sx, y: y * sy, width: width * sx, height: height * sy)
         armTimeout(key, seconds: 4)
         let config = snapshotConfig(web)
@@ -70,19 +70,16 @@ final class MonoSaveWave {
         web.takeSnapshot(with: snapshotConfig(web)) { [weak self] after, _ in
             guard let self, self.id == key else { return }
             guard let after else { self.cancel(key); return }
-            var style = DistortionWaveStyle.center
+            var style = DistortionWaveStyle.vertical
             style.cornerRadius = Double(self.effectRadius)
-            style.anticipation = 0.16 * 1.15; style.travel = 1.15
-            // Keep the visible movement 15% slower, without a frozen tail after it clears.
-            style.linger = -0.1; style.rimFade = 0.82
-            style.hairlineLinger = 0; style.hairlineFade = 0.78
-            style.particleLife = style.travel * 0.6
-            style.amplitude *= 0.85 * 1.10; style.swell *= 0.85 * 1.10; style.blur *= 0.85 * 1.10
-            style.aberration *= 0.85 * 1.10; style.strength *= 0.85 * 1.10
-            style.rimStrength *= 0.85 * 1.05; style.hairlineOpacity *= 0.85 * 1.05
-            style.pull *= 0.85 * 1.10; style.inhale *= 0.85 * 1.10; style.gatherGlow *= 0.85 * 1.05
-            style.particleSize *= 0.85 * 1.10
-            style.easing = DistortionWaveEasing(0.22, 0.85, 0.36, 1)
+            // Reference: pull into the bottom button, a broad lens/blur front, then particles and a fading rim.
+            style.anticipation = 0.24; style.travel = 1.65
+            style.linger = -0.15; style.rimFade = 1.5
+            style.hairlineLinger = 0.12; style.hairlineFade = 1.65
+            style.particleLife = 1.5
+            if self.palette.colors.allSatisfy({ abs($0.r - $0.g) < 6 && abs($0.r - $0.b) < 6 }) {
+                style.aberration = 0 // Keep the monochrome theme free of RGB fringes.
+            }
             style.palette = self.palette
             let image = self.opaque(after, background: parent.view.backgroundColor ?? .systemBackground)
             let scene = MonoSaveWaveView(before: self.fittedSnapshot(before), after: self.fittedSnapshot(image), source: self.source,

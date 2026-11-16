@@ -99,6 +99,7 @@ function recognizeDocument(file){return new Promise(async(resolve,reject)=>{
 });}
 function documentResult(id,text,error){const job=documents.get(id);if(!job)return;clearTimeout(job.timer);documents.delete(id);if(error)job.reject(Error(error));else job.resolve(text);}
 root.MonoNative={
+ saveFeedback:()=>post('saveFeedback',{}),
  saveWaveSupported:root.monoSaveWaveSupported===true,
  prepareSaveWave:data=>post('prepareSaveWave',data),
  finishSaveWave:id=>post('finishSaveWave',{id}),

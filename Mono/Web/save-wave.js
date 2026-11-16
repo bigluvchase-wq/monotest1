@@ -5,6 +5,7 @@ let current=null,sequence=0;
 const enabled=()=>root.MONO_CONFIG?.effects?.saveWave!==false&&root.MonoNative?.saveWaveSupported===true;
 function run(button,commit){
  if(current)return;
+ root.MonoNative?.saveFeedback?.();
  if(!enabled()){commit();return;}
  const id=String(++sequence),session={id,commit,done:false,timer:null,button,panel:button.closest('dialog')};current=session;button.disabled=true;
  const focused=document.activeElement,keyboard=focused?.matches('input,textarea,select');focused?.blur?.();
