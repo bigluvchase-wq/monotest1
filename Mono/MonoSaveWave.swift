@@ -74,8 +74,8 @@ final class MonoSaveWave {
             style.cornerRadius = Double(self.effectRadius)
             style.anticipation = 0.16 * 1.15; style.travel = 1.15
             // Keep the visible movement 15% slower, without a frozen tail after it clears.
-            style.linger = -0.1; style.rimFade = 0.65
-            style.hairlineLinger = 0; style.hairlineFade = 0.65
+            style.linger = -0.1; style.rimFade = 0.82
+            style.hairlineLinger = 0; style.hairlineFade = 0.78
             style.particleLife = style.travel * 0.6
             style.amplitude *= 0.85 * 1.10; style.swell *= 0.85 * 1.10; style.blur *= 0.85 * 1.10
             style.aberration *= 0.85 * 1.10; style.strength *= 0.85 * 1.10
@@ -100,12 +100,14 @@ final class MonoSaveWave {
 
     private func complete(_ key: String) {
         guard id == key, let host else { return }
+        // The initial editor snapshot must never show through the fading confirmation.
+        cover?.removeFromSuperview(); cover = nil
         // Blend into the live web view instead of holding, then abruptly removing a still frame.
-        host.view.isUserInteractionEnabled = false; cover?.isUserInteractionEnabled = false
+        host.view.isUserInteractionEnabled = false
         finished(key) // Close the saved receipt in the live web view while its snapshot fades out.
-        UIView.animate(withDuration: UIAccessibility.isReduceMotionEnabled ? 0.08 : 0.12,
-                       delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
-            host.view.alpha = 0; self.cover?.alpha = 0
+        UIView.animate(withDuration: UIAccessibility.isReduceMotionEnabled ? 0.12 : 0.34,
+                       delay: 0, options: [.curveEaseInOut, .allowUserInteraction]) {
+            host.view.alpha = 0
         } completion: { [weak self] _ in self?.cancel(key) }
     }
 

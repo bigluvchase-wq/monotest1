@@ -17,11 +17,12 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
   await p.evaluate(()=>{window.observedScroll=[];let frames=0;function sample(){observedScroll.push(scrollY);if(++frames<90)requestAnimationFrame(sample);}requestAnimationFrame(sample);});
   await p.locator('[data-home-note="open-test"]').click();
   assert.equal(await p.evaluate(()=>page),'reminders');
-  const shell=p.locator('.reminder-expand-shell');assert.equal(await shell.count(),1);
+  assert.equal(await p.locator('.reminder-expand-shell').count(),0);
+  const shell=p.locator('.app').first();
   const frames=await shell.evaluate(el=>el.getAnimations().flatMap(a=>a.effect.getKeyframes()));
   for(const frame of frames)for(const key of Object.keys(frame))assert(['transform','opacity','offset','computedOffset','easing','composite'].includes(key),key);
   if(theme==='purple'){await p.waitForTimeout(240);await p.screenshot({path:path.join(screenshots,'opening.png')});}
-  await p.waitForFunction(()=>!document.querySelector('.reminder-expand-shell'));
+  await p.waitForFunction(()=>document.querySelector('.app').style.pointerEvents!=='none');
   assert.equal(await p.evaluate(()=>document.querySelector('.app').style.pointerEvents),'');
   assert.equal(await p.locator('.nav-ghost').count(),0);
   await p.waitForTimeout(450);assert(await p.evaluate(()=>Math.max(...observedScroll)-Math.min(...observedScroll)<2),'page scrolled after reveal');
@@ -29,6 +30,10 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
   assert.equal(await p.locator('.reminders-agenda').evaluate(el=>el.classList.contains('is-open')),true);
   const calendarFrames=await p.locator('.agenda-calendar-inner').evaluate(el=>el.getAnimations().flatMap(a=>a.effect.getKeyframes()));
   assert(calendarFrames.length);for(const f of calendarFrames)for(const k of Object.keys(f))assert(['opacity','transform','offset','computedOffset','easing','composite'].includes(k),k);
+  assert.equal(await p.locator('.agenda-calendar-reveal').evaluate(el=>getComputedStyle(el).transitionDuration),'0s');
+  assert.equal(await p.locator('.agenda-day').evaluateAll(days=>days.flatMap(el=>el.getAnimations()).length),0);
+  assert.equal(await p.locator('.calendar-motion-surface').count(),1);
+  assert.equal(await p.locator('.payments-agenda').evaluate(el=>getComputedStyle(el).transitionDuration),'0s');
   if(theme==='purple')await p.screenshot({path:path.join(screenshots,'calendar.png')});
   const month=await p.locator('.agenda-calendar-head strong').innerText();await p.locator('[data-rem-month="1"]').click();assert.notEqual(await p.locator('.agenda-calendar-head strong').innerText(),month);
   await p.locator('[data-rem-day]').first().click();assert.equal(await p.locator('.agenda-day.selected').count(),1);
@@ -45,7 +50,7 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  await p.locator('.agenda-toggle').click();await p.waitForTimeout(100);assert.equal(await p.locator('#paymentCalendar').getAttribute('aria-hidden'),'false');
  await p.locator('[data-payment-day]').first().click();assert.equal(await p.locator('.agenda-day.selected').count(),1);
  await p.evaluate(()=>document.querySelector('#periodDialog').showModal());await p.waitForTimeout(50);
- assert(await p.locator('#periodDialog').evaluate(el=>el.getAnimations().some(a=>a.effect.getTiming().duration===620)));
+ assert(await p.locator('#periodDialog').evaluate(el=>el.getAnimations().some(a=>a.effect.getTiming().duration===420)));
  await p.evaluate(()=>document.querySelector('#periodDialog').close());await p.waitForFunction(()=>!document.querySelector('#periodDialog').hasAttribute('open'));
  assert.equal(await p.evaluate(()=>state.reminders.length),1);assert.equal(await p.evaluate(()=>state.entries.length),0);assert.deepEqual(errors,[]);
  console.log('PASS: seven themes, real reminder navigation and return, transform/opacity only, interruption cleanup, no post-transition scroll, calendar opening/month/date selection, Reduce Motion, unchanged data. Screenshots: '+screenshots);
