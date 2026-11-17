@@ -12,7 +12,7 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
         self?.send("speechEvent", [id, event, info])
     }
     private let reminders = MonoReminders()
-    private let saveFeedback = UIImpactFeedbackGenerator(style: .soft)
+    private let saveFeedback = UIImpactFeedbackGenerator(style: .light)
     private lazy var saveWave = MonoSaveWave(parent: self, web: web,
         ready: { [weak self] id, captured in self?.send("saveWaveReady", [id, captured]) },
         finished: { [weak self] id in self?.send("saveWaveFinished", [id]) })
@@ -55,6 +55,12 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        saveFeedback.prepare()
+        saveWave.warmUp()
+    }
+
     private static let darkKey = "monoDarkTheme"
     private static let launchColorKey = "monoLaunchColor"
 
@@ -81,6 +87,8 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
 
     @objc private func interruptSpeech() { speech.cancel(); saveWave.cancel() }
     @objc private func refreshReminders() {
+        saveFeedback.prepare()
+        saveWave.warmUp()
         send("refreshReminders", [])
         send("refreshAccess", [])
     }
@@ -90,8 +98,8 @@ final class MonoController: UIViewController, WKScriptMessageHandler, WKNavigati
               let body = message.body as? [String: Any], let action = body["action"] as? String else { return }
         switch action {
         case "saveFeedback":
+            saveFeedback.impactOccurred(intensity: 0.65)
             saveFeedback.prepare()
-            saveFeedback.impactOccurred(intensity: 0.35)
         case "speechStart", "speechStop", "speechAbort":
             guard let id = body["id"] as? String else { return }
             switch action {

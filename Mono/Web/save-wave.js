@@ -8,7 +8,7 @@ function run(button,commit){
  root.MonoNative?.saveFeedback?.();
  if(!enabled()){commit();return;}
  const id=String(++sequence),session={id,commit,done:false,timer:null,button,panel:button.closest('dialog')};current=session;button.disabled=true;
- const focused=document.activeElement,keyboard=focused?.matches('input,textarea,select');focused?.blur?.();
+ document.activeElement?.blur?.();
  if(session.panel)session.panel.inert=true;
  const prepare=()=>{
   if(current!==session)return;
@@ -17,7 +17,7 @@ function run(button,commit){
   const p=session.panel?.getBoundingClientRect(),panel=p?{x:p.x,y:p.y,width:p.width,height:p.height,cornerRadius:parseFloat(getComputedStyle(session.panel).borderTopLeftRadius)||0}:null;
   try{MonoNative.prepareSaveWave({id,source:{x:r.x,y:r.y,width:r.width,height:r.height},panel,viewport:{width:innerWidth,height:innerHeight},accent,secondary});}catch{ready(id,false);}
  };
- if(keyboard)session.timer=setTimeout(prepare,260);else prepare();
+ prepare();
 }
 function release(session){clearTimeout(session.timer);session.button.disabled=false;if(session.panel)session.panel.inert=false;if(current===session)current=null;const callback=session.after;session.after=null;callback?.();}
 function ready(id,captured){

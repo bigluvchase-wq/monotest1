@@ -27,8 +27,7 @@ struct MonoSaveWaveView: View {
         .clipShape(RoundedRectangle(cornerRadius: CGFloat(style.cornerRadius), style: .circular))
         .accessibilityHidden(true)
         .task {
-            // Let the kit warm its Metal shaders before the first visible movement.
-            try? await Task.sleep(for: .milliseconds(170))
+            // Pipelines are prewarmed before the tap; start without an artificial wait.
             guard !Task.isCancelled else { return }
             revealed = true
         }

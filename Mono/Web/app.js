@@ -5,7 +5,7 @@
  Object.defineProperty(P,'open',{configurable:true,enumerable:true,get(){return od.get.call(this)&&!this._closing;},set(v){od.set.call(this,v);}});
  P.showModal=function(){if(this._closing){this._exit?.cancel();this._exit=null;this._closing=false;this.classList.remove('closing');this.style.animation='none';void this.offsetWidth;this.style.animation='';return;}if(od.get.call(this))return;return nShow.call(this);};
  P.close=function(v){if(!od.get.call(this)||this._closing)return;if(skip(this))return nClose.call(this,v);this._closing=true;this.classList.add('closing');
-  const an=this.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(24px) scale(.97)'}],{duration:300,easing:'cubic-bezier(.32,0,.67,0)',fill:'forwards'});this._exit=an;
+  const current=getComputedStyle(this);const an=this.animate([{opacity:current.opacity,transform:current.transform},{opacity:0,transform:'translateY(18px) scale(.985)'}],{duration:280,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});this._exit=an;
   an.finished.then(()=>{if(this._exit!==an)return;this._exit=null;this._closing=false;this.classList.remove('closing');an.cancel();nClose.call(this,v);}).catch(()=>{});};})();
 const E=MonoEngine,$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 // Поля сумм всегда открывают цифровую клавиатуру
@@ -94,7 +94,6 @@ function trimOffscreen(orig,clone){const sel='.entry-day,.entry,#pageBody>*,.car
 function navigate(p,options={}){
  window.MonoReminderMotion?.cancel();
  document.documentElement.classList.remove('reminder-opening');
- if(options.zoomFrom&&!options.noAnimation&&!reducedMotion()){document.activeElement?.blur?.();document.documentElement.classList.add('reminder-opening');}
  if(!options.noPageMotion&&!tourActive&&rootPages.includes(page)&&rootPages.includes(p)&&page!==p&&window.MonoPageMotion)return MonoPageMotion.go(p,options);
  window.MonoGoalDrag?.cancel();
  window.MonoCategoryDrag?.cancel();
@@ -106,12 +105,11 @@ function navigate(p,options={}){
  const menuMotion=options.noAnimation||options.dive?null:window.MonoMenuMotion?.prepare(previous,p);
  $$('.nav-ghost').forEach(el=>el.remove());app.getAnimations().forEach(animation=>animation.cancel());
  const direction=options.direction||(rootPages.includes(previous)&&rootPages.includes(p)?(rootPages.indexOf(p)>rootPages.indexOf(previous)?1:-1):nested||previous==='profile'?1:-1);
- const oldScroll=window.scrollY;const profileMotion=previous!==p&&(p==='profile'||previous==='profile')&&!options.noAnimation&&!reducedMotion();const zoomFrom=previous!==p&&!options.noAnimation&&!reducedMotion()?options.zoomFrom:null;
+ const oldScroll=window.scrollY;const profileMotion=previous!==p&&(p==='profile'||previous==='profile')&&!options.noAnimation&&!reducedMotion();
  let ghost=null;
  if(previous!==p&&!reducedMotion()&&!menuMotion&&!options.noAnimation){
-  window.MonoPageMotion?.preparePreview();
   ghost=document.createElement('div');ghost.className='root-preview nav-ghost';ghost.dataset.page=previous;ghost.inert=true;ghost.setAttribute('aria-hidden','true');
-  const clone=app.cloneNode(true);trimOffscreen(app,clone);clone.querySelectorAll('[id]').forEach(el=>{el.dataset.previewId=el.id;el.removeAttribute('id');});clone.querySelectorAll('label[for]').forEach(el=>el.removeAttribute('for'));clone.style.cssText='margin-top:'+(-oldScroll)+'px;transform:none;opacity:1';ghost.append(clone);window.MonoPageMotion?.freezeHomePreview(ghost,clone);
+  const clone=app.cloneNode(true);trimOffscreen(app,clone);clone.querySelectorAll('[id]').forEach(el=>{el.dataset.previewId=el.id;el.removeAttribute('id');});clone.querySelectorAll('label[for]').forEach(el=>el.removeAttribute('for'));clone.style.cssText='margin-top:'+(-oldScroll)+'px;transform:none;opacity:1';ghost.append(clone);
   ghost.style.zIndex='7';document.body.append(ghost);
  }
  page=p;document.body.dataset.page=p;document.body.classList.toggle('nested-page',nested);
@@ -129,9 +127,6 @@ function navigate(p,options={}){
    const r=options.dive,soft='cubic-bezier(.32,.72,0,1)',ox=r.left+r.width/2,oy=r.top+r.height/2;
    ghost.animate([{opacity:1,transform:'none',transformOrigin:`${ox}px ${oy+oldScroll}px`},{opacity:0,transform:'scale(1.35)',transformOrigin:`${ox}px ${oy+oldScroll}px`}],{duration:420,easing:'cubic-bezier(.4,0,.6,1)',fill:'forwards'}).finished.catch(()=>{}).finally(()=>ghost.remove());
    app.animate([{opacity:0,transform:'scale(.82)',transformOrigin:`${ox}px ${oy}px`},{opacity:1,transform:'none',transformOrigin:`${ox}px ${oy}px`}],{duration:620,delay:90,easing:soft,fill:'backwards'});
-  }else if(zoomFrom){
-   if(window.MonoReminderMotion)MonoReminderMotion.enter(app,ghost,zoomFrom).then(()=>{if(page==='reminders'&&options.reminderId)window.MonoReminders?.focus(options.reminderId,{scroll:false});});
-   else ghost.remove();
   }else if(profileMotion){
    // Профиль: главная мягко уходит, затем профиль плавно проявляется — без наложения страниц
    const soft='cubic-bezier(.33,0,.15,1)';
@@ -297,7 +292,7 @@ function renderHomeReminders(){
  $('#home').classList.toggle('home-no-reminders',notes.length+payments.length===0);
  box.innerHTML=[...notes,...payments].join('');
  window.MonoHomeCarousel?.mount(box);
- box.onclick=e=>{const n=e.target.closest('[data-home-note]');if(n){const id=n.dataset.homeNote,r=n.getBoundingClientRect();navigate('reminders',{zoomFrom:{left:r.left,top:r.top,width:r.width,height:r.height},reminderId:id});if(reducedMotion())window.MonoReminders?.focus(id,{scroll:false});return;}const b=e.target.closest('[data-home-payment]');if(b)window.MonoPayments?.show(b.dataset.homePayment,b.dataset.homeDue,{home:true});};
+ box.onclick=e=>{const n=e.target.closest('[data-home-note]');if(n){const id=n.dataset.homeNote;if(window.MonoReminderMotion)MonoReminderMotion.open(id);else{navigate('reminders',{noAnimation:true,noPageMotion:true});window.MonoReminders?.focus(id,{scroll:false});}return;}const b=e.target.closest('[data-home-payment]');if(b)window.MonoPayments?.show(b.dataset.homePayment,b.dataset.homeDue,{home:true});};
 }
 
 function bindPage(){
