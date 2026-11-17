@@ -1,9 +1,9 @@
-/* The native centre wave reveals this receipt inside the existing sheet, never the full screen. */
-#entryDialog.save-wave-sent{overflow:hidden!important}
-#entryDialog.save-wave-sent>:not(.save-wave-receipt){visibility:hidden}
+/* Both save paths reveal a receipt in the existing sheet; only payment saves request a native wave. */
+dialog.save-wave-sent{overflow:hidden!important}
+dialog.save-wave-sent>:not(.save-wave-receipt){visibility:hidden}
 .save-wave-receipt{position:absolute;left:0;right:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px;text-align:center;background:var(--card-solid,var(--paper));color:var(--ink);border-radius:inherit}
 .save-wave-check{display:grid;place-items:center;width:56px;height:56px;border-radius:50%;background:var(--soft);color:var(--accent);flex:none}
 .save-wave-check svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .save-wave-receipt h2{margin:0;font-size:26px;line-height:1.2}
 .save-wave-receipt p{margin:0;max-width:280px;color:var(--muted);font-size:14px;line-height:1.5}
-#entryDialog[data-save-dismissing]::backdrop{animation:none!important;opacity:0;transition:opacity 380ms ease}
+dialog[data-save-dismissing]::backdrop{animation:none!important;opacity:0;transition:opacity var(--mono-motion-exit,240ms) ease}

@@ -33,10 +33,23 @@ function ready(id,captured){
 }
 function finished(id){const session=current;if(session?.id===id){if(!session.done)ready(id,false);else release(session);}}
 function afterFinish(callback){if(current)current.after=callback;else callback();}
+function simple(button,commit){
+ if(current||button.disabled)return;
+ root.MonoNative?.saveFeedback?.();button.disabled=true;let saved=false;
+ try{saved=commit(false)===true;}catch(error){notify(error.message||'Не удалось сохранить запись.');}
+ if(!saved)button.disabled=false;
+ else button.closest('dialog')?.addEventListener('close',()=>{button.disabled=false;},{once:true});
+}
+function confirm(panel,message){
+ panel.inert=true;const clear=showReceipt(panel,message),receipt=panel.querySelector('.save-wave-receipt'),M=root.MonoMotion;
+ const animation=receipt.animate(M?.reduced?[{opacity:0},{opacity:1}]:[{opacity:0,transform:'translateY(4px) scale(.98)'},{opacity:1,transform:'none'}],{duration:M?.reduced?M.duration.reduced:(M?.duration.feedback||180),easing:M?.ease.enter||'ease-out'});
+ animation.finished.catch(()=>{}).then(()=>dismissReceipt(panel,clear));
+}
 function dismissReceipt(panel,clear){
+ if(!panel.open){const finish=()=>{panel.inert=false;requestAnimationFrame(()=>requestAnimationFrame(clear));};if(panel.hasAttribute('open'))panel.addEventListener('close',finish,{once:true});else finish();return;}
  panel.inert=true;panel.dataset.saveDismissing='true';
  const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
- const animation=panel.animate(reduced?[{opacity:1},{opacity:0}]:[{opacity:1,transform:'none'},{opacity:0,transform:'translateY(20px) scale(.985)'}],{duration:reduced?120:380,easing:'cubic-bezier(.32,0,.4,1)',fill:'forwards'});
+ const animation=panel.animate(reduced?[{opacity:1},{opacity:0}]:[{opacity:1,transform:'none'},{opacity:0,transform:'translateY(20px) scale(.985)'}],{duration:reduced?(root.MonoMotion?.duration.reduced||100):(root.MonoMotion?.duration.exit||240),easing:root.MonoMotion?.ease.exit||'ease-out',fill:'forwards'});
  animation.finished.catch(()=>{}).then(()=>{
   panel.dataset.saveWave='true';panel.close();delete panel.dataset.saveWave;
   animation.cancel();delete panel.dataset.saveDismissing;panel.inert=false;
@@ -47,9 +60,10 @@ function dismissReceipt(panel,clear){
 function showReceipt(panel,message){
  const receipt=document.createElement('div');receipt.className='save-wave-receipt';receipt.setAttribute('role','status');
  receipt.style.top=panel.scrollTop+'px';receipt.style.height=panel.clientHeight+'px';
- receipt.innerHTML='<span class="save-wave-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></span><h2>Записано</h2><p></p>';
- receipt.querySelector('p').textContent=message.replace(/^Записано\.\s*/,'');panel.append(receipt);panel.classList.add('save-wave-sent');
+ receipt.innerHTML='<span class="save-wave-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></span><h2></h2><p></p>';
+ receipt.querySelector('h2').textContent=message.startsWith('Платёж')?'Платёж сохранён':'Записано';
+ receipt.querySelector('p').textContent=message.startsWith('Платёж')?'Всё на своих местах.':message.replace(/^Записано\.\s*/,'');panel.append(receipt);panel.classList.add('save-wave-sent');
  return ()=>{receipt.remove();panel.classList.remove('save-wave-sent');};
 }
-root.MonoSaveWave={run,ready,finished,afterFinish,showReceipt,dismissReceipt};
+root.MonoSaveWave={run,simple,confirm,ready,finished,afterFinish,showReceipt,dismissReceipt};
 })(window);
