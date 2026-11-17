@@ -20,10 +20,31 @@ final class MonoSaveWave {
     private var cover: UIImageView?
     private var host: UIHostingController<MonoSaveWaveView>?
     private var timeout: DispatchWorkItem?
+    private var warmed = false
 
     init(parent: UIViewController, web: WKWebView,
          ready: @escaping (String, Bool) -> Void, finished: @escaping (String) -> Void) {
         self.parent = parent; self.web = web; self.ready = ready; self.finished = finished
+    }
+
+    func warmUp() {
+        guard !warmed, let parent, let web, parent.view.window != nil,
+              !UIAccessibility.isReduceMotionEnabled, MTLCreateSystemDefaultDevice() != nil else { return }
+        warmed = true
+        // An opaque dummy scene primes the same shaders, behind the web view and without user data.
+        let scene = DistortionWave(isRevealed: false, source: CGRect(x: 8, y: 48, width: 48, height: 12),
+                                   style: .vertical, scrub: 0.4) { Color.black } revealed: { Color.black }
+            .frame(width: 64, height: 64)
+        let warm = UIHostingController(rootView: scene)
+        warm.safeAreaRegions = []
+        parent.addChild(warm)
+        warm.view.frame = CGRect(x: 0, y: 0, width: 1, height: 1)
+        warm.view.alpha = 0.01; warm.view.clipsToBounds = true
+        warm.view.isUserInteractionEnabled = false; warm.view.accessibilityElementsHidden = true
+        parent.view.insertSubview(warm.view, belowSubview: web); warm.didMove(toParent: parent)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            warm.willMove(toParent: nil); warm.view.removeFromSuperview(); warm.removeFromParent()
+        }
     }
 
     func prepare(_ data: [String: Any]) {
@@ -72,11 +93,12 @@ final class MonoSaveWave {
             guard let after else { self.cancel(key); return }
             var style = DistortionWaveStyle.vertical
             style.cornerRadius = Double(self.effectRadius)
-            // Reference: pull into the bottom button, a broad lens/blur front, then particles and a fading rim.
-            style.anticipation = 0.24; style.travel = 1.65
-            style.linger = -0.15; style.rimFade = 1.5
-            style.hairlineLinger = 0.12; style.hairlineFade = 1.65
-            style.particleLife = 1.5
+            // Start the broad lens/blur front immediately; particles and the rim fade without a long hold.
+            style.anticipation = 0; style.travel = 1.65
+            style.pull = 0; style.inhale = 0; style.gatherGlow = 0; style.gatherDots = 0
+            style.linger = -0.15; style.rimFade = 1.05
+            style.hairlineLinger = 0; style.hairlineFade = 1.1
+            style.particleLife = 1.0
             if self.palette.colors.allSatisfy({ abs($0.r - $0.g) < 6 && abs($0.r - $0.b) < 6 }) {
                 style.aberration = 0 // Keep the monochrome theme free of RGB fringes.
             }
@@ -102,7 +124,7 @@ final class MonoSaveWave {
         // Blend into the live web view instead of holding, then abruptly removing a still frame.
         host.view.isUserInteractionEnabled = false
         finished(key) // Close the saved receipt in the live web view while its snapshot fades out.
-        UIView.animate(withDuration: UIAccessibility.isReduceMotionEnabled ? 0.12 : 0.34,
+        UIView.animate(withDuration: UIAccessibility.isReduceMotionEnabled ? 0.1 : 0.2,
                        delay: 0, options: [.curveEaseInOut, .allowUserInteraction]) {
             host.view.alpha = 0
         } completion: { [weak self] _ in self?.cancel(key) }
