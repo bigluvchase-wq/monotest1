@@ -5,7 +5,7 @@
  Object.defineProperty(P,'open',{configurable:true,enumerable:true,get(){return od.get.call(this)&&!this._closing;},set(v){od.set.call(this,v);}});
  P.showModal=function(){if(this._closing){this._exit?.cancel();this._exit=null;this._closing=false;this.classList.remove('closing');this.style.animation='none';void this.offsetWidth;this.style.animation='';return;}if(od.get.call(this))return;return nShow.call(this);};
  P.close=function(v){if(!od.get.call(this)||this._closing)return;if(skip(this))return nClose.call(this,v);this._closing=true;this.classList.add('closing');
-  const an=this.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(24px) scale(.97)'}],{duration:300,easing:'cubic-bezier(.32,0,.67,0)',fill:'forwards'});this._exit=an;
+  const current=getComputedStyle(this);const an=this.animate([{opacity:current.opacity,transform:current.transform},{opacity:0,transform:'translateY(18px) scale(.985)'}],{duration:280,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});this._exit=an;
   an.finished.then(()=>{if(this._exit!==an)return;this._exit=null;this._closing=false;this.classList.remove('closing');an.cancel();nClose.call(this,v);}).catch(()=>{});};})();
 const E=MonoEngine,$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 // Поля сумм всегда открывают цифровую клавиатуру

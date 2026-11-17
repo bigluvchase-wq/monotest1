@@ -2,7 +2,7 @@
 (function(root){
 'use strict';
 const selections=new Map(),controllers=new Map(),reduce=matchMedia('(prefers-reduced-motion: reduce)');
-const duration=280,easing='cubic-bezier(.22,1,.36,1)';
+const duration=420,easing='cubic-bezier(.16,1,.3,1)';
 function scope(){return root.MonoTogether?.storageKey()||'personal';}
 function stop(controller){for(const animation of controller.animations)animation.cancel();controller.animations=[];}
 function layout(controller,animate=false){
@@ -28,7 +28,7 @@ function layout(controller,animate=false){
   item.card.querySelector('.account-stack-amount').setAttribute('aria-hidden',String(front));
   if(!animate||typeof item.shell.animate!=='function')return;
   const frames=reduce.matches?[{opacity:.65},{opacity:1}]:front?
-   [{transform:starts[index]},{transform:`translate(12px,${target.y-12}px) scale(1)`,offset:.65},{transform}]:
+   [{transform:starts[index]},{transform:`translate(8px,${target.y-6}px) scale(1)`,offset:.68},{transform}]:
    [{transform:starts[index]},{transform}];
   controller.animations.push(item.shell.animate(frames,{duration:reduce.matches?120:duration,easing}));
  });

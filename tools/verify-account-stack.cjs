@@ -28,7 +28,7 @@ const screenshots=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'mono-acc
  await p.evaluate(()=>document.querySelectorAll('.account-stack>.swipe-shell').forEach(el=>el.getAnimations().forEach(a=>a.play())));await p.waitForTimeout(350);assert.equal(await selected(),'reserve');
  await p.screenshot({path:path.join(screenshots,'end.png')});
  // Rapid selections retarget from the current visual pose and settle on the latest account.
- await stack.locator('[data-account-select=travel]').click();await p.waitForTimeout(50);await stack.locator('[data-account-select=main]').click();await p.waitForTimeout(350);assert.equal(await selected(),'main');assert.equal(await stack.locator('.swipe-shell').evaluateAll(els=>els.reduce((n,el)=>n+el.getAnimations().length,0)),0);
+ await stack.locator('[data-account-select=travel]').click();await p.waitForTimeout(50);await stack.locator('[data-account-select=main]').click();await p.waitForFunction(()=>[...document.querySelectorAll('.account-stack>.swipe-shell')].every(el=>el.getAnimations().length===0));assert.equal(await selected(),'main');assert.equal(await stack.locator('.swipe-shell').evaluateAll(els=>els.reduce((n,el)=>n+el.getAnimations().length,0)),0);
  assert.deepEqual(await p.evaluate(()=>({json:JSON.stringify(state),voiceAccount})),before,'presentation must not mutate financial state or recording selection');
  const cdp=await p.context().newCDPSession(p);await cdp.send('Performance.enable');
  await stack.locator('[data-account-select=reserve]').click();await p.waitForTimeout(70);

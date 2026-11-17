@@ -1,0 +1,10 @@
+/* Small, consistent movement for standard sheets. Dedicated fullscreen/swipe effects keep their own motion. */
+@keyframes mono-modal-enter{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:no-preference){
+ html[data-theme] dialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog):not(#homeAccountDialog):not(#periodDialog):not([data-enter=swipe]){animation:mono-modal-enter 420ms cubic-bezier(.16,1,.3,1) both!important}
+ html[data-theme] dialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog):not(#homeAccountDialog):not(#periodDialog)::backdrop{animation-duration:220ms!important;animation-timing-function:ease-out!important}
+ dialog.closing::backdrop{animation:none!important;opacity:0;transition:opacity 220ms ease}
+}
+@media(prefers-reduced-motion:reduce){
+ html[data-theme] dialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog):not(#homeAccountDialog):not(#periodDialog){animation:none!important}
+}
