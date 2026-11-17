@@ -1,14 +1,15 @@
 (function(root){
 'use strict';
 const source=document.querySelector('#voiceAccount'),button=document.querySelector('#homeAccountButton'),dialog=document.querySelector('#homeAccountDialog'),options=document.querySelector('#homeAccountOptions');
-const reduce=matchMedia('(prefers-reduced-motion: reduce)'),ease='cubic-bezier(.16,1,.3,1)',exitEase='cubic-bezier(.4,0,.6,1)';
+const M=root.MonoMotion;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)'),ease=M.ease.enter,exitEase=M.ease.exit;
 let animation=null,closing=false,pending=false,backdropStart=null,drag=null,suppressUntil=0,details=[],renderedHTML=null;
 function clearDetails(){details.forEach(a=>a.cancel());details=[];}
 const wallet='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M15 14h3"/></svg>';
 const users='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v1"/></svg>';
 function summaries(){return root.MonoTogether?.pickerGroups()||[{label:'Личные счета',accounts:state.accounts.map(a=>({...a,value:a.id,balance:E.balance(state,a.id)}))}];}
 function update(){
- const name=source.selectedOptions[0]?.textContent||'Выберите счёт',label=button.querySelector('.home-account-name');if(label.textContent!==name){label.textContent=name;if(!reduce.matches)label.animate([{opacity:.5,transform:'translateY(3px)'},{opacity:1,transform:'none'}],{duration:220,easing:ease});}button.setAttribute('aria-label','Счёт для записи: '+name+'. Изменить');
+ const name=source.selectedOptions[0]?.textContent||'Выберите счёт',label=button.querySelector('.home-account-name');if(label.textContent!==name){label.textContent=name;if(!reduce.matches)label.animate([{opacity:.5,transform:'translateY(3px)'},{opacity:1,transform:'none'}],{duration:M.duration.micro,easing:ease});}button.setAttribute('aria-label','Счёт для записи: '+name+'. Изменить');
  if(!dialog.open||closing)return;
  const focused=options.contains(document.activeElement)?document.activeElement.closest('[data-home-account]')?.dataset.homeAccount:null;
  const html=summaries().map(group=>`<h3 class="home-account-group">${esc(group.label)}</h3><div class="home-account-options">${group.accounts.map(a=>`<button type="button" class="home-account-option" data-home-account="${esc(a.value)}" aria-pressed="${a.value===source.value}" ${pending?'disabled':''}><span class="home-account-symbol">${a.value.startsWith('shared:')?users:wallet}</span><span class="home-account-copy"><strong>${esc(a.name)}</strong><small>${money(a.balance,a.currency)}</small></span><span class="home-account-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></span></button>`).join('')}</div>`).join('');
@@ -19,14 +20,14 @@ function show(){
  if(pending||dialog.open||holding||listening||document.querySelector('dialog[open]'))return;
  animation?.cancel();clearDetails();closing=false;dialog.style.transform='';delete dialog.dataset.exiting;dialog.showModal();button.setAttribute('aria-expanded','true');update();
  const bounds=dialog.getBoundingClientRect(),visible=[...options.querySelectorAll('.home-account-group,.home-account-option')].filter(el=>{const r=el.getBoundingClientRect();return r.bottom>bounds.top&&r.top<bounds.bottom;}).slice(0,10);
- animation=dialog.animate(reduce.matches?[{opacity:0},{opacity:1}]:[{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:reduce.matches?120:420,easing:ease});
- if(!reduce.matches)details=visible.map((el,i)=>{const a=el.animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],{duration:280,delay:80+i*18,easing:ease,fill:'backwards'});a.finished.catch(()=>{});return a;});
+ animation=dialog.animate(reduce.matches?[{opacity:0},{opacity:1}]:[{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:reduce.matches?M.duration.reduced:M.duration.sheet,easing:ease});
+ if(!reduce.matches)details=visible.map((el,i)=>{const a=el.animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],{duration:M.duration.feedback,delay:40+i*M.duration.stagger,easing:ease,fill:'backwards'});a.finished.catch(()=>{});return a;});
 }
 async function hide(fromDrag=false){
  if(!dialog.open||closing)return;closing=true;drag=null;delete dialog.dataset.dragging;dialog.dataset.exiting='true';button.setAttribute('aria-expanded','false');
  const current=getComputedStyle(dialog).transform;
  const y=current==='none'?0:new DOMMatrixReadOnly(current).m42,exitY=Math.max(dialog.offsetHeight,y+16);animation?.cancel();
- const duration=reduce.matches?100:fromDrag===true?Math.max(160,Math.min(300,(exitY-y)/dialog.offsetHeight*300)):320;
+ const duration=reduce.matches?M.duration.reduced:fromDrag===true?Math.max(M.duration.micro,Math.min(M.duration.exit,(exitY-y)/dialog.offsetHeight*M.duration.exit)):M.duration.exit;
  const exit=dialog.animate(reduce.matches?[{opacity:1},{opacity:0}]:[{transform:current},{transform:`translateY(${exitY}px)`}],{duration,easing:fromDrag===true?ease:exitEase,fill:'forwards'});animation=exit;
  await exit.finished.catch(()=>{});if(!closing||animation!==exit)return;dialog.close();exit.cancel();closing=false;
 }
@@ -73,7 +74,7 @@ function endDrag(id,cancelled=false){
  const velocity=performance.now()-g.lastTime<100?g.velocity:0;
  if(!cancelled&&(g.dy>=Math.min(100,dialog.offsetHeight*.25)||(g.dy>20&&velocity>.5))){hide(true);return;}
  const current=getComputedStyle(dialog).transform;animation?.cancel();
- const settle=dialog.animate(reduce.matches?[{opacity:.85},{opacity:1}]:[{transform:current},{transform:'translateY(0)'}],{duration:reduce.matches?100:300,easing:ease,fill:'forwards'});animation=settle;
+ const settle=dialog.animate(reduce.matches?[{opacity:.85},{opacity:1}]:[{transform:current},{transform:'translateY(0)'}],{duration:reduce.matches?M.duration.reduced:M.duration.settle,easing:ease,fill:'forwards'});animation=settle;
  settle.finished.then(()=>{if(animation!==settle)return;dialog.style.transform='';settle.cancel();animation=null;}).catch(()=>{});
 }
 dialog.addEventListener('click',event=>{if(performance.now()<suppressUntil){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});

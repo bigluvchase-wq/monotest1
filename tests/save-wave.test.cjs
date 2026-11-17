@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
 function fixture({supported=true,enabled=true}={}){
- const timers=new Map(),messages=[],button={disabled:false,getBoundingClientRect:()=>({x:20,y:600,width:300,height:44}),closest:()=>panel},panel={open:true,inert:false,getBoundingClientRect:()=>({x:16,y:180,width:358,height:480})};let commits=0,serial=0;
+ const timers=new Map(),messages=[],button={disabled:false,getBoundingClientRect:()=>({x:20,y:600,width:300,height:44}),closest:()=>panel},panel={open:true,inert:false,addEventListener(){},getBoundingClientRect:()=>({x:16,y:180,width:358,height:480})};let commits=0,serial=0;
  const context={window:null,innerWidth:390,innerHeight:844,state:{settings:{theme:'purple'}},getComputedStyle:()=>({getPropertyValue:name=>name==='--accent'?'#7b61e8':'#9985ef',borderTopLeftRadius:'32px'}),document:{documentElement:{},activeElement:{matches:()=>false,blur(){}}},requestAnimationFrame:f=>f(),setTimeout:(fn,ms)=>{const id=++serial;timers.set(id,{fn,ms});return id;},clearTimeout:id=>timers.delete(id),notify:message=>messages.push(['notify',message]),MONO_CONFIG:{effects:{saveWave:enabled}},MonoNative:{saveWaveSupported:supported,prepareSaveWave:data=>messages.push(['prepare',data]),finishSaveWave:id=>messages.push(['finish',id]),cancelSaveWave:id=>messages.push(['cancel',id])}};context.window=context;vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../Mono/Web/save-wave.js'),'utf8'),context);
  return {context,messages,timers,button,panel,run:fn=>context.MonoSaveWave.run(button,fn||(()=>{commits++;return true;})),get commits(){return commits;},ready:(id,captured)=>context.MonoSaveWave.ready(id,captured),finished:id=>context.MonoSaveWave.finished(id)};
 }
@@ -17,3 +17,5 @@ test('receipt dismissal and notice run once after the native wave or timeout',()
 test('save tap requests one haptic even if tapped twice during capture',()=>{const f=fixture();let taps=0;f.context.MonoNative.saveFeedback=()=>taps++;f.run();f.run();assert.equal(taps,1);f.ready(f.messages[0][1].id,true);f.finished(f.messages[0][1].id);assert.equal(taps,1);});
 
 test('focused amount input does not schedule a keyboard wait before capture',()=>{const f=fixture();f.context.document.activeElement.matches=()=>true;f.run();assert.equal(f.messages[0][0],'prepare');assert.equal([...f.timers.values()].some(t=>t.ms===260),false);});
+
+test('ordinary confirmation never requests a native wave and ignores a duplicate tap',()=>{const f=fixture();let saves=0;f.context.MonoSaveWave.simple(f.button,()=>{saves++;return true;});f.context.MonoSaveWave.simple(f.button,()=>{saves++;return true;});assert.equal(saves,1);assert.deepEqual(f.messages,[]);});

@@ -1,0 +1,17 @@
+/* Radius is the single paint-only exception for the reference's button-to-dialog contour; no width/height animation. */
+html[data-theme] dialog[data-motion-owned][open]:not(#chartDialog):not(#onboarding):not(#lockDialog):not(#homeAccountDialog){animation:none!important;transition:none!important;transform-origin:50% 50%}
+dialog[data-motion-owned]::backdrop{animation:none!important;opacity:1;transition:opacity var(--mono-motion-small,220ms) var(--mono-ease-enter,ease-out)}
+dialog[data-motion-owned][data-motion-entering]::backdrop,dialog[data-motion-owned].closing::backdrop{opacity:0}
+#pageBody{animation:none!important}
+@media(prefers-reduced-motion:reduce){dialog[data-motion-owned]::backdrop{transition:none}}
+/* Shared interaction timing; static shadows remain painted once. */
+@media(prefers-reduced-motion:no-preference){
+ html[data-theme] :is(.menu-tile,.secondary,.primary,button.small-link,.operation-card){transition:transform var(--mono-motion-feedback) var(--mono-ease-enter),background var(--mono-motion-small) ease!important}
+ html[data-theme] .notify-row input::after{transition:transform var(--mono-motion-feedback) var(--mono-ease-enter)}
+ html[data-theme] #home :is(.intro,.recording-block){transition:transform var(--mono-motion-complex) var(--mono-ease-enter)}
+ html[data-theme] #searchLayer .search-results{transition:opacity var(--mono-motion-small) var(--mono-ease-enter),transform var(--mono-motion-screen) var(--mono-ease-enter)!important}
+ html[data-theme] .payments-agenda .agenda-today{transition:opacity var(--mono-motion-small) var(--mono-ease-enter)}
+}
+@media(prefers-reduced-motion:reduce){
+ html[data-theme] :is(.menu-tile,.secondary,.primary,button.small-link,.operation-card,.notify-row input::after,#home .intro,#home .recording-block,#searchLayer .search-results,.payments-agenda .agenda-today){transition:none!important}
+}

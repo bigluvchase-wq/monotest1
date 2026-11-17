@@ -31,27 +31,44 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  await p.waitForFunction(()=>!document.querySelector('#homeAccountDialog').open);
  await p.emulateMedia({reducedMotion:'reduce'});assert.equal(await p.locator('.mic-beam-rotor').first().evaluate(el=>getComputedStyle(el).animationName),'none');await p.emulateMedia({reducedMotion:'no-preference'});
  await p.evaluate(()=>document.documentElement.classList.add('mic-beam-disabled'));assert.equal(await p.locator('.mic-beam').evaluate(el=>getComputedStyle(el).display),'none');
- // Mock only the native transport; use the actual entry form and persistence engine.
- await p.evaluate(()=>{window.successNotices=[];const notifyOriginal=notify;window.notify=(message,success,...rest)=>{if(success)successNotices.push(message);return notifyOriginal(message,success,...rest);};window.nativeMessages=[];window.MonoNative={saveWaveSupported:true,refreshReminders(){},prepareSaveWave(data){window.waveRequest=data;nativeMessages.push(['prepare',data.id]);setTimeout(()=>MonoSaveWave.ready(data.id,true),20);},finishSaveWave(id){nativeMessages.push(['finish',id]);MonoSaveWave.ready(id,true);window.waveReceiptVisible=$('#entryDialog').open&&!!document.querySelector('.save-wave-receipt');window.pendingWave=id;},cancelSaveWave(id){nativeMessages.push(['cancel',id]);}};openEntry('Кофе 350');});
+ // Mock transport only: ordinary records never start a native wave; payments do.
+ await p.evaluate(()=>{window.successNotices=[];const original=notify;window.notify=(message,success,...rest)=>{if(success)successNotices.push(message);return original(message,success,...rest);};window.nativeMessages=[];window.feedbackCount=0;MonoAccess.canUse=()=>true;window.MonoNative={saveWaveSupported:true,saveFeedback(){feedbackCount++;},refreshReminders(){},prepareSaveWave(data){window.waveRequest=data;nativeMessages.push(['prepare',data.id]);setTimeout(()=>MonoSaveWave.ready(data.id,true),20);},finishSaveWave(id){nativeMessages.push(['finish',id]);MonoSaveWave.ready(id,true);window.waveReceiptVisible=$('#actionDialog').open&&!!document.querySelector('.save-wave-receipt');window.pendingWave=id;},cancelSaveWave(id){nativeMessages.push(['cancel',id]);}};openEntry('Кофе 350');});
  await p.waitForTimeout(400);await p.locator('#saveButton').click();await p.waitForSelector('.save-wave-receipt');
  await p.screenshot({path:path.join(screenshots,'saved-receipt.png')});
- assert.equal(await p.locator('#entryDialog').evaluate(el=>el.open),true);
- await p.evaluate(()=>{window.receiptTrace=[];let frames=0;function sample(){receiptTrace.push({open:$('#entryDialog').hasAttribute('open'),visibility:getComputedStyle($('#drafts')).visibility});if(++frames<45)requestAnimationFrame(sample);}requestAnimationFrame(sample);MonoSaveWave.finished(pendingWave);});
- assert.equal(await p.locator('#entryDialog').evaluate(el=>el.hasAttribute('data-save-dismissing')&&el.inert),true);
- await p.waitForFunction(()=>!document.querySelector('#entryDialog').open);
- assert.equal(await p.locator('#entryDialog').evaluate(el=>el.open),false);
+ await p.waitForFunction(()=>!document.querySelector('#entryDialog').hasAttribute('open'));
  assert.deepEqual(await p.evaluate(()=>state.entries.map(e=>e.amount)),[35000]);
- assert.deepEqual(await p.evaluate(()=>nativeMessages.map(x=>x[0])),['prepare','finish']);
- assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('mono-v2')).entries.length),1);
- assert.equal(await p.evaluate(()=>waveReceiptVisible),true);await p.waitForFunction(()=>!document.querySelector('.save-wave-receipt'));
- assert.deepEqual(await p.evaluate(()=>successNotices),[]);assert(await p.evaluate(()=>receiptTrace.filter(x=>x.open).every(x=>x.visibility==='hidden')));
+ assert.deepEqual(await p.evaluate(()=>nativeMessages),[]);
+ assert.equal(await p.evaluate(()=>feedbackCount),1);
+ await p.waitForFunction(()=>!document.querySelector('.save-wave-receipt'));
+ await p.evaluate(()=>paymentForm());await p.waitForTimeout(400);
+ await p.locator('#actionBody [name=name]').fill('Интернет');await p.locator('#actionBody [name=amount]').fill('1250');
+ await p.locator('#actionBody .primary').click();await p.waitForFunction(()=>!!window.pendingWave);
+ assert.equal(await p.locator('.save-wave-receipt h2').innerText(),'Платёж сохранён');
+ assert.equal(await p.evaluate(()=>waveReceiptVisible),true);
+ assert.equal(await p.evaluate(()=>state.payments.length),1);
+ assert.equal(await p.evaluate(()=>state.payments[0].amount),125000);
+ assert.equal(await p.evaluate(()=>state.entries.length),1);
+ assert.equal(await p.locator('#actionDialog').evaluate(el=>el.inert),true);
  assert(await p.evaluate(()=>waveRequest.panel.width>0&&waveRequest.panel.height>0&&/^#[0-9a-f]{6}$/i.test(waveRequest.accent)));
+ await p.evaluate(()=>{window.receiptTrace=[];let frames=0;function sample(){receiptTrace.push({open:$('#actionDialog').hasAttribute('open'),visibility:getComputedStyle($('#actionBody')).visibility});if(++frames<35)requestAnimationFrame(sample);}requestAnimationFrame(sample);MonoSaveWave.finished(pendingWave);});
+ await p.waitForFunction(()=>!document.querySelector('#actionDialog').hasAttribute('open'));
+ assert.deepEqual(await p.evaluate(()=>nativeMessages.map(x=>x[0])),['prepare','finish']);
+ assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('mono-v2')).payments.length),1);
+ await p.waitForFunction(()=>!document.querySelector('.save-wave-receipt'));
+ assert.deepEqual(await p.evaluate(()=>successNotices),[]);assert(await p.evaluate(()=>receiptTrace.filter(x=>x.open).every(x=>x.visibility==='hidden')));
+ // Editing uses the same payment wave and updates the existing obligation, not a cash entry.
+ await p.evaluate(()=>paymentForm(state.payments[0].id));await p.waitForTimeout(400);
+ await p.locator('#actionBody [name=amount]').fill('1400');await p.locator('#actionBody .primary').click();
+ await p.waitForFunction(()=>nativeMessages.filter(x=>x[0]==='finish').length===2);
+ await p.evaluate(()=>MonoSaveWave.finished(pendingWave));await p.waitForFunction(()=>!document.querySelector('#actionDialog').hasAttribute('open'));
+ assert.equal(await p.evaluate(()=>state.payments.length),1);assert.equal(await p.evaluate(()=>state.payments[0].amount),140000);assert.equal(await p.evaluate(()=>state.entries.length),1);
+ await p.waitForFunction(()=>!document.querySelector('.save-wave-receipt'));
  await p.evaluate(()=>{openEntry('Такси 200');const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='mono-v2')throw Error('full');return original.call(this,key,value);};});
  await p.waitForTimeout(400);await p.locator('#saveButton').click();await p.waitForTimeout(500);
  assert.equal(await p.locator('#entryDialog').evaluate(el=>el.open&&!el.inert),true);
  assert.equal(await p.locator('#saveButton').isEnabled(),true);assert.equal(await p.evaluate(()=>state.entries.length),1);
- assert.deepEqual(await p.evaluate(()=>nativeMessages.map(x=>x[0])),['prepare','finish','prepare','cancel']);
+ assert.deepEqual(await p.evaluate(()=>nativeMessages.map(x=>x[0])),['prepare','finish','prepare','finish']);
  assert.deepEqual(errors,[]);
- console.log('PASS: 21 theme/size combinations; microphone beam disabled; themed sheet receipt; reduced motion; immediate blur removal; native handshake saves once; storage failure keeps editor interactive. Screenshots: '+screenshots);
+ console.log('PASS: 21 theme/size combinations; microphone beam disabled; ordinary save without wave; payment native handshake saves once; reduced motion; immediate blur removal; storage failure keeps editor interactive. Screenshots: '+screenshots);
  }finally{await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
