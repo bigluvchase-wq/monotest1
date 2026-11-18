@@ -14,7 +14,7 @@ Object.defineProperty(P,'open',{configurable:true,enumerable:true,get(){return r
 P.showModal=function(){
  const d=this;if(special(d)||d.dataset.enter==='swipe'){recent=null;clearTimeout(recentTimer);return show.call(d);}if(rawOpen(d)&&!d._closing)return;
  const recovering=rawOpen(d),current=recovering?getComputedStyle(d):null,start=recovering?{opacity:current.opacity,transform:current.transform,borderRadius:current.borderRadius}:null;
- const previous=states.get(d)?.origin;cleanup(d);const origin=recent||previous;recent=null;clearTimeout(recentTimer);
+ const previous=states.get(d)?.origin;cleanup(d);const origin=d.id==='actionDialog'?null:(recent||previous);recent=null;clearTimeout(recentTimer);
  d.dataset.motionOwned='true';d.dataset.motionEntering='true';d._closing=false;const s={origin,hidden:false,visibility:'',animations:[],frame:0};states.set(d,s);
  if(!recovering)show.call(d);
  if(!bound.has(d)){bound.add(d);d.addEventListener('cancel',e=>{if(!e.defaultPrevented&&!special(d)){e.preventDefault();d.close();}});d.addEventListener('close',()=>{if(!rawOpen(d))cleanup(d);});}
@@ -24,9 +24,9 @@ P.showModal=function(){
  // Force a single initial backdrop style, then let opacity transition on the next frame.
  getComputedStyle(d,'::backdrop').opacity;s.frame=requestAnimationFrame(()=>{if(states.get(d)===s)delete d.dataset.motionEntering;});
  if(M.reduced){delete d.dataset.motionEntering;return;}
- const frames=start?[start,{opacity:1,transform:'none',borderRadius:radius}]:g?[{opacity:.12,transform:g.transform,borderRadius:g.radius},{opacity:1,transform:'none',borderRadius:radius}]:[{opacity:0,transform:'translateY(10px) scale(.985)'},{opacity:1,transform:'none'}];
- play(s,d,frames,{duration:M.duration.modal,easing:M.ease.enter});
- [...d.children].filter(el=>!el.matches('script,style,#toast')).slice(0,7).forEach((el,i)=>play(s,el,[{opacity:0,transform:`translateY(${g?.side==='from-top'?-6:6}px)`},{opacity:1,transform:'none'}],{duration:M.duration.feedback,delay:M.duration.modal*.35+i*M.duration.stagger,easing:M.ease.enter,fill:'backwards'}));
+ const frames=start?[start,{opacity:1,transform:'none',borderRadius:radius}]:g?[{opacity:.12,transform:g.transform,borderRadius:g.radius},{opacity:1,transform:'none',borderRadius:radius}]:[{opacity:0,transform:'translateY(18px) scale(.985)'},{opacity:1,transform:'none'}];
+ play(s,d,frames,{duration:d.id==='actionDialog'?M.duration.formOpen:M.duration.modal,easing:M.ease.enter});
+ if(d.id!=='actionDialog')[...d.children].filter(el=>!el.matches('script,style,#toast')).slice(0,7).forEach((el,i)=>play(s,el,[{opacity:0,transform:`translateY(${g?.side==='from-top'?-6:6}px)`},{opacity:1,transform:'none'}],{duration:M.duration.feedback,delay:M.duration.modal*.35+i*M.duration.stagger,easing:M.ease.enter,fill:'backwards'}));
 };
 P.close=function(value){
  const d=this;if(!rawOpen(d)||d._closing)return;
@@ -35,9 +35,9 @@ P.close=function(value){
  const current=getComputedStyle(d),start={opacity:current.opacity,transform:current.transform,borderRadius:current.borderRadius},parts=[...d.children].filter(el=>!el.matches('script,style,#toast')).slice(0,7).map(el=>[el,getComputedStyle(el).opacity]),s=states.get(d)||{origin:null,hidden:false,animations:[],frame:0};
  s.animations.forEach(a=>a.cancel());s.animations=[];cancelAnimationFrame(s.frame);states.set(d,s);
  const g=geometry(d,s.origin);d._closing=true;d.classList.add('closing');delete d.dataset.motionEntering;
- const animation=play(s,d,[start,g?{opacity:.05,transform:g.transform,borderRadius:g.radius}:{opacity:0,transform:'translateY(12px) scale(.985)'}],{duration:M.duration.exit,delay:40,easing:M.ease.exit,fill:'forwards'});
+ const animation=play(s,d,[start,g?{opacity:.05,transform:g.transform,borderRadius:g.radius}:{opacity:0,transform:d.id==='actionDialog'?'translateY(18px) scale(.985)':'translateY(12px) scale(.985)'}],{duration:d.id==='actionDialog'?M.duration.formClose:M.duration.exit,delay:d.id==='actionDialog'?0:40,easing:M.ease.exit,fill:'forwards'});
  d._exit=animation;
- parts.forEach(([el,opacity])=>play(s,el,[{opacity},{opacity:0}],{duration:M.duration.micro,easing:M.ease.exit,fill:'forwards'}));
+ if(d.id!=='actionDialog')parts.forEach(([el,opacity])=>play(s,el,[{opacity},{opacity:0}],{duration:M.duration.micro,easing:M.ease.exit,fill:'forwards'}));
  animation.finished.catch(()=>{}).then(()=>{if(states.get(d)!==s||!d._closing)return;restore(s);raw();cleanup(d);});
 };
 function finish(){document.querySelectorAll('dialog[data-motion-owned]').forEach(d=>{const s=states.get(d);s?.animations.forEach(a=>{if(a.playState!=='finished'&&a.playState!=='idle')a.finish();});});}

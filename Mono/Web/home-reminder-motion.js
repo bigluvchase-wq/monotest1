@@ -18,8 +18,12 @@ async function open(id){
  catch(error){session.switching=false;session.clean();notify(error.message||'Не удалось открыть напоминания.');return;}
  session.switching=false;document.documentElement.classList.add('reminder-opening');
  session.animations.push(app.animate([{opacity:0},{opacity:1}],{duration:M.duration.screen,easing:M.ease.enter,fill:'backwards'}));
- const parts=[...document.querySelectorAll('#workspace .page-head,#workspace .reminders-agenda,#workspace .reminder-group')].slice(0,8);
+ const parts=[...document.querySelectorAll('#workspace .page-head,#workspace .reminders-agenda,#workspace .reminder-group-title')].slice(0,8);
  parts.forEach((el,i)=>session.animations.push(el.animate([{opacity:0,transform:'translateY(5px)'},{opacity:1,transform:'none'}],{duration:M.duration.small,delay:40+i*M.duration.stagger,easing:M.ease.enter,fill:'backwards'})));
+ const cards=[...document.querySelectorAll('#workspace .reminder-card')].filter(el=>{const r=el.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight;});
+ cards.forEach((el,i)=>session.animations.push(el.animate([{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'none'}],{duration:M.duration.reminderReveal,delay:80+Math.min(i,9)*M.duration.reminderStagger,easing:M.ease.enter,fill:'backwards'})));
+ // The list is usable while the stagger completes; navigating away still cancels it.
+ app.style.pointerEvents=oldPointer;
  // Navigation cancels the completed outgoing animation; wait only for the new page's animations.
  await Promise.allSettled(session.animations.slice(1).map(a=>a.finished));if(active!==session)return;
  session.clean();if(page==='reminders')MonoReminders.focus(id,{scroll:false});

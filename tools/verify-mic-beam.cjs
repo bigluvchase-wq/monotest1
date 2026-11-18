@@ -33,8 +33,7 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  await p.evaluate(()=>document.documentElement.classList.add('mic-beam-disabled'));assert.equal(await p.locator('.mic-beam').evaluate(el=>getComputedStyle(el).display),'none');
  // Mock transport only: ordinary records never start a native wave; payments do.
  await p.evaluate(()=>{window.successNotices=[];const original=notify;window.notify=(message,success,...rest)=>{if(success)successNotices.push(message);return original(message,success,...rest);};window.nativeMessages=[];window.feedbackCount=0;MonoAccess.canUse=()=>true;window.MonoNative={saveWaveSupported:true,saveFeedback(){feedbackCount++;},refreshReminders(){},prepareSaveWave(data){window.waveRequest=data;nativeMessages.push(['prepare',data.id]);setTimeout(()=>MonoSaveWave.ready(data.id,true),20);},finishSaveWave(id){nativeMessages.push(['finish',id]);MonoSaveWave.ready(id,true);window.waveReceiptVisible=$('#actionDialog').open&&!!document.querySelector('.save-wave-receipt');window.pendingWave=id;},cancelSaveWave(id){nativeMessages.push(['cancel',id]);}};openEntry('Кофе 350');});
- await p.waitForTimeout(400);await p.locator('#saveButton').click();await p.waitForSelector('.save-wave-receipt');
- await p.screenshot({path:path.join(screenshots,'saved-receipt.png')});
+ await p.waitForTimeout(400);await p.locator('#saveButton').click();assert.equal(await p.locator('#entryDialog .save-wave-receipt').count(),0);
  await p.waitForFunction(()=>!document.querySelector('#entryDialog').hasAttribute('open'));
  assert.deepEqual(await p.evaluate(()=>state.entries.map(e=>e.amount)),[35000]);
  assert.deepEqual(await p.evaluate(()=>nativeMessages),[]);
@@ -55,7 +54,7 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  assert.deepEqual(await p.evaluate(()=>nativeMessages.map(x=>x[0])),['prepare','finish']);
  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('mono-v2')).payments.length),1);
  await p.waitForFunction(()=>!document.querySelector('.save-wave-receipt'));
- assert.deepEqual(await p.evaluate(()=>successNotices),[]);assert(await p.evaluate(()=>receiptTrace.filter(x=>x.open).every(x=>x.visibility==='hidden')));
+ assert.deepEqual(await p.evaluate(()=>successNotices),['Записано. Всё на своих местах.']);assert(await p.evaluate(()=>receiptTrace.filter(x=>x.open).every(x=>x.visibility==='hidden')));
  // Editing uses the same payment wave and updates the existing obligation, not a cash entry.
  await p.evaluate(()=>paymentForm(state.payments[0].id));await p.waitForTimeout(400);
  await p.locator('#actionBody [name=amount]').fill('1400');await p.locator('#actionBody .primary').click();

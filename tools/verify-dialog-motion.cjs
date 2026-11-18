@@ -15,9 +15,9 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  const d=p.locator('#actionDialog');
  for(const [side,direction] of [['top','from-top'],['bottom','from-bottom']]){
   await p.locator('#motion-'+side).click();
-  assert.equal(await d.getAttribute('data-motion-direction'),direction);
-  assert.equal(await p.locator('#motion-'+side).evaluate(el=>getComputedStyle(el).visibility),'hidden');
-  const frames=await p.evaluate(()=>window.openFrames);assert.match(frames[0].transform,/translate/);assert(frames[0].borderTopLeftRadius||frames[0].borderRadius);
+  assert.equal(await d.getAttribute('data-motion-direction'),null);
+  assert.equal(await p.locator('#motion-'+side).evaluate(el=>getComputedStyle(el).visibility),'visible');
+  const frames=await p.evaluate(()=>window.openFrames);assert.match(frames[0].transform,/translate/);assert.match(frames[0].transform,/scale\(0?\.?985\)/);
   assert.equal(await d.evaluate(el=>getComputedStyle(el).animationName),'none');
   await p.waitForTimeout(420);await p.keyboard.press('Escape');await p.waitForFunction(()=>!document.querySelector('#actionDialog').hasAttribute('open'));
   assert.equal(await p.locator('#motion-'+side).evaluate(el=>getComputedStyle(el).visibility),'visible');
@@ -31,7 +31,7 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  const cdp=await p.context().newCDPSession(p);await cdp.send('Performance.enable');
  await p.locator('#motion-top').click();await p.waitForTimeout(45);
  const layouts=async()=>{const r=await cdp.send('Performance.getMetrics');return r.metrics.find(m=>m.name==='LayoutCount').value;};
- const start=await layouts();assert(await d.evaluate(el=>el.getAnimations().some(a=>a.currentTime<MonoMotion.duration.modal-100)),'sample starts during active animation');await p.waitForTimeout(150);const count=await layouts()-start;assert(count<=2,'frame-by-frame layout: '+count);
+ const start=await layouts();assert(await d.evaluate(el=>el.getAnimations().some(a=>a.currentTime<MonoMotion.duration.formOpen-100)),'sample starts during active animation');await p.waitForTimeout(150);const count=await layouts()-start;assert(count<=2,'frame-by-frame layout: '+count);
  await p.waitForTimeout(300);await d.evaluate(el=>el.close());await p.waitForFunction(()=>!document.querySelector('#actionDialog').hasAttribute('open'));
  await p.emulateMedia({reducedMotion:'reduce'});await p.locator('#motion-bottom').click();assert.equal(await d.evaluate(el=>el.getAnimations().length),0);await d.evaluate(el=>el.close());assert.equal(await d.evaluate(el=>el.hasAttribute('open')),false);
  await p.emulateMedia({reducedMotion:'no-preference'});
@@ -49,6 +49,6 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  assert.equal(await p.locator('#periodDialog').getAttribute('data-motion-owned'),'true');
  await p.locator('#periodDialog').evaluate(el=>el.close());await p.waitForFunction(()=>!document.querySelector('#periodDialog').hasAttribute('open'));
  await p.evaluate(()=>MonoCharts.close());await p.waitForFunction(()=>!document.querySelector('#chartDialog').hasAttribute('open'));
- assert.deepEqual(errors,[]);console.log('PASS: both trigger directions, real border contour, no duplicate CSS animation, Escape, interruption/reopen recovery, reduced motion; layouts during active frames: '+count);
+ assert.deepEqual(errors,[]);console.log('PASS: restored form entrance from either button position, no duplicate CSS animation, Escape, interruption/reopen recovery, reduced motion; layouts during active frames: '+count);
  }finally{await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
