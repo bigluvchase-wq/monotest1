@@ -1,11 +1,10 @@
 (function(root){
 'use strict';
-const M=root.MonoMotion;
 const app=document.querySelector('.app'),nav=document.querySelector('.bottom-nav'),buttons=[...nav.querySelectorAll('[data-nav]')],slider=document.createElement('span');
 slider.className='nav-slider';slider.setAttribute('aria-hidden','true');nav.prepend(slider);
 let stage=null,busy=false,navGesture=null,suppressUntil=0;
-const BLUR=window.MONO_PAGE_BLUR===true?16:0,ease=M.ease.enter,DEPTH=.08,FADE=.42,clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
-function indicator(index,animate=true){const first=buttons[0].getBoundingClientRect(),last=buttons[1].getBoundingClientRect(),r=nav.getBoundingClientRect();slider.style.width=first.width+'px';slider.style.left=(first.left-r.left)+'px';slider.style.transition=animate&&!reducedMotion()?'transform '+M.duration.nav+'ms '+ease:'none';slider.style.transform=`translateX(${(last.left-first.left)*index}px)`;buttons.forEach((button,i)=>{button.classList.toggle('nav-highlight',i===Math.round(index));button.style.transition=animate&&!reducedMotion()?'color '+M.duration.nav+'ms '+ease:'none';});}
+const BLUR=window.MONO_PAGE_BLUR===true?16:0,ease='cubic-bezier(.22,1,.36,1)',DEPTH=.08,FADE=.42,clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
+function indicator(index,animate=true){const first=buttons[0].getBoundingClientRect(),last=buttons[1].getBoundingClientRect(),r=nav.getBoundingClientRect();slider.style.width=first.width+'px';slider.style.left=(first.left-r.left)+'px';slider.style.transition=animate&&!reducedMotion()?'transform 420ms '+ease:'none';slider.style.transform=`translateX(${(last.left-first.left)*index}px)`;buttons.forEach((button,i)=>{button.classList.toggle('nav-highlight',i===Math.round(index));button.style.transition=animate&&!reducedMotion()?'color 420ms '+ease:'none';});}
 function sync(){if(!stage&&!navGesture)indicator(Math.max(0,rootPages.indexOf(page)),true);}
 // Preview nodes are inert and contain no live form handlers or duplicate IDs.
 function mirrorStyles(){if(document.querySelector('#previewRootStyles'))return;let css='';function visit(rules){let result='';for(const rule of rules){if(rule.selectorText&&(/#[a-zA-Z_]|body\[data-page/.test(rule.selectorText))){const selector=rule.selectorText.replace(/#([\w-]+)/g,'[data-preview-id="$1"]').replace(/body(?=\[data-page)/g,'.root-preview');result+=selector+'{'+rule.style.cssText+'}';}else if(rule.cssRules&&rule.conditionText){const head=rule.cssText.slice(0,rule.cssText.indexOf('{'));result+=head+'{'+visit(rule.cssRules)+'}';}}return result;}for(const sheet of document.styleSheets){try{css+=visit(sheet.cssRules);}catch{}}const style=document.createElement('style');style.id='previewRootStyles';style.textContent=css;document.head.append(style);}
@@ -56,7 +55,7 @@ async function settle(commit=true){
   incoming=app;
  }
  app.inert=true;
- const p0=clamp(Math.abs(start)/innerWidth),duration=reducedMotion()?0:commit?Math.round(M.duration.nav+M.duration.navExtra*(1-p0)):M.duration.nav;
+ const p0=clamp(Math.abs(start)/innerWidth),duration=reducedMotion()?0:commit?Math.round(420+120*(1-p0)):420;
  const frame=(el,x,p,out)=>({transform:out?outT(x,p):inT(x,p),opacity:out?1-FADE*p:1-FADE*(1-p)});
  const move=(el,a,b)=>el.animate([a,b],{duration,easing:ease,fill:'both'});
  incoming.style.transformOrigin=commit?`50% ${innerHeight/2}px`:'50% 50%';

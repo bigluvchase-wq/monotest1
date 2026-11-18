@@ -29,7 +29,7 @@
   panel.classList.remove('chart-pulling');
   if(dismiss){MonoCharts.close({dragOffset:g.dy});return;}
   const from=panel.style.transform;reset();
-  if(!reducedMotion()){settling=panel.animate([{transform:from},{transform:'translateY(0)'}],{duration:MonoMotion.duration.sheet,easing:MonoMotion.ease.enter});settling.finished.catch(()=>{}).finally(()=>settling=null);}
+  if(!reducedMotion()){settling=panel.animate([{transform:from},{transform:'translateY(0)'}],{duration:320,easing:'cubic-bezier(.22,1,.36,1)'});settling.finished.catch(()=>{}).finally(()=>settling=null);}
  }
  panel.addEventListener('touchstart',e=>{if(e.touches.length!==1){if(gesture)end(gesture.id,true);return;}const t=e.touches[0];start(t.clientX,t.clientY,e.target,t.identifier);},{passive:true});
  panel.addEventListener('touchmove',e=>{if(e.touches.length!==1){if(gesture)end(gesture.id,true);return;}const t=e.touches[0];move(t.clientX,t.clientY,t.identifier,e);},{passive:false});

@@ -2,7 +2,6 @@
 'use strict';
 // Напоминания и платежи на главной. Выбранная карточка по центру, соседние справа и слева
 // видны в лёгком размытии. Листается свайпом и стрелками; от трёх карточек лента зациклена.
-const M=root.MonoMotion;
 const chev=d=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 let remembered=0;
@@ -26,7 +25,7 @@ function mount(box){
   cards.forEach((el,i)=>{
    const pos=rel(i),a=Math.abs(pos),near=Math.min(1,a);
    const op=a<=1?1-.42*a:Math.max(0,.58-(a-1)*.9),sc=1,bl=near*3.2;
-   el.style.transition=animate&&!dragging&&!reducedMotion()?`transform ${M.duration.carousel}ms ${M.ease.enter},opacity ${M.duration.carousel}ms ease`:'none';
+   el.style.transition=animate&&!dragging&&!reducedMotion()?'transform .5s cubic-bezier(.22,1,.36,1),opacity .5s ease':'none';
    el.style.transform=`translateX(calc(-50% + ${(pos*step).toFixed(1)}px)) scale(${sc.toFixed(3)})`;
    el.style.opacity=op.toFixed(3);
    if(!dragging)el.style.filter=bl>.05?`blur(${bl.toFixed(2)}px)`:'none';
@@ -91,7 +90,7 @@ function reveal(box){
  if(!box||!box.classList.contains('rem-waiting'))return;
  box.classList.remove('rem-waiting');
  if(reducedMotion()||!box.children.length)return;
- box.animate([{opacity:0,transform:'translateY(22px) scale(.97)'},{opacity:1,transform:'none'}],{duration:M.duration.complex,easing:M.ease.enter});
+ box.animate([{opacity:0,transform:'translateY(22px) scale(.97)'},{opacity:1,transform:'none'}],{duration:560,easing:'cubic-bezier(.22,1,.36,1)'});
 }
 // Когда блок напоминаний меняет высоту, остальное на главной плавно сдвигается, без прыжка
 (function smoothHome(){
@@ -105,8 +104,8 @@ function reveal(box){
   const h=box.offsetHeight;
   if(last&&lastHeight!==null&&h!==lastHeight&&page==='home'&&!home.hidden&&!reducedMotion()){
    // translate не конфликтует с transform (--home-shift), поэтому оба сдвига складываются плавно
-   for(const el of movers()){const before=last.get(el);if(before===undefined)continue;const dy=before-el.getBoundingClientRect().top;if(Math.abs(dy)>.5)el.animate([{translate:`0 ${dy}px`},{translate:'0 0'}],{duration:M.duration.complex,easing:M.ease.enter});}
-   if(h>lastHeight&&!box.classList.contains('rem-waiting'))box.animate([{opacity:0,transform:'translateY(18px)'},{opacity:1,transform:'none'}],{duration:M.duration.complex,easing:M.ease.enter});
+   for(const el of movers()){const before=last.get(el);if(before===undefined)continue;const dy=before-el.getBoundingClientRect().top;if(Math.abs(dy)>.5)el.animate([{translate:`0 ${dy}px`},{translate:'0 0'}],{duration:620,easing:'cubic-bezier(.22,1,.36,1)'});}
+   if(h>lastHeight&&!box.classList.contains('rem-waiting'))box.animate([{opacity:0,transform:'translateY(18px)'},{opacity:1,transform:'none'}],{duration:620,easing:'cubic-bezier(.22,1,.36,1)'});
   }
   snap();
  }).observe(box);
