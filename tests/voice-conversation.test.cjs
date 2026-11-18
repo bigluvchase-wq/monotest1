@@ -104,3 +104,13 @@ test('a completed expense after a reminder stays a financial draft, planned purc
  const r=E.parse([parts[0],parts[2]].join('; '),now,[],state,'main');assert.deepEqual(r.errors,[]);assert.deepEqual(r.entries.map(e=>[e.amount,e.type]),[[30000,'expense'],[150000,'expense'],[5000000,'income']]);
  assert.equal(root.MonoCommands.split('Напомни завтра купить корм за 1500 и оплатить интернет 700').length,1);
 });
+test('amounts retain context on both sides up to the next action',()=>{
+ const s=structuredClone(state);s.goals.push({id:'vac',name:'Отпуск',target:10000000,currency:'RUB',saved:0});
+ for(const phrase of ['заправился на 300','300 на заправку']){const r=E.parse(phrase,now,[],s,'main');assert.deepEqual(r.errors,[]);assert.equal(r.entries[0].amount,30000);assert.equal(r.entries[0].category,'Авто');}
+ for(const phrase of ['скинул 300 на цель отпуск','на цель отпуск скинул 300']){const r=E.parse(phrase,now,[],s,'main');assert.deepEqual(r.errors,[],phrase);assert.equal(r.entries[0].amount,30000);assert.equal(r.entries[0].type,'saving');assert.equal(r.entries[0].goalId,'vac');}
+ for(const phrase of ['заправился на 300 потом скинул 500 на цель отпуск потом кофе 200','300 на заправку потом скинул 500 на цель отпуск потом 200 кофе']){
+  const r=E.parse(phrase,now,[],s,'main');assert.deepEqual(r.errors,[],phrase);assert.deepEqual(r.entries.map(e=>[e.amount,e.type]),[[30000,'expense'],[50000,'saving'],[20000,'expense']]);assert.equal(r.entries[2].category,'Кафе');assert(E.validateState(E.saveDrafts(s,r.entries).next));
+ }
+ const r=E.parse('купил на 300 кофе потом продукты 1500',now,[],s,'main');assert.deepEqual(r.errors,[]);assert.deepEqual(r.entries.map(e=>[e.amount,e.category]),[[30000,'Кафе'],[150000,'Продукты']]);
+ const missing=E.parse('скинул 300 на цель',now,[],s,'main');assert.equal(missing.entries.length,0);assert.match(missing.errors[0],/Назовите цель/);
+});

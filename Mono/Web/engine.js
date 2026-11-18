@@ -141,7 +141,7 @@ function splitSpokenOperations(text){
  const quantity=text.match(quantityPattern);
  const matches=[...text.matchAll(amountRe)].filter(m=>!quantity||m.index>=quantity.index+quantity[0].length||m.index<quantity.index);
  if(matches.length<2)return [text];
- const connector=/(?<!\p{L})(?:потом|затем|плюс|из них|в обед|утром|вечером|(?:я )?сразу|купил[аи]?|заказал[аи]?|заплатил[аи]?|оплатил[аи]?|закинул[аи]?|перевел[аи]?|отложил[аи]?|снял[аи]?)(?!\p{L})/u;
+ const connector=/(?<!\p{L})(?:потом|затем|плюс|из них|в обед|утром|вечером|(?:я )?сразу|купил[аи]?|заказал[аи]?|заплатил[аи]?|оплатил[аи]?|закинул[аи]?|перевел[аи]?|отложил[аи]?|снял[аи]?|скинул[аи]?|заправил[а-я]*|получил[аи]?|заработал[аи]?)(?!\p{L})/u;
  const currencyPrefix=/^\s*(?:(?:руб(?:лей|ля|ль)?|евро|доллар[а-я]*|тенге|юан[а-яь]*|rub|usd|eur|kzt|cny)(?!\p{L})|[₽$€])/u;
  const pieces=[];
  let start=0;
@@ -152,7 +152,7 @@ function splitSpokenOperations(text){
   if(!/\p{L}/u.test(words))continue;
   const amountFirst=!clean(text.slice(start,m.index));
   const cut=amountFirst?(signal?end+currency.length+signal.index:matches[i+1].index):
-   signal&&/^\s+на пару дней\s*$/u.test(words.slice(0,signal.index))?end+currency.length+signal.index:end+currency.length;
+   signal?end+currency.length+signal.index:end+currency.length;
   if(cut>start){pieces.push(text.slice(start,cut).trim());start=cut;}
  }
  return [...pieces,text.slice(start).trim()];
@@ -194,8 +194,9 @@ if(/с половиной(?!\s+тысяч)/u.test(clause)){errors.push('Уточ
 if(/на прошлой неделе/u.test(clause)){errors.push('Назовите точный день платежа.');continue;}
 if(/^(?:я )?купил[аи]? нов(?:ый|ую|ое)\s/u.test(clause)&&!/чехол|аксессуар/u.test(clause)&&entries.at(-1)?.category==='Продажи'&&/телефон|смартфон/u.test(entries.at(-1).title.toLowerCase()))clause=clause.replace(/нов(?:ый|ую|ое)/u,'новый телефон');
 const expenseCategory=Speech.expense(clause),incomeCategory=Speech.income(clause);
+const goalIntent=/(?<!\p{L})(?:на|в)\s+цель(?:\s|$)/u.test(clause);
 const internal=accountMovement.test(clause)&&ownMovement.test(clause)&&!['Переводы','Подарки','Финансовые операции'].includes(expenseCategory);
-if(accountMovement.test(clause)&&!internal&&!incomeCategory&&!/(?<!\p{L})за\s+\p{L}/u.test(clause)&&!['Ставки','Переводы','Подарки','Финансовые операции','Связь'].includes(expenseCategory)){
+if(accountMovement.test(clause)&&!goalIntent&&!internal&&!incomeCategory&&!/(?<!\p{L})за\s+\p{L}/u.test(clause)&&!['Ставки','Переводы','Подарки','Финансовые операции','Связь'].includes(expenseCategory)){
  errors.push('Уточните, кому перевели деньги или между какими своими счетами их переместили.');
  continue;
 }
@@ -224,8 +225,9 @@ if(currencyWord)clause=clause.replace(currencyToken,' ');
 const loan=/(?<![\p{L}])(?:в\s+долг|одолж(?:ил[аи]?|ить|и|у)|заня(?:л[аи]?|ть)\s*(?:деньги|денег)?|дал[аи]?\s+(?:деньги|денег)|вернул[аи]?\s+долг|закинул[аи]?\s+другу)(?![\p{L}])/iu.test(clause);
 if(loan&&!Speech.income(clause)&&Speech.expense(clause)!=='Ставки'){const matches=[...clause.matchAll(amountRe)];if(/(?:^|\s)не\s/i.test(clause)||matches.length!==1||amountValue(matches[0][0])<=0){errors.push('Уточните одну положительную сумму для записи в долг.');continue;}const date=clauseNow;entries.push({title:/(?:вернул|отдал)/u.test(clause)?'Возврат долга':'В долг',amount:amountValue(matches[0][0]),type:'expense',category:state.categories.includes('Финансовые операции')?'Финансовые операции':'Другое',account:account.id,date:dateString(date)});continue;}
 const explicitExpense=!!incomeCategory||['Переводы','Подарки'].includes(expenseCategory)||/закинул[аи]? (?:на (?:телефон|мобил|сотовый|проездн|брокерск)|ипотек)/u.test(clause)||/(?:положил[аи]?|пополнил[аи]?) на (?:телефон|мобил[ау]|сотовый)/u.test(clause)||/минус|потрат|купил|заплат|оплатил|расход|получил|заработал|зарплат|продал|пополнил[аи]? (?:телефон|транспорт)/i.test(clause);
-const goalMatch=!explicitExpense&&Speech.expense(clause)!=='Ставки'&&!Speech.installment(clause)?matchGoal(clause,state.goals):null;
+const goalMatch=(goalIntent||!explicitExpense)&&Speech.expense(clause)!=='Ставки'&&!Speech.installment(clause)?matchGoal(clause,state.goals):null;
 if(goalMatch?.ambiguous){errors.push('Назовите одну цель для каждой суммы.');continue;}
+if(goalIntent&&!goalMatch?.goal){errors.push('Назовите цель для пополнения, например «300 на цель отпуск».');continue;}
 if(goalMatch?.goal){const goal=goalMatch.goal;if(/минус|снял|вывел|забрал|вернул/i.test(clause)){errors.push('Для пополнения цели укажите положительную сумму.');continue;}if(/(?:^|\s)не\s/i.test(clause)){errors.push('Не удалось однозначно понять пополнение цели.');continue;}const matches=[...goalMatch.amountText.matchAll(amountRe)];if(matches.length!==1){errors.push('Укажите одну сумму для цели «'+goal.name+'».');continue;}if(account.currency!==goal.currency){errors.push('Цель и счёт должны быть в одной валюте.');continue;}
 entries.push({title:'На '+goal.name,amount:amountValue(matches[0][0]),type:'saving',account:account.id,goalId:goal.id,date:dateString(clauseNow)});continue;}
 if(/(?:на|в)\s+накоплен|(?:на|в)\s+сбережен|отложил[аи]?\s+в копилку/u.test(clause)&&!explicitExpense){
