@@ -11,7 +11,7 @@ async function open(id){
  const session={switching:false,animations:[],clean:null};active=session;
  let cleaned=false;session.clean=()=>{if(cleaned)return;cleaned=true;session.animations.forEach(a=>a.cancel());app.style.pointerEvents=oldPointer;document.documentElement.classList.remove('reminder-opening');if(active===session)active=null;};
  app.style.pointerEvents='none';document.documentElement.classList.add('reminder-opening');
- const out=app.animate([{opacity:1},{opacity:0}],{duration:140,easing:'ease-in',fill:'forwards'});session.animations.push(out);
+ const out=app.animate([{opacity:1},{opacity:0}],{duration:100,easing:'ease-in',fill:'forwards'});session.animations.push(out);
  await out.finished.catch(()=>{});if(active!==session)return;
  session.switching=true;
  try{navigate('reminders',{noAnimation:true,noPageMotion:true});}
