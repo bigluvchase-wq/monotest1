@@ -1,6 +1,5 @@
 (function(root){
 'use strict';
-const M=root.MonoMotion;
 // Popover держит уведомление над модальными окнами, не забирая фокус.
 function enter(host){
  host.getAnimations().forEach(a=>a.cancel());delete host.dataset.noticeSwipeOffset;host.hidden=false;
@@ -8,13 +7,13 @@ function enter(host){
  (dialogs.at(-1)||document.body).append(host);
  if(host.showPopover){host.setAttribute('popover','manual');host.hidePopover();host.showPopover();}
  const reduce=root.matchMedia?.('(prefers-reduced-motion:reduce)').matches;
- host.animate([{opacity:0,transform:reduce?'none':'translateY(-14px) scale(.98)'},{opacity:1,transform:'none'}],{duration:reduce?M.duration.reduced:M.duration.small,easing:M.ease.enter});
+ host.animate([{opacity:0,transform:reduce?'none':'translateY(-14px) scale(.98)'},{opacity:1,transform:'none'}],{duration:reduce?120:240,easing:'cubic-bezier(.16,1,.3,1)'});
 }
 function exit(host,done){
  host.getAnimations().forEach(a=>a.cancel());
  const reduce=root.matchMedia?.('(prefers-reduced-motion:reduce)').matches;
  const offset=Number(host.dataset.noticeSwipeOffset)||0;delete host.dataset.noticeSwipeOffset;
- const animation=host.animate([{opacity:1,transform:reduce?'none':`translateY(${offset}px)`},{opacity:0,transform:reduce?'none':`translateY(${offset-(offset?70:10)}px) scale(.98)`}],{duration:reduce?M.duration.reduced:M.duration.feedback,easing:M.ease.exit,fill:'forwards'});
+ const animation=host.animate([{opacity:1,transform:reduce?'none':`translateY(${offset}px)`},{opacity:0,transform:reduce?'none':`translateY(${offset-(offset?70:10)}px) scale(.98)`}],{duration:reduce?100:180,easing:'cubic-bezier(.4,0,1,1)',fill:'forwards'});
  animation.finished.then(()=>{done();animation.cancel();}).catch(()=>{});
 }
 root.MonoNoticeMotion={enter,exit};

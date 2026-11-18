@@ -66,7 +66,7 @@ const express=require(path.join(repo,'server/node_modules/express')),E=require(p
  await p.locator('.agenda-toggle').click();await p.waitForTimeout(100);assert.equal(await p.locator('#paymentCalendar').getAttribute('aria-hidden'),'false');
  await p.locator('[data-payment-day]').first().click();assert.equal(await p.locator('.agenda-day.selected').count(),1);
  await p.evaluate(()=>document.querySelector('#periodDialog').showModal());await p.waitForTimeout(50);
- assert(await p.locator('#periodDialog').evaluate(el=>el.getAnimations().some(a=>a.effect.getTiming().duration===MonoMotion.duration.modal)));
+ assert(await p.locator('#periodDialog').evaluate(el=>el.getAnimations().some(a=>a.effect.getTiming().duration===420)));
  await p.evaluate(()=>document.querySelector('#periodDialog').close());await p.waitForFunction(()=>!document.querySelector('#periodDialog').hasAttribute('open'));
  await p.evaluate(()=>navigate('home',{noPageMotion:true,noAnimation:true}));
  await p.locator('.bottom-nav [data-nav=history]').click();await p.waitForFunction(()=>!MonoPageMotion.isBusy());await p.locator('.bottom-nav [data-nav=menu]').click();

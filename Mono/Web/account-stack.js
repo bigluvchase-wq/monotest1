@@ -1,9 +1,8 @@
 /* Wallet ordering is presentation only. Never changes account balances or the recording account. */
 (function(root){
 'use strict';
-const M=root.MonoMotion;
 const selections=new Map(),controllers=new Map(),reduce=matchMedia('(prefers-reduced-motion: reduce)');
-const duration=M.duration.complex,easing=M.ease.enter;
+const duration=420,easing='cubic-bezier(.16,1,.3,1)';
 function scope(){return root.MonoTogether?.storageKey()||'personal';}
 function stop(controller){for(const animation of controller.animations)animation.cancel();controller.animations=[];}
 function layout(controller,animate=false){
@@ -31,7 +30,7 @@ function layout(controller,animate=false){
   const frames=reduce.matches?[{opacity:.65},{opacity:1}]:front?
    [{transform:starts[index]},{transform:`translate(8px,${target.y-6}px) scale(1)`,offset:.68},{transform}]:
    [{transform:starts[index]},{transform}];
-  controller.animations.push(item.shell.animate(frames,{duration:reduce.matches?M.duration.reduced:duration,easing}));
+  controller.animations.push(item.shell.animate(frames,{duration:reduce.matches?120:duration,easing}));
  });
  const animations=controller.animations;
  Promise.allSettled(animations.map(a=>a.finished)).then(()=>{if(controller.animations===animations)stop(controller);});
