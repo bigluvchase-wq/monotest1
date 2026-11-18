@@ -2,7 +2,7 @@
 'use strict';
 const source=document.querySelector('#voiceAccount'),button=document.querySelector('#homeAccountButton'),dialog=document.querySelector('#homeAccountDialog'),options=document.querySelector('#homeAccountOptions');
 const M=root.MonoMotion;
-const reduce=matchMedia('(prefers-reduced-motion: reduce)'),ease=M.ease.enter,exitEase=M.ease.exit;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)'),ease=M.ease.gentle,exitEase=M.ease.gentle;
 let animation=null,closing=false,pending=false,backdropStart=null,drag=null,suppressUntil=0,details=[],renderedHTML=null;
 function clearDetails(){details.forEach(a=>a.cancel());details=[];}
 const wallet='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M15 14h3"/></svg>';
@@ -20,14 +20,14 @@ function show(){
  if(pending||dialog.open||holding||listening||document.querySelector('dialog[open]'))return;
  animation?.cancel();clearDetails();closing=false;dialog.style.transform='';delete dialog.dataset.exiting;dialog.showModal();button.setAttribute('aria-expanded','true');update();
  const bounds=dialog.getBoundingClientRect(),visible=[...options.querySelectorAll('.home-account-group,.home-account-option')].filter(el=>{const r=el.getBoundingClientRect();return r.bottom>bounds.top&&r.top<bounds.bottom;}).slice(0,10);
- animation=dialog.animate(reduce.matches?[{opacity:0},{opacity:1}]:[{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:reduce.matches?M.duration.reduced:M.duration.sheet,easing:ease});
+ animation=dialog.animate(reduce.matches?[{opacity:0},{opacity:1}]:[{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:reduce.matches?M.duration.reduced:M.duration.accountOpen,easing:ease});
  if(!reduce.matches)details=visible.map((el,i)=>{const a=el.animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],{duration:M.duration.feedback,delay:40+i*M.duration.stagger,easing:ease,fill:'backwards'});a.finished.catch(()=>{});return a;});
 }
 async function hide(fromDrag=false){
  if(!dialog.open||closing)return;closing=true;drag=null;delete dialog.dataset.dragging;dialog.dataset.exiting='true';button.setAttribute('aria-expanded','false');
  const current=getComputedStyle(dialog).transform;
  const y=current==='none'?0:new DOMMatrixReadOnly(current).m42,exitY=Math.max(dialog.offsetHeight,y+16);animation?.cancel();
- const duration=reduce.matches?M.duration.reduced:fromDrag===true?Math.max(M.duration.micro,Math.min(M.duration.exit,(exitY-y)/dialog.offsetHeight*M.duration.exit)):M.duration.exit;
+ const duration=reduce.matches?M.duration.reduced:fromDrag===true?Math.max(M.duration.micro,Math.min(M.duration.accountClose,(exitY-y)/dialog.offsetHeight*M.duration.accountClose)):M.duration.accountClose;
  const exit=dialog.animate(reduce.matches?[{opacity:1},{opacity:0}]:[{transform:current},{transform:`translateY(${exitY}px)`}],{duration,easing:fromDrag===true?ease:exitEase,fill:'forwards'});animation=exit;
  await exit.finished.catch(()=>{});if(!closing||animation!==exit)return;dialog.close();exit.cancel();closing=false;
 }
