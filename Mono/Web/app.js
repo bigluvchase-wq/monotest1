@@ -341,7 +341,7 @@ function runCommand(text){
  for(const part of parts){const cmd=MonoCommands.detect(part);if(cmd)cmds.push(cmd);else rest.push(part);}
  if(!cmds.length)return false;
  const wasOpen=$('#entryDialog').open;if(wasOpen)$('#entryDialog').close();if(listening||holding)cancelVoice();
- commandQueue=cmds;commandRest=rest.join(' ');commandAfter=null;
+ commandQueue=cmds;commandRest=rest.join('; ');commandAfter=null;
  setTimeout(nextCommand,wasOpen?280:0);return true;
 }
 function nextCommand(){const cmd=commandQueue.shift();if(cmd){MonoCommands.run(cmd);if(!$('#actionDialog').open)nextCommand();return;}if(commandAfter){const done=commandAfter;commandAfter=null;done();return;}if(commandRest){const t=commandRest;commandRest='';openEntry(t);}}

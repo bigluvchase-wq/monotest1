@@ -23,7 +23,7 @@ function past(now,marker){const abs=absoluteDate(now,marker);if(abs)return abs;c
 function clauses(text,now,hasAmount=s=>/\d/.test(s)){
 const parts=text.split(/(;|\n|,(?!\d)|\.\s+(?=[\p{L}])|(?<!\d)\.(?!\d)|\s+(?:и(?!\s+(?:белое|белом|точка|дитя)(?!\p{L}))|а)\s+)/iu),records=[];let active=new Date(now);
 for(let i=0;i<parts.length;i+=2){const chunk=parts[i].trim();if(chunk){const markers=[...chunk.matchAll(new RegExp(source,'giu'))];try{if(!markers.length)records.push({text:chunk,now:new Date(active)});else if(markers.length===1){const m=markers[0];const before=chunk.slice(0,m.index).trim(),after=chunk.slice(m.index+m[0].length).trim();
-if(hasAmount(before)&&hasAmount(after)&&/^(?:утром|вечером|днем|ещ[её]|купил|заказал|оплатил|потратил|получил|заправил)/u.test(after)){
+if(hasAmount(before)&&hasAmount(after)&&/^(?:утром|вечером|днем|ещ[её]|купил|заказал|оплатил|потратил|получил|заправил|мне\s+(?:вернули|перевели|заплатили|дали)|вернули|заработал|пришла|пришло)/u.test(after)){
  records.push({text:before,now:new Date(active)});
  active=past(now,m[0]);records.push({text:after,now:new Date(active)});
 }else{
