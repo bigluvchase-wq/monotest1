@@ -30,7 +30,7 @@ try{const svgs=window.MonoCategoryIcons?.svgs;if(svgs){const arrows='<path d="M1
 let chartExpanded=false,tourActive=false,tourStep=0,navAnimation=null,backTarget=null;
 let premiumFrom=null;
 function backDestination(){if(page==='health')return 'history';if(page==='premium')return premiumFrom||'profile';return page==='profile'?'home':backTarget||'menu';}
-let page='home',operationType='expense',selectedCurrency='RUB',selectedMonth=E.dateString(new Date()).slice(0,7),selectedRange=null,search='',drafts=[],parseErrors=[],listening=false,holding=false,toastTimer,voiceAccount=state.accounts[0].id;
+let page='home',operationType='expense',selectedCurrency='RUB',selectedMonth=E.dateString(new Date()).slice(0,7),selectedRange=null,search='',drafts=[],reminderDrafts=[],parseErrors=[],listening=false,holding=false,toastTimer,voiceAccount=state.accounts[0].id;
 const uid=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=(n,c='RUB')=>new Intl.NumberFormat(state.settings.language==='en'?'en-US':'ru-RU',{style:'currency',currency:c,maximumFractionDigits:n%100?2:0}).format(n/100);
@@ -338,7 +338,7 @@ let commandQueue=[],commandRest='',commandAfter=null;
 function runCommand(text){
  if(!text||!window.MonoCommands)return false;
  const parts=MonoCommands.split(text),cmds=[],rest=[];
- for(const part of parts){const cmd=MonoCommands.detect(part);if(cmd)cmds.push(cmd);else rest.push(part);}
+ for(const part of parts){const cmd=MonoCommands.detect(part);if(cmd&&cmd.kind!=='reminder')cmds.push(cmd);else rest.push(part);}
  if(!cmds.length)return false;
  const wasOpen=$('#entryDialog').open;if(wasOpen)$('#entryDialog').close();if(listening||holding)cancelVoice();
  commandQueue=cmds;commandRest=rest.join('; ');commandAfter=null;
@@ -347,10 +347,10 @@ function runCommand(text){
 function nextCommand(){const cmd=commandQueue.shift();if(cmd){MonoCommands.run(cmd);if(!$('#actionDialog').open)nextCommand();return;}if(commandAfter){const done=commandAfter;commandAfter=null;done();return;}if(commandRest){const t=commandRest;commandRest='';openEntry(t);}}
 $('#actionDialog').addEventListener('close',()=>{if(commandQueue.length||commandRest||commandAfter)setTimeout(nextCommand,320);});
 function openEntry(text='',how=''){const gallery=document.querySelector('[data-document-pick]');if(gallery)gallery.hidden=!!text;cancelParse();if(text&&!window.MonoVoiceAI?.enabled()&&runCommand(text))return;$('#entryDialog').dataset.enter=how;
- if(listening||holding)cancelVoice();drafts=[];parseErrors=[];$('#dictation').value=text;$('#drafts').innerHTML='';$('#parseErrors').textContent='';$('#saveButton').hidden=true;$('#sheetTitle').textContent='Что запишем?';if(!$('#entryDialog').open)$('#entryDialog').showModal();if(text)parseInput();else $('#dictation').focus({preventScroll:true});translateUI();
+ if(listening||holding)cancelVoice();drafts=[];reminderDrafts=[];parseErrors=[];$('#dictation').value=text;$('#drafts').innerHTML='';$('#parseErrors').textContent='';$('#saveButton').hidden=true;$('#sheetTitle').textContent='Что запишем?';if(!$('#entryDialog').open)$('#entryDialog').showModal();if(text)parseInput();else $('#dictation').focus({preventScroll:true});translateUI();
 }
 $('#textEntry').onclick=()=>openEntry();$('#closeEntry').onclick=()=>$('#entryDialog').close();
-$('#dictation').oninput=()=>{cancelParse();drafts=[];parseErrors=[];$('#drafts').innerHTML='';$('#saveButton').hidden=true;$('#parseErrors').textContent='';};
+$('#dictation').oninput=()=>{cancelParse();drafts=[];reminderDrafts=[];parseErrors=[];$('#drafts').innerHTML='';$('#saveButton').hidden=true;$('#parseErrors').textContent='';};
 let parseTask=null,parseVersion=0;
 function cancelParse(){parseVersion++;parseTask?.abort();parseTask=null;$('#parseButton').disabled=false;$('#parseButton').textContent='Разобрать ↗';}
 $('#entryDialog').addEventListener('close',cancelParse);
@@ -359,7 +359,7 @@ async function parseInput(){
  if(!window.MonoVoiceAI?.enabled()&&runCommand(text))return;
  const version=parseVersion,controller=new AbortController();parseTask=controller;
  const timeout=setTimeout(()=>controller.abort(),15000);
- drafts=[];parseErrors=[];$('#drafts').replaceChildren();$('#saveButton').hidden=true;
+ drafts=[];reminderDrafts=[];parseErrors=[];$('#drafts').replaceChildren();$('#saveButton').hidden=true;
  $('#parseButton').disabled=true;$('#parseButton').textContent='Разбираю…';
  $('#parseErrors').innerHTML='<p class="muted" role="status">Разбираю фразу…</p>';
  let r,fallback=false;
@@ -368,13 +368,14 @@ async function parseInput(){
  finally{clearTimeout(timeout);}
  if(version!==parseVersion||!$('#entryDialog').open||$('#dictation').value.trim()!==text)return;
  parseTask=null;$('#parseButton').disabled=false;$('#parseButton').textContent='Разобрать ↗';
- if(!r){if(runCommand(text))return;r=E.parse(text,new Date(),state.entries,state,voiceAccount);}
+ if(!r){if(runCommand(text))return;r=MonoCommands.review(text,new Date(),state.entries,state,voiceAccount);}
+ if(r.commands?.length&&r.commands.every(c=>c.kind==='reminder')){r.reminders=r.commands.map(c=>({...c.data,date:c.data.date||'',time:c.data.time||'',repeat:c.data.repeat||'once'}));r.commands=[];}
  if(r.commands?.length&&!r.errors.length){
   $('#entryDialog').close();commandQueue=r.commands;commandRest='';
   commandAfter=r.entries.length?()=>{openEntry();$('#dictation').value=text;drafts=r.entries;parseErrors=[];renderDrafts();}:null;
   setTimeout(nextCommand,320);return;
  }
- drafts=r.entries;parseErrors=r.errors;
+ drafts=r.entries;reminderDrafts=r.reminders||[];parseErrors=r.errors;
  $('#parseErrors').innerHTML=(fallback?'<p class="muted tiny">Умный разбор недоступен — фраза разобрана на устройстве.</p>':'')+r.errors.map(e=>`<p class="warn">${esc(e)}</p>`).join('')+(r.errors.length&&drafts.length?'<p class="warn">Исправьте неразобранные части текста перед сохранением.</p>':'');renderDrafts();
 }
 $('#parseButton').onclick=parseInput;
@@ -388,15 +389,19 @@ function transferDraftFields(entry){
   ?`<label>Зачисление, ${to.currency}<input data-field="toAmount" type="number" min="0.01" max="10000000000" step="0.01" required value="${entry.toAmount?entry.toAmount/100:''}"></label>`:'';
  return `<label>На какой счёт<select data-field="toAccount" required><option value="">Выберите счёт</option>${options}</select></label>${received}`;
 }
+function reminderDraftHTML(r,i){
+ return `<section class="draft" data-reminder-index="${i}"><strong>Напоминание</strong><div class="draft-bottom"><label>Название<input data-reminder-field="title" required maxlength="120" value="${esc(r.title||'')}"></label><label>Описание<input data-reminder-field="text" maxlength="1000" value="${esc(r.text||'')}"></label><label>Дата<input data-reminder-field="date" type="date" required value="${esc(r.date||'')}"></label><label>Время<input data-reminder-field="time" type="time" required value="${esc(r.time||'')}"></label><label>Повтор<select data-reminder-field="repeat">${Object.entries(MonoSchedule.label).map(([value,label])=>`<option value="${value}" ${r.repeat===value?'selected':''}>${label}</option>`).join('')}</select></label></div><div class="draft-actions"><span class="muted tiny">Проверьте дату и время напоминания</span><button type="button" data-remove-reminder="${i}">Убрать</button></div></section>`;
+}
 function renderDrafts(){
  const gallery=document.querySelector('[data-document-pick]');if(gallery)gallery.hidden=drafts.length>0||!!$('#dictation').value.trim();
- $('#sheetTitle').textContent=drafts.length?'Проверим и запишем':'Что запишем?';
+ $('#sheetTitle').textContent=drafts.length+reminderDrafts.length?'Проверим и запишем':'Что запишем?';
  $('#drafts').innerHTML=drafts.map((e,i)=>{const a=account(e.account)||account(voiceAccount),transfer=e.type==='transfer',saving=e.type==='saving',installment=e.installmentTotal!==undefined;
  const plan=installment&&e.installmentTotal>=4&&e.date?E.installmentPlan(e.installmentTotal,e.date):[];
  return `<div class="draft" data-index="${i}"><div class="draft-top"><label>Название<input data-field="title" required maxlength="300" value="${esc(e.title)}"></label><label>${installment?'Полная сумма':'Сумма'}, ${a.currency}<input data-field="${installment?'installmentTotal':'amount'}" type="number" min="${installment?'0.04':'0.01'}" max="10000000000" step="0.01" required value="${(e.installmentTotal??e.amount)/100}"></label></div><div class="draft-bottom"><label>Тип<select data-field="type" ${installment||transfer?'disabled':''}><option value="expense" ${e.type==='expense'?'selected':''}>Расход</option><option value="income" ${e.type==='income'?'selected':''}>Доход</option><option value="saving" ${saving?'selected':''} >Накопления</option>${transfer?'<option value="transfer" selected>Перевод между своими</option>':''}</select></label><label>${transfer?'С какого счёта':'Счёт'}<select data-field="account" required>${transfer?'<option value="">Выберите счёт</option>':''}${accountOptions(e.account,saving?state.goals.find(g=>g.id===e.goalId)?.currency??null:null)}</select></label>${transfer?transferDraftFields(e):saving?`<label>Цель<select data-field="goalId"><option value="" ${!e.goalId?'selected':''}>Накопления без цели</option>${state.goals.filter(g=>g.currency===a.currency).map(g=>`<option value="${esc(g.id)}" ${g.id===e.goalId?'selected':''}>${esc(g.name)}</option>`).join('')}</select></label>`:`<label>Категория<select data-field="category">${categoryOptions(e.type,e.category)}</select></label>`}<label>Дата<input data-field="date" type="date" required value="${e.date}"></label></div>${installment?`<div class="draft-installments"><strong>Долями · 4 платежа</strong><ol data-installment-plan>${installmentRows(plan,a.currency)}</ol></div>`:''}<div class="draft-actions"><span class="muted tiny">${saving?'Со счёта в цель · не расход':'Проверьте сумму, категорию и счёт'}</span><button data-remove="${i}">Убрать</button></div></div>`;}).join('');
- $('#saveButton').hidden=!drafts.length;$('#saveButton').disabled=!!parseErrors.length;$('#saveButton').textContent=drafts.length===1?'Сохранить запись':`Сохранить записи · ${drafts.length}`;translateUI();
+ $('#drafts').insertAdjacentHTML('beforeend',reminderDrafts.map(reminderDraftHTML).join(''));
+ const count=drafts.length+reminderDrafts.length;$('#saveButton').hidden=!count;$('#saveButton').disabled=!!parseErrors.length;$('#saveButton').textContent=reminderDrafts.length?`Сохранить всё · ${count}`:drafts.length===1?'Сохранить запись':`Сохранить записи · ${drafts.length}`;translateUI();
 }
-$('#drafts').oninput=e=>{const field=e.target.dataset.field;if(!field)return;const draft=drafts[Number(e.target.closest('[data-index]').dataset.index)];draft[field]=['amount','installmentTotal','toAmount'].includes(field)?cents(e.target.value):e.target.value;if(field==='category')draft.categoryChosen=true;
+$('#drafts').oninput=e=>{const reminderField=e.target.dataset.reminderField;if(reminderField){reminderDrafts[Number(e.target.closest('[data-reminder-index]').dataset.reminderIndex)][reminderField]=e.target.value;return;}const field=e.target.dataset.field;if(!field)return;const draft=drafts[Number(e.target.closest('[data-index]').dataset.index)];draft[field]=['amount','installmentTotal','toAmount'].includes(field)?cents(e.target.value):e.target.value;if(field==='category')draft.categoryChosen=true;
  if(draft.installmentTotal!==undefined&&['installmentTotal','date'].includes(field)){
   const plan=e.target.validity.valid&&draft.installmentTotal>=4&&draft.date?E.installmentPlan(draft.installmentTotal,draft.date):[];
   e.target.closest('.draft').querySelector('[data-installment-plan]').innerHTML=installmentRows(plan,account(draft.account).currency);
@@ -407,11 +412,11 @@ $('#drafts').oninput=e=>{const field=e.target.dataset.field;if(!field)return;con
   delete draft.toAmount;renderDrafts();
  }else if(field==='account'||field==='goalId')renderDrafts();
 };
-$('#drafts').onclick=e=>{const b=e.target.closest('[data-remove]');if(b){drafts.splice(Number(b.dataset.remove),1);renderDrafts();}};
-$('#saveButton').onclick=()=>{if(!drafts.length||parseErrors.length)return;if(drafts.some(d=>d.type==='saving')&&!requireAccess('goals'))return;if(drafts.some(d=>d.installmentTotal!==undefined)&&!requireAccess('payments'))return;for(const input of $('#drafts').querySelectorAll('input,select'))if(!input.reportValidity())return;let next,added;try{({next,added}=E.saveDrafts(state,drafts));}catch(error){notify(error.message);return;}
+$('#drafts').onclick=e=>{const reminder=e.target.closest('[data-remove-reminder]');if(reminder){reminderDrafts.splice(Number(reminder.dataset.removeReminder),1);renderDrafts();return;}const b=e.target.closest('[data-remove]');if(b){drafts.splice(Number(b.dataset.remove),1);renderDrafts();}};
+$('#saveButton').onclick=()=>{if((!drafts.length&&!reminderDrafts.length)||parseErrors.length)return;if(reminderDrafts.length&&!requireAccess('reminders'))return;if(drafts.some(d=>d.type==='saving')&&!requireAccess('goals'))return;if(drafts.some(d=>d.installmentTotal!==undefined)&&!requireAccess('payments'))return;for(const input of $('#drafts').querySelectorAll('input,select'))if(!input.reportValidity())return;let next,added;try{({next,added}=E.saveDrafts(state,drafts,new Date().toISOString(),reminderDrafts));}catch(error){notify(error.message);return;}
  if(added.some(e=>e.type==='saving'&&E.balance(next,e.account)<0)&&!confirm('Пополнение цели сделает остаток счёта отрицательным. Продолжить?'))return;
  for(const entry of added)window.MonoBankMerchants?.remember(next,entry);
- const base=state;const finish=captured=>{if(state!==base){notify('Данные изменились. Проверьте запись и сохраните ещё раз.');return false;}if(!persist(next))return false;drafts=[];const dialog=$('#entryDialog'),message=added.some(e=>e.type==='saving')?'Накопления пополнены. В расходы не включены.':'Записано. Всё на своих местах.';const close=()=>{if(captured)dialog.dataset.saveWave='true';dialog.close();delete dialog.dataset.saveWave;};if(captured){const clear=MonoSaveWave.showReceipt(dialog,message);MonoSaveWave.afterFinish(()=>MonoSaveWave.dismissReceipt(dialog,clear));}else{dialog.addEventListener('close',()=>notify(message,true),{once:true});close();}refreshAccounts();renderHomeReminders();window.MonoHome?.render();if(page!=='home')render();return true;};
+ const base=state;const finish=captured=>{if(state!==base){notify('Данные изменились. Проверьте запись и сохраните ещё раз.');return false;}if(!persist(next))return false;drafts=[];reminderDrafts=[];const dialog=$('#entryDialog'),message=added.some(e=>e.type==='saving')?'Накопления пополнены. В расходы не включены.':'Записано. Всё на своих местах.';const close=()=>{if(captured)dialog.dataset.saveWave='true';dialog.close();delete dialog.dataset.saveWave;};if(captured){const clear=MonoSaveWave.showReceipt(dialog,message);MonoSaveWave.afterFinish(()=>MonoSaveWave.dismissReceipt(dialog,clear));}else{dialog.addEventListener('close',()=>notify(message,true),{once:true});close();}refreshAccounts();renderHomeReminders();window.MonoHome?.render();if(page!=='home')render();return true;};
  if(window.MonoSaveWave)MonoSaveWave.simple($('#saveButton'),finish);else finish(false);
 };
 let recognition;

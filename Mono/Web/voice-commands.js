@@ -160,7 +160,7 @@ function commandText(raw){
   .replace(/\s+пожалуйста$/u,'');
 }
 function detect(raw){
- const text=commandText(raw);if(!text)return null;
+ const text=commandText(raw).replace(/^(?:(?:и|а|еще|также|потом|затем)\s+)+/u,'');if(!text)return null;
  for(const c of commands){if(c.re.test(text)){const ctx={text};try{return {kind:c.kind,data:c.parse(ctx),source:raw};}catch(error){console.error(error);return null;}}}
  return null;
 }
@@ -180,6 +180,17 @@ function split(raw){
   if(!takeAmount({text:norm(tail)}))return [chunk];
   return [chunk.slice(0,match.index).trim(),tail];
  });
+}
+// Review reminders alongside money; nothing is written until the user saves.
+function review(raw,now,history,state,account){
+ const financial=[],reminders=[];
+ for(const part of split(raw)){
+  const cmd=detect(part);
+  if(cmd?.kind==='reminder')reminders.push({...cmd.data,date:cmd.data.date||'',time:cmd.data.time||'',repeat:cmd.data.repeat||'once'});
+  else financial.push(part);
+ }
+ const result=financial.length?E.parse(financial.join('; '),now,history,state,account):{entries:[],errors:[]};
+ return {...result,reminders};
 }
 // Заполняет поля открытого окна и обновляет подписи у полей даты и времени
 function fill(values){
@@ -263,5 +274,5 @@ document.addEventListener('click',e=>{
  const b=e.target.closest('[data-try-phrase]');if(b){const text=b.dataset.tryPhrase;$('#actionDialog').close();setTimeout(()=>openEntry(text.replace(/ — .*$/,'')),280);return;}
  if(e.target.closest('[data-voice-phrases]')){e.preventDefault();if($('#entryDialog').open)$('#entryDialog').close();showPhrases();}
 });
-root.MonoCommands={detect,split,run:cmd=>root.MonoTogether?.withCurrentScope?root.MonoTogether.withCurrentScope(()=>run(cmd)):run(cmd),showPhrases,phrasesHTML,parseWhen:t=>parseWhen({text:norm(t)})};
+root.MonoCommands={detect,split,review,run:cmd=>root.MonoTogether?.withCurrentScope?root.MonoTogether.withCurrentScope(()=>run(cmd)):run(cmd),showPhrases,phrasesHTML,parseWhen:t=>parseWhen({text:norm(t)})};
 })(window);
