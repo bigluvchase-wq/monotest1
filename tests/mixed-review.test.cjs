@@ -28,7 +28,7 @@ test('concise titles preserve meaningful unknown merchants and purchased items',
 });
 test('native bridge keeps later utterances and replaces overlapping partial revisions',()=>{
  const src=fs.readFileSync(require.resolve('../Mono/Web/native-bridge.js'),'utf8');const end=src.indexOf('function refreshReminders');
- const native={webkit:{messageHandlers:{mono:{postMessage(){}}}}};vm.runInNewContext(src.slice(0,end)+'root.TestRecognition=NativeRecognition;root.testEvent=speechEvent;})(window);',{window:native});
+ const native={webkit:{messageHandlers:{mono:{postMessage(){}}}}};vm.runInNewContext(src.slice(0,end)+'root.TestRecognition=NativeRecognition;root.testEvent=speechEvent;})(window);',{window:native,MonoVoice:require('../Mono/Web/voice')});
  const rec=new native.TestRecognition(),results=[];rec.onresult=e=>results.push(e.results[0][0].transcript);rec.start();
  const emit=(text,start,end)=>native.testEvent(rec.id,'result',{text,segmentStart:String(start),segmentEnd:String(end)});
  emit('Купил кофе за 30',0.2,2);emit('Купил кофе за 300',0.2,2.2);emit('Потом продукты',4,5);emit('Потом продукты за 1000',4,6);
@@ -36,4 +36,17 @@ test('native bridge keeps later utterances and replaces overlapping partial revi
  emit('Потом продукты за 1000 и напомни завтра купить корм',4,10);assert.equal(results.at(-1),'Купил кофе за 300 Потом продукты за 1000 и напомни завтра купить корм');
  emit('Купил кофе за 300 потом продукты за 1000 и напомни завтра купить корм',0.2,10);assert.equal(results.at(-1),'Купил кофе за 300 потом продукты за 1000 и напомни завтра купить корм');
  native.testEvent(rec.id,'end',{});const next=new native.TestRecognition();next.onresult=rec.onresult;next.start();native.testEvent(next.id,'result',{text:'Новая запись',segmentStart:'0.2',segmentEnd:'2'});assert.equal(results.at(-1),'Новая запись');
+});
+test('native word windows retain coffee through overlapping timestamps and repeated suffixes',()=>{
+ const src=fs.readFileSync(require.resolve('../Mono/Web/native-bridge.js'),'utf8'),native={webkit:{messageHandlers:{mono:{postMessage(){}}}}};
+ vm.runInNewContext(src.slice(0,src.indexOf('function refreshReminders'))+'root.R=NativeRecognition;root.event=speechEvent;})(window);',{window:native,MonoVoice:require('../Mono/Web/voice')});
+ const rec=new native.R(),results=[];rec.onresult=e=>results.push(e.results[0][0].transcript);rec.start();
+ const emit=(text,words)=>native.event(rec.id,'result',{text,segments:JSON.stringify(words.map(([text,start])=>({text,start})))});
+ emit('Купил кофе 300',[['Купил',0],['кофе',0.5],['300',1]]);
+ emit('Купил кофе 300',[['Купил',0.1],['кофе',0.5],['300',1]]);assert.equal(results.at(-1),'Купил кофе 300');
+ emit('Потом заправился на лукойле на 500',[['Потом',1.1],['заправился',2],['на',2.5],['лукойле',3],['на',3.5],['500',4]]);
+ assert.equal(results.at(-1),'Купил кофе 300 Потом заправился на лукойле на 500');
+ emit('Потом заправился на лукойле на 500',[['Потом',5],['заправился',6],['на',6.5],['лукойле',7],['на',7.5],['500',8]]);
+ assert.equal(results.at(-1),'Купил кофе 300 Потом заправился на лукойле на 500');
+ emit('Вчера мне вернули долг 650',[['Вчера',10],['мне',11],['вернули',12],['долг',13],['650',14]]);assert.equal(results.at(-1),'Купил кофе 300 Потом заправился на лукойле на 500 Вчера мне вернули долг 650');
 });

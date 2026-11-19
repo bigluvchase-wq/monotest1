@@ -17,12 +17,23 @@ function speechEvent(id,event,info){
  if(event==='start')session.onstart?.();
  if(event==='result'){
   const text=String(info.text||'').trim(),start=Number(info.segmentStart),end=Number(info.segmentEnd);
-  // iOS may replace a completed utterance with a new time range in the same task.
-  // Overlapping partials are revisions; only a later, non-overlapping range appends.
-  if(text&&Number.isFinite(start)&&Number.isFinite(end)&&end>=start){
-   const earlier=(session.speechParts||[]).filter(part=>part.start<start&&part.end<=start+0.01);
-   session.speechParts=[...earlier,{start,end,text}];
-   session.speechText=session.speechParts.map(part=>part.text).join(' ');
+  // Keep early words when iOS slides its transcription window past a pause.
+  // Incoming segments replace revisions from their own timestamp onward.
+  let segments;try{segments=JSON.parse(info.segments||'null');}catch{}
+  if(text&&Array.isArray(segments)&&segments.length&&segments.every(s=>typeof s.text==='string'&&Number.isFinite(s.start))){
+   const first=segments[0].start;
+   let earlier=(session.speechSegments||[]).filter(s=>s.start<first-0.05);
+   const normalized=s=>s.toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+   const prefixKey=normalized(earlier.map(s=>s.text).join(' '));
+   if(prefixKey&&(normalized(text)+' ').startsWith(prefixKey+' '))earlier=[];
+   const prefix=earlier.map(s=>s.text).join(' '),merged=MonoVoice.joinSpeech([prefix,text]);
+   session.speechSegments=merged===prefix?earlier:[...earlier,...segments];
+   session.speechText=merged;
+  }else if(text&&Number.isFinite(start)&&Number.isFinite(end)&&end>=start){
+   const earlier=(session.speechParts||[]).filter(part=>part.start<start-0.05);
+   const prefix=MonoVoice.joinSpeech(earlier.map(part=>part.text)),merged=MonoVoice.joinSpeech([prefix,text]);
+   session.speechParts=merged===prefix?earlier:[...earlier,{start,end,text}];
+   session.speechText=merged;
   }else if(text)session.speechText=text;
   session.onresult?.({results:[{0:{transcript:session.speechText||''},isFinal:false}]});
  }
