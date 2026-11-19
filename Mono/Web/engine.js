@@ -1,6 +1,7 @@
 (function(root){
 'use strict';
 const Schedule=typeof module==='object'?require('./schedule.js'):root.MonoSchedule,SpeechDates=typeof module==='object'?require('./speech-dates.js'):root.MonoSpeechDates;
+const NLP=typeof module==='object'?require('./local-nlp.js'):root.MonoLocalNLP;
 const Speech=typeof module==='object'?require('./speech-categories.js'):root.MonoSpeechCategories;
 const categories=['Кафе','Продукты','Транспорт','Авто','Покупки','Дом','Здоровье','Развлечения','Работа','Красота',...Speech.extraExpenses,...Speech.voiceExpenses,'Другое'];
 const dictionary=[['Кафе',/кофе|кафе|ресторан|обед|ужин|завтрак|доставк.*ед|пицц|бургер/],['Продукты',/(?<!\p{L})(?:продукт|магазин|пят[её]роч|перекр[её]ст|магнит|вкусвилл|ашан|дикси|лента(?!\p{L})|самокат|куппер|хлеб|молок|булоч|булк|кола(?!\p{L})|колу(?!\p{L})|колы(?!\p{L})|кока[- ]?кол|coca[- ]?cola|pepsi|пепси|газиров|напит|сок(?!\p{L})|сока(?!\p{L})|соки(?!\p{L})|вод[ауы](?!\p{L})|сыр|яйц|яиц|мяс|куриц|рыб|овощ|фрукт|яблок|банан|карто|помидор|огур|макарон|круп|рис(?!\p{L})|греч|сахар|соль(?!\p{L})|масл|кефир|йогурт|творог|сметан|сливк|печень|конфет|шоколад|морожен|выпечк|батон|сосиск|колбас|чипс|сухар|чай(?!\p{L}))/u],['Авто',/автомойк|мойк[аиуе]|детейлинг|полировк[аиуе]|керамик[аиуе]|химчистк[аиуе] салон|шиномонтаж|балансировк|развал.?схождени|замен[аыуе] масла|заправк|заправил|заправился|азс|бензин|дизел|топлив|автосервис|техобслуживани|техосмотр|тонировк|эвакуатор|автозапчаст|запчаст[иь]|шин[аыу](?!\p{L})|резин[аыу](?!\p{L})|осаго|каско|парковк|стоянк|гибдд|платн[а-я]* дорог|автомобил|машин[аыу](?!\p{L})|лукойл|роснефть|газпром(?!\p{L}*\s*банк)/u],['Транспорт',/такси|метро|автобус|проезд|транспорт|электричк|поезд|самолет|самолёт|каршеринг/],['Здоровье',/аптек|лекарств|врач|здоров|анализ|массаж|стоматолог|клиник|психолог|терапевт/],['Дом',/квартир|аренд|коммун|интернет|ремонт/],['Развлечения',/кино|театр|игр|концерт|подписк|нетфликс|netflix|spotify|спотифай|музе|парк аттракцион/],['Красота',/красот|стриж|парикмахер|барбер|салон|маникюр|педикюр|косметик|бров|ресниц|эпиляц/],['Работа',/стриж|зарплат|аванс|гонорар|клиент|заказ|работ|песн|аранжировк/],['Покупки',/одежд|обув|футбол|подар|покупк|озон|ozon|wildberries|вайлдберриз|ламода|парикмахер|салон|маникюр|косметик/]];
@@ -152,7 +153,7 @@ function splitSpokenOperations(text){
  const quantity=text.match(quantityPattern);
  const matches=[...text.matchAll(amountRe)].filter(m=>!quantity||m.index>=quantity.index+quantity[0].length||m.index<quantity.index);
  if(matches.length<2)return [text];
- const connector=/(?<!\p{L})(?:потом|затем|плюс|из них|в обед|утром|вечером|(?:я )?сразу|купил[аи]?|заказал[аи]?|заплатил[аи]?|оплатил[аи]?|закинул[аи]?|перевел[аи]?|отложил[аи]?|снял[аи]?|скинул[аи]?|заправил[а-я]*|получил[аи]?|заработал[аи]?)(?!\p{L})/u;
+ const connector=/(?<!\p{L})(?:потом|затем|также|плюс|из них|в обед|утром|вечером|(?:я )?сразу|купил[аи]?|заказал[аи]?|заплатил[аи]?|оплатил[аи]?|закинул[аи]?|перевел[аи]?|отложил[аи]?|снял[аи]?|скинул[аи]?|заправил[а-я]*|получил[аи]?|заработал[аи]?)(?!\p{L})/u;
  const currencyPrefix=/^\s*(?:(?:руб(?:лей|ля|ль)?|евро|доллар[а-я]*|тенге|юан[а-яь]*|rub|usd|eur|kzt|cny)(?!\p{L})|[₽$€])/u;
  const pieces=[];
  let start=0;
@@ -190,6 +191,7 @@ if(!state){for(const part of clauses){if(part.error){errors.push(part.error);con
 let previous='';
 for(const part of clauses.flatMap(part=>part.error?[part]:splitSpokenOperations(part.text).map(text=>({...part,text})))){
 if(part.error){errors.push(part.error);continue;}let clause=part.text;const clauseNow=part.now;
+const resolved=NLP.entities(clause,state);if(resolved.ambiguous){errors.push('Название похоже на несколько целей или счетов. Уточните название.');continue;}clause=resolved.text;
 if(/тысяч|миллион/u.test(previous)&&/из них|отложил[аи]? (?:в копилку|на накопления)|билет[а-я]* в отпуск/u.test(clause)){
  const amounts=[...clause.matchAll(amountRe)];
  if(amounts.length===1&&/^\d{1,2}$/.test(amounts[0][0])&&!/руб|евро|доллар|₽|тенге/u.test(clause)){
@@ -249,9 +251,13 @@ if(/(?:на|в)\s+накоплен|(?:на|в)\s+сбережен|отложил
 }
 if(/цель|накоплен|отлож|закин|пополни|перелож/i.test(clause)&&!explicitExpense&&Speech.expense(clause)!=='Ставки'){errors.push('Сначала создайте цель в разделе «Цели», затем скажите «на отпуск десять тысяч».');continue;}
 if(/долями плюс/u.test(clause)){errors.push('Для «Долями Плюс» добавьте платежи по графику из договора.');continue;}
-const r=parseLegacy(clause,clauseNow,history,true);errors.push(...r.errors);
-for(const e of r.entries){e.account=account.id;const cash=state.accounts.find(a=>/налич/i.test(a.name)&&a.currency===account.currency);if(/налич/i.test(clause)&&cash)e.account=cash.id;
+const intent=NLP.classify(clause,{amount:[...clause.matchAll(amountRe)].length>0,income:!!incomeCategory,expense:!!expenseCategory});
+const categoryMention=clause.match(/(?<!\p{L})категори[яию]\s+([а-яёa-z-]+)/iu);
+const customCategory=categoryMention?[...state.categories,...state.incomeCategories].find(c=>normalizeTitle(c)===normalizeTitle(categoryMention[1])):null;
+const r=parseLegacy(customCategory?clause.replace(categoryMention[0],' '):clause,clauseNow,history,true);errors.push(...r.errors);
+for(const e of r.entries){if(!incomeCategory&&!expenseCategory&&intent.intent==='income')e.type='income';e.account=account.id;const cash=state.accounts.find(a=>/налич/i.test(a.name)&&a.currency===account.currency);if(/налич/i.test(clause)&&cash)e.account=cash.id;
 const all=e.type==='income'?state.incomeCategories:state.categories;
+if(customCategory&&all.includes(customCategory)){e.category=customCategory;e.categoryChosen=true;}
 const learned=[...history].reverse().find(h=>h.categoryChosen&&h.type===e.type&&normalizeTitle(h.title)===normalizeTitle(e.title)&&all.includes(h.category));
 if(learned)e.category=learned.category;
 if(e.type==='income'&&Speech.income(clause)==='Возвраты'){
