@@ -17,7 +17,7 @@ class FixedDate extends Date {
 }
 const window = {webkit: {messageHandlers: {mono: {postMessage: message => posted.push(message)}}}};
 vm.runInNewContext(fs.readFileSync(path.join(web,'native-bridge.js'),'utf8'),{
-  window,E,MonoSchedule,state,Date:FixedDate,money:n=>String(n/100),account:()=>state.accounts[0]
+  window,E,MonoVoice:require(path.join(web,'voice.js')),MonoSchedule,state,Date:FixedDate,money:n=>String(n/100),account:()=>state.accounts[0]
 });
 const bridge=window.MonoNative;
 const rec=new bridge.Recognition();
@@ -32,6 +32,11 @@ rec.stop();
 bridge.speechEvent(rec.id,'end',{});
 assert.deepEqual(events,['start','КБ 300','end']);
 assert.deepEqual(posted.slice(0,2).map(m=>m.action),['speechStart','speechStop']);
+// formattedString is authoritative even if iOS word segments split the number.
+const numeric=new bridge.Recognition(),numericResults=[];numeric.onresult=e=>numericResults.push(e.results[0][0].transcript);numeric.start();
+bridge.speechEvent(numeric.id,'result',{text:'Заправился на 6',segmentStart:'0',segmentEnd:'2'});
+bridge.speechEvent(numeric.id,'result',{text:'Заправился на 650',segmentStart:'0.2',segmentEnd:'3',segments:JSON.stringify([{text:'Заправился',start:0.2},{text:'на',start:1},{text:'6',start:2},{text:'50',start:2.1}])});
+assert.equal(numericResults.at(-1),'Заправился на 650');bridge.speechEvent(numeric.id,'end',{});
 bridge.refreshReminders();
 const items=posted.at(-1).items;
 assert.equal(items.length,60);

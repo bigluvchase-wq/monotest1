@@ -24,6 +24,25 @@ function joinSpeech(parts){
  }
  return words.join(' ');
 }
+// One complete formatted hypothesis per recognition window. Never rebuild from words:
+// iOS can represent “650” as multiple segments while formattedString remains correct.
+function createTranscript(){
+ let prefix='',current='',start=null,end=null;
+ const key=s=>s.toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+ return {update(text,rawStart,rawEnd){
+  if(!text)return joinSpeech([prefix,current]);
+  const nextStart=rawStart===undefined?NaN:Number(rawStart),nextEnd=rawEnd===undefined?NaN:Number(rawEnd);
+  const full=joinSpeech([prefix,current]),incoming=key(text),known=key(full);
+  // A cumulative hypothesis supersedes all earlier versions, including shifted timestamps.
+  if(known&&known.split(' ').length>=8&&incoming===known+' '+known)return full;
+  if((start!==null&&Number.isFinite(nextStart)&&nextStart<start-.15)||(known&&(incoming===known||incoming.startsWith(known+' '))))prefix='';
+  else if(start!==null&&end!==null&&nextStart>end+.15&&nextStart>start){prefix=full;}
+  // Sliding-window revisions replace the current window rather than repeatedly appending it.
+  current=text;
+  start=Number.isFinite(nextStart)?nextStart:null;end=Number.isFinite(nextEnd)?nextEnd:null;
+  return joinSpeech([prefix,current]);
+ }};
+}
 function create({Recognition,secure=true,onState=()=>{},onResult=()=>{},onProgress=()=>{},onFailure=()=>{},setTimer=setTimeout,clearTimer=clearTimeout}){
 let active=null, held=false, heldParts=[],restartTimer=null,heldText='';
 function finishHeld(){clearTimer(restartTimer);restartTimer=null;held=false;const text=joinSpeech(heldParts);heldParts=[];heldText='';onState('idle');if(text)onResult(text);else report('empty-result');}
@@ -77,5 +96,5 @@ try{session.rec.stop();}catch(err){fail(session,err.name||'stop-error');}
 function abort(){held=false;heldParts=[];heldText='';clearTimer(restartTimer);restartTimer=null;if(active)abortAndRelease(active);else onState('idle');}
 return {start,stop,abort};
 }
-const api={create,describe,joinSpeech};if(typeof module!=='undefined')module.exports=api;root.MonoVoice=api;
+const api={create,describe,joinSpeech,createTranscript};if(typeof module!=='undefined')module.exports=api;root.MonoVoice=api;
 })(typeof window!=='undefined'?window:globalThis);

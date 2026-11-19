@@ -77,13 +77,6 @@ final class SpeechBridge {
                         if !text.isEmpty {
                             let segments = result.bestTranscription.segments
                             var info = ["text": session.latest]
-                            let words: [[String: Any]] = segments.map {
-                                ["text": $0.substring, "start": $0.timestamp]
-                            }
-                            if let data = try? JSONSerialization.data(withJSONObject: words),
-                               let json = String(data: data, encoding: .utf8) {
-                                info["segments"] = json
-                            }
                             if let first = segments.first, let last = segments.last {
                                 info["segmentStart"] = String(first.timestamp)
                                 info["segmentEnd"] = String(last.timestamp + last.duration)

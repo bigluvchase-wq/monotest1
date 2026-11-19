@@ -203,6 +203,7 @@ if(/^(?:корм|наполнител[а-я]*)(?!\p{L})/u.test(clause)&&Speech.e
 previous=part.text;
 let account=state.accounts.find(a=>a.id===defaultAccount)||state.accounts[0];
 if(notCompleted.test(clause)){errors.push('Назовите уже совершённую операцию.');continue;}
+if(/(?<![\p{L}\d.,:])\d{1,2}\s+\d{1,2}(?![\d.,:])/u.test(clause)){errors.push('Уточните сумму: распознавание разделило цифры пробелом. Например, напишите 650 целиком.');continue;}
 if(/с половиной(?!\s+тысяч)/u.test(clause)){errors.push('Уточните сумму целиком и назовите валюту.');continue;}
 if(/на прошлой неделе/u.test(clause)){errors.push('Назовите точный день платежа.');continue;}
 if(/^(?:я )?купил[аи]? нов(?:ый|ую|ое)\s/u.test(clause)&&!/чехол|аксессуар/u.test(clause)&&entries.at(-1)?.category==='Продажи'&&/телефон|смартфон/u.test(entries.at(-1).title.toLowerCase()))clause=clause.replace(/нов(?:ый|ую|ое)/u,'новый телефон');
