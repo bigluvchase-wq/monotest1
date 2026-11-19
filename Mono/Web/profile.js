@@ -83,7 +83,8 @@ function renderPremium(){
  const icon=k=>`<span class="menu-symbol"><svg viewBox="0 0 24 24" aria-hidden="true">${(window.MonoMenuMarks||{})[k]||''}</svg></span>`;
  return `<div class="premium-page">
   ${premiumStatus()}
-  <p class="premium-lead">${isPremium()?'С Премиумом вам доступны:':'Всё, чем вы пользуетесь сейчас, останется бесплатным. С Премиумом откроются:'}</p>
+  <p class="premium-lead">Записывать расходы и доходы голосом можно всегда — даже без Премиума.</p>
+  <p class="premium-lead">С Премиумом вам доступны:</p>
   ${trial?`<p class="premium-trial">Пробный доступ ко всем функциям: осталось ${trial} ${trial===1?'день':trial<5?'дня':'дней'}.</p>`:''}
   <section class="card premium-features">${PREMIUM_FEATURES.map(([k,t,d])=>`<div class="premium-feature">${icon(k)}<span><b>${t}</b><small>${d}</small></span></div>`).join('')}</section>
   ${codeBlock()}
