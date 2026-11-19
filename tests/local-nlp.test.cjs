@@ -25,3 +25,14 @@ test('half-thousand speech and joint purchase names retain one amount',()=>{
  const s=E.initialState();for(const words of ['два с половиной к','2 с половиной к']){const r=E.parse('кофе '+words,now,[],s,'main');assert.deepEqual(r.errors,[]);assert.equal(r.entries[0].amount,250000);}
  const food=E.parse('хлеб и молоко 300',now,[],s,'main');assert.deepEqual(food.errors,[]);assert.equal(food.entries.length,1);assert.equal(food.entries[0].amount,30000);
 });
+
+test('manual categories persist independently of history and newer choices replace earlier ones',()=>{
+ const B=require('../Mono/Web/bank-merchants'),s=E.initialState();
+ const first=E.parse('ромашка 2000',now,[],s,'main').entries[0];assert.equal(first.category,'Другое');
+ first.category='Красота';first.categoryChosen=true;B.remember(s,first);
+ const restored=JSON.parse(JSON.stringify(s));restored.entries=[];
+ assert.equal(E.parse('ромашка 3500',now,[],restored,'main').entries[0].category,'Красота');
+ const changed=E.parse('ромашка 1500 категория здоровье',now,[],restored,'main').entries[0];assert.equal(changed.category,'Здоровье');B.remember(restored,changed);
+ assert.equal(E.parse('ромашка 500',now,[],restored,'main').entries[0].category,'Здоровье');
+ assert.equal(restored.settings.bankMerchantRules.length,1);
+});

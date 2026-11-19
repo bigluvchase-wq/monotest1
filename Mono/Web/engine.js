@@ -281,6 +281,7 @@ if(remembered&&directionFree){
  e.type=remembered.type;e.category=remembered.category;
 }
 const allowed=e.type==='income'?state.incomeCategories:state.categories;
+if(customCategory&&allowed.includes(customCategory)){e.category=customCategory;e.categoryChosen=true;}
 if(!allowed.includes(e.category))e.category='Другое';entries.push(e);}
 }
 return {entries,errors};}
