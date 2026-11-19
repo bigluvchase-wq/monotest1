@@ -72,3 +72,45 @@ test('amount aliases do not rewrite reminder titles or names in removal commands
  assert.equal(root.MonoCommands.detect('Удали цель Питик').data.name,'питик');
  assert.equal(root.MonoCommands.detect('Напомни завтра забрать заказ Питик').data.title,'Забрать заказ питик');
 });
+
+test('long owner dictation retains every amount, debt date and morning reminder across dictated punctuation',()=>{
+ const money='купил кофе 300 потом закупились продуктами на 1500 вечером заправиля на лукойле на 2560 а еще вчера мне вернули долг 300 рублей';
+ for(const join of [' и ', ', ', ', и ', '; ', ' потом ', ' затем ', '. ']){
+  const chunks=root.MonoCommands.split(money+join+'напомни завтра с утра купить корм');
+  const commands=chunks.map(x=>root.MonoCommands.detect(x)).filter(Boolean);
+  const financial=chunks.filter(x=>!root.MonoCommands.detect(x)).join('; ');
+  const parsed=E.parse(financial,now,[],state,'main');
+  assert.deepEqual(parsed.errors,[],join);
+  assert.deepEqual(parsed.entries.map(e=>[e.type,e.amount,e.category,e.date]),[
+   ['expense',30000,'Кафе','2026-11-16'],['expense',150000,'Продукты','2026-11-16'],['expense',256000,'Авто','2026-11-16'],['income',30000,'Возврат долга','2026-11-15']
+  ],join);
+  assert.equal(commands.length,1,join);assert.equal(commands[0].data.title,'Купить корм');assert.equal(commands[0].data.time,'09:00');assert.equal(commands[0].data.timeGiven,true);assert.equal(commands[0].data.date,'2026-11-17');
+  const next=E.saveDrafts(state,parsed.entries).next;assert.equal(next.entries.length,4);assert(E.validateState(next));assert.equal(state.entries.length,0);
+ }
+});
+test('a date before returned debt does not move earlier spending to yesterday',()=>{
+ const r=E.parse('Кофе 300 потом продукты 1500 вчера мне вернули долг 300',now,[],state,'main');assert.deepEqual(r.errors,[]);
+ assert.deepEqual(r.entries.map(e=>[e.amount,e.date,e.type]),[[30000,'2026-11-16','expense'],[150000,'2026-11-16','expense'],[30000,'2026-11-15','income']]);
+});
+test('commands between money sentences preserve independent date context and decimal amounts',()=>{
+ const parts=root.MonoCommands.split('Вчера кофе 300. Напомни завтра с утра купить корм. Получил зарплату 50000 и такси 250,50');
+ const financial=parts.filter(x=>!root.MonoCommands.detect(x)).join('; '),r=E.parse(financial,now,[],state,'main');assert.deepEqual(r.errors,[]);
+ assert.deepEqual(r.entries.map(e=>[e.amount,e.date,e.type]),[[30000,'2026-11-15','expense'],[5000000,'2026-11-16','income'],[25050,'2026-11-16','expense']]);
+ assert.equal(parts.filter(x=>root.MonoCommands.detect(x)).length,1);
+});
+test('a completed expense after a reminder stays a financial draft, planned purchases stay reminder text',()=>{
+ const parts=root.MonoCommands.split('Кофе 300, напомни завтра купить корм, потом купил продукты 1500 и получил зарплату 50000');
+ assert.equal(parts.length,3);assert.equal(root.MonoCommands.detect(parts[1]).data.title,'Купить корм');
+ const r=E.parse([parts[0],parts[2]].join('; '),now,[],state,'main');assert.deepEqual(r.errors,[]);assert.deepEqual(r.entries.map(e=>[e.amount,e.type]),[[30000,'expense'],[150000,'expense'],[5000000,'income']]);
+ assert.equal(root.MonoCommands.split('Напомни завтра купить корм за 1500 и оплатить интернет 700').length,1);
+});
+test('amounts retain context on both sides up to the next action',()=>{
+ const s=structuredClone(state);s.goals.push({id:'vac',name:'Отпуск',target:10000000,currency:'RUB',saved:0});
+ for(const phrase of ['заправился на 300','300 на заправку']){const r=E.parse(phrase,now,[],s,'main');assert.deepEqual(r.errors,[]);assert.equal(r.entries[0].amount,30000);assert.equal(r.entries[0].category,'Авто');}
+ for(const phrase of ['скинул 300 на цель отпуск','на цель отпуск скинул 300']){const r=E.parse(phrase,now,[],s,'main');assert.deepEqual(r.errors,[],phrase);assert.equal(r.entries[0].amount,30000);assert.equal(r.entries[0].type,'saving');assert.equal(r.entries[0].goalId,'vac');}
+ for(const phrase of ['заправился на 300 потом скинул 500 на цель отпуск потом кофе 200','300 на заправку потом скинул 500 на цель отпуск потом 200 кофе']){
+  const r=E.parse(phrase,now,[],s,'main');assert.deepEqual(r.errors,[],phrase);assert.deepEqual(r.entries.map(e=>[e.amount,e.type]),[[30000,'expense'],[50000,'saving'],[20000,'expense']]);assert.equal(r.entries[2].category,'Кафе');assert(E.validateState(E.saveDrafts(s,r.entries).next));
+ }
+ const r=E.parse('купил на 300 кофе потом продукты 1500',now,[],s,'main');assert.deepEqual(r.errors,[]);assert.deepEqual(r.entries.map(e=>[e.amount,e.category]),[[30000,'Кафе'],[150000,'Продукты']]);
+ const missing=E.parse('скинул 300 на цель',now,[],s,'main');assert.equal(missing.entries.length,0);assert.match(missing.errors[0],/Назовите цель/);
+});

@@ -2,8 +2,7 @@
 'use strict';
 const source=document.querySelector('#voiceAccount'),button=document.querySelector('#homeAccountButton'),dialog=document.querySelector('#homeAccountDialog'),options=document.querySelector('#homeAccountOptions');
 const reduce=matchMedia('(prefers-reduced-motion: reduce)'),ease='cubic-bezier(.16,1,.3,1)',exitEase='cubic-bezier(.4,0,.6,1)';
-let animation=null,closing=false,pending=false,backdropStart=null,drag=null,suppressUntil=0,details=[],renderedHTML=null;
-function clearDetails(){details.forEach(a=>a.cancel());details=[];}
+let animation=null,closing=false,pending=false,backdropStart=null,drag=null,suppressUntil=0,renderedHTML=null;
 const wallet='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M15 14h3"/></svg>';
 const users='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v1"/></svg>';
 function summaries(){return root.MonoTogether?.pickerGroups()||[{label:'Личные счета',accounts:state.accounts.map(a=>({...a,value:a.id,balance:E.balance(state,a.id)}))}];}
@@ -12,15 +11,13 @@ function update(){
  if(!dialog.open||closing)return;
  const focused=options.contains(document.activeElement)?document.activeElement.closest('[data-home-account]')?.dataset.homeAccount:null;
  const html=summaries().map(group=>`<h3 class="home-account-group">${esc(group.label)}</h3><div class="home-account-options">${group.accounts.map(a=>`<button type="button" class="home-account-option" data-home-account="${esc(a.value)}" aria-pressed="${a.value===source.value}" ${pending?'disabled':''}><span class="home-account-symbol">${a.value.startsWith('shared:')?users:wallet}</span><span class="home-account-copy"><strong>${esc(a.name)}</strong><small>${money(a.balance,a.currency)}</small></span><span class="home-account-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></span></button>`).join('')}</div>`).join('');
- if(renderedHTML!==html){clearDetails();options.innerHTML=html;renderedHTML=html;}
+ if(renderedHTML!==html){options.innerHTML=html;renderedHTML=html;}
  if(focused&&!pending)[...options.querySelectorAll('[data-home-account]')].find(el=>el.dataset.homeAccount===focused)?.focus({preventScroll:true});
 }
 function show(){
  if(pending||dialog.open||holding||listening||document.querySelector('dialog[open]'))return;
- animation?.cancel();clearDetails();closing=false;dialog.style.transform='';delete dialog.dataset.exiting;dialog.showModal();button.setAttribute('aria-expanded','true');update();
- const bounds=dialog.getBoundingClientRect(),visible=[...options.querySelectorAll('.home-account-group,.home-account-option')].filter(el=>{const r=el.getBoundingClientRect();return r.bottom>bounds.top&&r.top<bounds.bottom;}).slice(0,10);
+ animation?.cancel();closing=false;dialog.style.transform='';delete dialog.dataset.exiting;dialog.showModal();button.setAttribute('aria-expanded','true');update();
  animation=dialog.animate(reduce.matches?[{opacity:0},{opacity:1}]:[{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:reduce.matches?120:420,easing:ease});
- if(!reduce.matches)details=visible.map((el,i)=>{const a=el.animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],{duration:280,delay:80+i*18,easing:ease,fill:'backwards'});a.finished.catch(()=>{});return a;});
 }
 async function hide(fromDrag=false){
  if(!dialog.open||closing)return;closing=true;drag=null;delete dialog.dataset.dragging;dialog.dataset.exiting='true';button.setAttribute('aria-expanded','false');
@@ -49,7 +46,7 @@ dialog.addEventListener('click',async event=>{
  catch(error){notify(error.message||'Не удалось выбрать счёт.');refreshAccounts();}
  finally{pending=false;dialog.removeAttribute('aria-busy');update();}
 });
-dialog.addEventListener('close',()=>{closing=false;drag=null;animation?.cancel();clearDetails();animation=null;dialog.style.transform='';delete dialog.dataset.dragging;delete dialog.dataset.exiting;button.setAttribute('aria-expanded','false');if(page==='home'&&!document.querySelector('dialog[open]'))button.focus({preventScroll:true});});
+dialog.addEventListener('close',()=>{closing=false;drag=null;animation?.cancel();animation=null;dialog.style.transform='';delete dialog.dataset.dragging;delete dialog.dataset.exiting;button.setAttribute('aria-expanded','false');if(page==='home'&&!document.querySelector('dialog[open]'))button.focus({preventScroll:true});});
 source.addEventListener('change',()=>queueMicrotask(update));new MutationObserver(update).observe(source,{childList:true,subtree:true,attributes:true,attributeFilter:['selected']});
 // A downward gesture at the top of the list belongs to the sheet. Upward/scroll gestures stay native.
 function startDrag(id,x,y,target){if(closing||pending||!dialog.open)return;drag={id,x,y,active:false,cancelled:false,base:0,dy:0,lastY:y,lastTime:performance.now(),velocity:0,atTop:dialog.scrollTop<=1||!!target?.closest('.home-account-grip,.home-account-heading')};}
@@ -86,6 +83,6 @@ dialog.addEventListener('touchstart',event=>{if(event.touches.length!==1){if(dra
 dialog.addEventListener('touchmove',event=>{if(event.touches.length!==1){if(drag)endDrag(drag.id,true);return;}const t=event.touches[0];moveDrag(t.identifier,t.clientX,t.clientY,event);},{passive:false});
 dialog.addEventListener('touchend',event=>{for(const t of event.changedTouches)endDrag(t.identifier);},{passive:true});
 dialog.addEventListener('touchcancel',event=>{for(const t of event.changedTouches)endDrag(t.identifier,true);},{passive:true});
-reduce.addEventListener('change',()=>{if(drag)endDrag(drag.id,true);animation?.finish();clearDetails();});
+reduce.addEventListener('change',()=>{if(drag)endDrag(drag.id,true);animation?.finish();});
 root.MonoHomeAccountPicker={update,show,hide};update();
 })(window);

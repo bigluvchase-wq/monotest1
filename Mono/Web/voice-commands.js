@@ -55,7 +55,7 @@ function parseWhen(ctx){
    time=pad(h)+':'+pad(mi);
   })
   ||cut(ctx,/(?:^|\s)(?:в\s+)?(полдень|полночь)(?=\s|$)/,m=>{time=m[1]==='полдень'?'12:00':'00:00';})
-  ||cut(ctx,/(?:^|\s)(утром|днем|вечером|ночью)(?=\s|$)/,m=>{time={утром:'09:00',днем:'13:00',вечером:'19:00',ночью:'22:00'}[m[1]];});
+  ||cut(ctx,/(?:^|\s)(с утра|утром|днем|вечером|ночью)(?=\s|$)/,m=>{time={'с утра':'09:00',утром:'09:00',днем:'13:00',вечером:'19:00',ночью:'22:00'}[m[1]];});
   void done;
  }
  const timeGiven=!!time;
@@ -165,7 +165,22 @@ function detect(raw){
  return null;
 }
 // Explicit command joins can coexist with financial records in one dictation.
-function split(raw){return String(raw).split(/(?<=[.!?])\s+|\n+|\s+(?:а\s+ещ[её]|и\s+ещ[её]|а\s+также|и)\s+(?=(?:напомни(?:те)?|напоминай|не забудь|(?:создай|добавь|поставь|установи|открой|заведи|запланируй)\s+(?:(?:обязательный|ежемесячный|регулярный)\s+)?(?:напоминание|напоминалку|цель|сч[её]т|лимит|плат[её]ж|вклад|копилку))(?:\s|$))/iu).map(s=>s.trim()).filter(Boolean);}
+function split(raw){
+ const command='(?:напомни(?:те)?|напоминай|не забудь|(?:создай|добавь|поставь|установи|открой|заведи|запланируй)\\s+(?:(?:обязательный|ежемесячный|регулярный)\\s+)?(?:напоминание|напоминалку|цель|сч[её]т|лимит|плат[её]ж|вклад|копилку))';
+ const separator='(?:[,;]\\s*(?:(?:а\\s+ещ[её]|и\\s+ещ[её]|а\\s+также|потом|затем|и|а)\\s+)?|\\s+(?:а\\s+ещ[её]|и\\s+ещ[её]|а\\s+также|потом|затем|и|а)\\s+)';
+ const chunks=String(raw).split(new RegExp('(?<=[.!?])\\s+|\\n+|'+separator+'(?='+command+'(?:\\s|$))','iu')).map(s=>s.trim()).filter(Boolean);
+ // A completed transaction after a reminder is another action, not its title.
+ const financialJoin=/(?:[,;]\s*(?:(?:а ещ[её]|и ещ[её]|потом|затем|и|а)\s+)?|\s+(?:а ещ[её]|и ещ[её]|потом|затем|и|а)\s+)(?=(?:(?:сегодня|вчера|позавчера)\s+)?(?:купил[аи]?|заплатил[аи]?|оплатил[аи]?|получил[аи]?|заработал[аи]?|потратил[аи]?|заправился|мне вернули)\s+)/iu;
+ return chunks.flatMap(chunk=>{
+  if(!detect(chunk))return [chunk];
+  const match=chunk.match(financialJoin);
+  if(!match)return [chunk];
+  const tail=chunk.slice(match.index+match[0].length);
+  // Only split a tail with a monetary amount; planned infinitives stay in the reminder.
+  if(!takeAmount({text:norm(tail)}))return [chunk];
+  return [chunk.slice(0,match.index).trim(),tail];
+ });
+}
 // Заполняет поля открытого окна и обновляет подписи у полей даты и времени
 function fill(values){
  const body=$('#actionBody');if(!body)return;
