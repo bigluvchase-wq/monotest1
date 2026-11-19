@@ -20,3 +20,8 @@ test('conversation joins and normalized amounts preserve each monetary record',(
  const s=E.initialState();for(const join of [' и ',' потом ',' плюс ',' также ', ', ']){const r=E.parse('такси 500'+join+'кофе 300',now,[],s,'main');assert.deepEqual(r.errors,[],join);assert.deepEqual(r.entries.map(e=>e.amount),[50000,30000],join);}
  for(const [words,value] of [['полторы тысячи',150000],['2к',200000],['триста пятьдесят',35000]])assert.equal(E.parse('продукты '+words,now,[],s,'main').entries[0].amount,value);
 });
+
+test('half-thousand speech and joint purchase names retain one amount',()=>{
+ const s=E.initialState();for(const words of ['два с половиной к','2 с половиной к']){const r=E.parse('кофе '+words,now,[],s,'main');assert.deepEqual(r.errors,[]);assert.equal(r.entries[0].amount,250000);}
+ const food=E.parse('хлеб и молоко 300',now,[],s,'main');assert.deepEqual(food.errors,[]);assert.equal(food.entries.length,1);assert.equal(food.entries[0].amount,30000);
+});
