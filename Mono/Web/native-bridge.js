@@ -15,7 +15,17 @@ function speechEvent(id,event,info){
  const session=sessions.get(id);
  if(!session)return;
  if(event==='start')session.onstart?.();
- if(event==='result')session.onresult?.({results:[{0:{transcript:info.text},isFinal:false}]});
+ if(event==='result'){
+  const text=String(info.text||'').trim(),start=Number(info.segmentStart),end=Number(info.segmentEnd);
+  // iOS may replace a completed utterance with a new time range in the same task.
+  // Overlapping partials are revisions; only a later, non-overlapping range appends.
+  if(text&&Number.isFinite(start)&&Number.isFinite(end)&&end>=start){
+   const earlier=(session.speechParts||[]).filter(part=>part.start<start&&part.end<=start+0.01);
+   session.speechParts=[...earlier,{start,end,text}];
+   session.speechText=session.speechParts.map(part=>part.text).join(' ');
+  }else if(text)session.speechText=text;
+  session.onresult?.({results:[{0:{transcript:session.speechText||''},isFinal:false}]});
+ }
  if(event==='error')session.onerror?.({error:info.code,message:info.detail});
  if(event==='end'){sessions.delete(id);session.onend?.();}
 }

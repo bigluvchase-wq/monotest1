@@ -14,6 +14,17 @@ function clean(s){
   .replace(/^[\s,.:;—\-]+|[\s,.:;—\-]+$/g,'').replace(/^(?:и|на|за|по)\s+/i,'').replace(/\s+/g,' ').trim().replace(/\s+(?:на|за|по)$/iu,'')
   .replace(/тридцатьшестьишесть/gu,'36,6').replace(/восемьдесятпять/gu,'85').replace(/аи(?:девяностодва|девяностопять|девяностовосемь|сто)/gu,x=>({'аидевяностодва':'АИ-92','аидевяностопять':'АИ-95','аидевяностовосемь':'АИ-98','аисто':'АИ-100'}[x])));
 }
+// Short labels for spoken records, without changing the source used for classification.
+function conciseTitle(title,type,category){
+ let name=title.toLowerCase().replace(/ё/g,'е')
+  .replace(/^(?:(?:и|а|еще|также|потом|затем|мы|я|мне|себе)\s+)+/u,'')
+  .replace(/^(?:закупились|закупился|закупилась)\s+/u,'')
+  .replace(/^(?:на|за)\s+/u,'').trim();
+ if(type==='income'&&category==='Возврат долга')return 'Возврат долга';
+ if(category==='Авто'&&/(?:заправил|заправля|бензин|топливо|лукойл|роснефть|азс)/u.test(name)&&!/мойк|ремонт|масл/u.test(name))return 'Заправка';
+ if(/^продукт(?:ы|ами|ов|ов на неделю)$/u.test(name))return 'Продукты';
+ return name?name[0].toUpperCase()+name.slice(1):type==='income'?'Доход':'Расход';
+}
 const notCompleted=/(?<!\p{L})(?:не\s+(?:покупал|купил|платил|заплатил|оплачивал|оплатил|тратил|потратил|получал|получил|переводил|перевел|вернул|выручил|списал)[аи]?|не\s+(?:списали|списалось|зачислили|начислили|поступил[аи]?|поступили|пришл[аи]|пришли|возместили|компенсировали|рассчитались|принес(?:л[аои])?)|(?:хочу|хотел[аи]?|планирую|собираюсь|надо|нужно|думал[аи]?|напомни)\s+(?:купить|оплатить|потратить|заплатить|перевести|заказать|отложить|вернуть|записать)|(?:должны|должен|должна)\s+(?:зачислить|перевести|вернуть|поступить|начислить|заплатить)|завтра|(?:куплю|оплачу|ожидаю|жду|ожидается|зачислят)|сколько стоит|если)(?!\p{L})/u;
 const accountMovement=/(?<!\p{L})(?:перев[её]л[аи]?|перевод|переведи|скинул[аи]?|перебросил[аи]?|снял[аи]?|снятие|положил[аи]?|закинул[аи]?.*(?:на карту|на накопительный)|пополнил[аи]? (?:свой |банковский |брокерский )*сч[её]т|вывел[аи]?.*сч[её]т[а-я]*|купил[аи]? валюту|обменял[аи]?)(?!\p{L})/u;
 const ownMovement=/(?:между (?:своими )?(?:счетами|картами)|самому себе|(?:на|со?) (?:свой|свою|своего|своей|моей|мой)|с .*на (?:карту|накопительный)|снял[аи]?.*(?:банкомат|карт[а-я]*)|положил[аи]? наличн|брокерск|на накопительный)/u;
@@ -47,7 +58,7 @@ let date=new Date(now);if(/позавчера/i.test(clause))date.setDate(date.g
 const income=Speech.income(info),type=income?'income':'expense';
 const saved=[...history].reverse().find(e=>e.categoryChosen===true&&e.type===type&&normalizeTitle(e.title)===normalizeTitle(title)&&categories.includes(e.category));
 const category=saved?.category||(modern||income!=='Другое'?income:null)||Speech.expense(info)||dictionary.find(([,re])=>re.test(info.toLowerCase()))?.[0]||'Другое';
-entries.push({title:title?title[0].toUpperCase()+title.slice(1):type==='income'?'Доход':'Расход',amount,type,category,account:/налич/i.test(info)?'cash':'main',date:dateString(date)});
+entries.push({title:conciseTitle(title,type,category),amount,type,category,account:/налич/i.test(info)?'cash':'main',date:dateString(date)});
 }}
 return {entries,errors};}
 
@@ -288,7 +299,7 @@ function installmentPlan(total,date){
   return {amount,date:dateString(due)};
  });
 }
-function saveDrafts(state,drafts,createdAt=new Date().toISOString()){
+function saveDrafts(state,drafts,createdAt=new Date().toISOString(),reminders=[]){
  const next=structuredClone(state);
  const added=drafts.map(({installmentTotal,sourceCurrency,...draft})=>{
   const entry={...draft,title:draft.title.trim(),id:uid(),createdAt};
@@ -312,9 +323,15 @@ function saveDrafts(state,drafts,createdAt=new Date().toISOString()){
   }
   return entry;
  });
+ const addedReminders=reminders.map(r=>{
+  const title=String(r.title||'').trim(),text=String(r.text||'').trim(),repeat=r.repeat||'once';
+  if(!title||title.length>120||text.length>1000||!validDate(r.date)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(r.time||'')||!['once','daily','weekly','fortnightly','monthly'].includes(repeat))throw Error('Проверьте название, дату и время каждого напоминания.');
+  return {id:uid(),title,text,date:r.date,time:r.time,repeat,anchor:r.date,done:false,createdAt};
+ });
+ if(addedReminders.length){next.reminders=next.reminders||[];next.reminders.push(...addedReminders);}
  next.entries.push(...added);
  if(!validateState(next))throw Error('Проверьте поля каждой записи.');
- return {next,added};
+ return {next,added,addedReminders};
 }
 
 function nextPayment(payment,now=new Date()){return Schedule.next(payment,dateString(now));}

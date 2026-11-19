@@ -74,7 +74,15 @@ final class SpeechBridge {
                     if let result {
                         let text = result.bestTranscription.formattedString
                         if !text.isEmpty { session.latest = text }
-                        self.emit(session.id, "result", ["text": session.latest])
+                        if !text.isEmpty {
+                            let segments = result.bestTranscription.segments
+                            var info = ["text": session.latest]
+                            if let first = segments.first, let last = segments.last {
+                                info["segmentStart"] = String(first.timestamp)
+                                info["segmentEnd"] = String(last.timestamp + last.duration)
+                            }
+                            self.emit(session.id, "result", info)
+                        }
                         if result.isFinal { self.finish(session); return }
                     }
                     if let error {
