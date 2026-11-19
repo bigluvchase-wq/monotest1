@@ -18,3 +18,9 @@ test('releasing dictation keeps the latest interim tail after a final segment',(
  const f=fixture();f.voice.start({hold:true});const first=[{transcript:'Кофе 300'}];first.isFinal=true;const tail=[{transcript:'и напомни завтра купить корм'}];tail.isFinal=false;
  f.sessions[0].onresult({results:[first,tail]});f.voice.stop();assert.deepEqual(f.results,['Кофе 300 и напомни завтра купить корм']);
 });
+test('repeated cumulative speech across a session restart does not duplicate operations',()=>{
+ const f=fixture(),phrase='Потом заправился на лукойле на 500 вчера мне вернули долг 650 и напомни завтра с утра купить корм';
+ f.voice.start({hold:true});f.result(f.sessions[0],'Купил кофе за 300 '+phrase);f.sessions[0].onend();f.restart();f.result(f.sessions[1],phrase);f.voice.stop();
+ assert.deepEqual(f.results,['Купил кофе за 300 '+phrase]);
+ assert.equal(Voice.joinSpeech(['кофе 300','кофе 300']),'кофе 300 кофе 300','short identical purchases can be intentional');
+});

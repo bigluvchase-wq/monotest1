@@ -1690,3 +1690,9 @@ html:has(:is(#home,[data-preview-id=home]).home-dash) .app>footer{display:none}
 #homeReminders .rem-stage>.reminder{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card-solid,var(--paper));filter:none}
 /* На небольшом iPhone содержимое можно прокрутить выше нижней навигации. */
 body[data-page=home]:has(#home.home-dash) .app{height:auto;min-height:calc(100dvh - var(--main-nav-space) - env(safe-area-inset-top,0px))}
+
+/* Keep native date/time controls inside the review grid on iPhone. */
+#entryDialog{overflow-x:hidden;overscroll-behavior-x:none;touch-action:pan-y}
+#entryDialog .draft,#entryDialog .draft label{min-width:0;max-width:100%}
+#entryDialog .draft input,#entryDialog .draft select{box-sizing:border-box;min-width:0;width:100%;max-width:100%}
+#entryDialog .draft-top{grid-template-columns:minmax(0,1fr) minmax(0,110px)}

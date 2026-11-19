@@ -62,10 +62,10 @@ function showInvitation(){
 }
 function decorate(){
  const body=document.querySelector('#pageBody');
- body?.querySelectorAll('.together-switch,.together-mode').forEach(el=>el.remove());
+ body?.querySelectorAll('.together-switch,.together-mode').forEach(el=>{if(page!=='history')el.remove();});
  document.querySelector('#together-home')?.remove();document.querySelector('#together-invites')?.remove();
  if(body&&group){
-  if(page==='history')body.querySelector('.ops-head .balance-top')?.insertAdjacentHTML('beforeend',modeButton());
+  if(page==='history'&&!body.querySelector('.together-mode'))body.querySelector('.ops-head .balance-top')?.insertAdjacentHTML('beforeend',modeButton());
   else if(['accounts','goals','limits','payments','categories','deposits','reminders'].includes(page)){
    const add=body.querySelector('[data-action],.limits-add-category,#categoryForm button.primary');
    if(add){if(page==='categories')add.textContent='+ Добавить';let row=add.closest('.section-row,.action-row,.together-toolbar');if(!row){row=document.createElement('div');add.before(row);row.append(add);}row.classList.add('together-toolbar');row.insertAdjacentHTML('beforeend',modeButton());const lock=row.closest('.premium-lock');if(lock)lock.before(row);}
@@ -82,7 +82,7 @@ document.addEventListener('submit',async e=>{if(e.target.id!=='togetherInvite')r
 document.addEventListener('click',async e=>{const invite=e.target.closest('[data-invite]'),button=e.target.closest('[data-together]');try{if(invite){await request('respond',{id:invite.dataset.invite,accept:invite.dataset.accept==='1'});await poll();$('#actionDialog').close();notify(invite.dataset.accept==='1'?'Совместный счёт создан. Выберите его в счёте для записи.':'Приглашение отклонено.');return;}if(button){if(button.dataset.together==='manage')return manage();$('#actionDialog').close();if(switching)return;switching=true;try{await switchTo(button.dataset.together==='toggle'?!active():button.dataset.together==='shared');}finally{switching=false;}}if(e.target.closest('[data-together-leave]')){actionDialog('Выйти из пары?',`<p class="muted">Вы потеряете доступ к совместному счёту. Личные данные останутся; у партнёра совместные записи сохранятся.</p><button class="primary danger" id="confirmTogetherLeave">Выйти из пары</button>`);$('#confirmTogetherLeave').onclick=async()=>{try{if(active()&&dirty){await sync(true);if(dirty)throw Error('Сначала синхронизируйте последние изменения.');}const id=group.id;await request('leave');if(active())await switchTo(false);localStorage.removeItem('mono-together-'+id);localStorage.removeItem('mono-together-'+id+'-view');group=null;$('#actionDialog').close();decorate();notify('Вы вышли из пары.');}catch(error){notify(message(error));}};}}catch(error){notify(message(error));}});
 document.querySelector('#actionDialog').addEventListener('close',()=>{conflictOpen=false;setTimeout(showInvitation,200);});
 function otherNotifications(collect){if(!group)return [];const previous=state;try{state=active()?E.migrate(JSON.parse(localStorage.getItem(KEY))):display(JSON.parse(localStorage.getItem('mono-together-'+group.id)||'null')?.local||group.state);const items=collect();return active()?items:items.filter(i=>!/^(daily|smart|subscription)\|/.test(i.id));}catch{return [];}finally{state=previous;}}
-root.MonoTogether={pickerGroups,otherNotifications,decoratePicker,selectAccount,saveLocal,active,storageKey:()=>current?storageKey()+'-view':null,queueSync,decorate,offer,offerAccount,manage,withCurrentScope,flush:()=>sync(true)};
+root.MonoTogether={modeHTML:()=>group?modeButton():'',pickerGroups,otherNotifications,decoratePicker,selectAccount,saveLocal,active,storageKey:()=>current?storageKey()+'-view':null,queueSync,decorate,offer,offerAccount,manage,withCurrentScope,flush:()=>sync(true)};
 new MutationObserver(()=>{if(page==='home')setTimeout(showInvitation,0);}).observe(document.body,{attributes:true,attributeFilter:['data-page']});
 setTimeout(poll,2500);setInterval(()=>active()?sync():poll(),12000);addEventListener('online',()=>active()?sync():poll());document.addEventListener('visibilitychange',()=>{if(!document.hidden)active()?sync():poll();});
 })(window);

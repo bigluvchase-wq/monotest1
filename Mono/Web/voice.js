@@ -14,9 +14,19 @@ const messages={
 'empty-result':'Сервис завершил работу без распознанного текста. Операции не добавлены.'
 };
 function describe(code){return messages[code]||'Системный сервис iOS завершил распознавание с ошибкой. Код ниже поможет найти причину.';}
+// Merge repeated recognizer responses only at session boundaries, never deduplicate entries.
+function joinSpeech(parts){
+ let words=[],keys=[];
+ const key=w=>w.toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}]/gu,'');
+ for(const part of parts){const next=String(part).trim().split(/\s+/).filter(Boolean),nk=next.map(key);let overlap=0;
+  for(let n=Math.min(keys.length,nk.length);n>=4;n--)if(keys.slice(-n).every((w,i)=>w===nk[i])){overlap=n;break;}
+  words.push(...next.slice(overlap));keys.push(...nk.slice(overlap));
+ }
+ return words.join(' ');
+}
 function create({Recognition,secure=true,onState=()=>{},onResult=()=>{},onProgress=()=>{},onFailure=()=>{},setTimer=setTimeout,clearTimer=clearTimeout}){
 let active=null, held=false, heldParts=[],restartTimer=null,heldText='';
-function finishHeld(){clearTimer(restartTimer);restartTimer=null;held=false;const text=heldParts.join(' ').trim();heldParts=[];heldText='';onState('idle');if(text)onResult(text);else report('empty-result');}
+function finishHeld(){clearTimer(restartTimer);restartTimer=null;held=false;const text=joinSpeech(heldParts);heldParts=[];heldText='';onState('idle');if(text)onResult(text);else report('empty-result');}
 const report=code=>onFailure({code,message:describe(code)});
 function release(session){if(active!==session)return false;clearTimer(session.timer);active=null;onState('idle');return true;}
 function abortAndRelease(session){if(active!==session)return;release(session);try{session.rec.abort();}catch{}}
@@ -61,11 +71,11 @@ if(restartTimer){clearTimer(restartTimer);restartTimer=null;finishHeld();return;
 if(!active){if(wasHeld)finishHeld();return;}
 if(active.failed||active.stopping)return;
 const session=active;session.stopping=true;clearTimer(session.timer);onState('stopping');
-session.timer=setTimer(()=>{if(active!==session)return;const text=[...heldParts,session.text||session.finalText].filter(Boolean).join(' ');heldParts=[];heldText='';abortAndRelease(session);if(text)onResult(text);else report('empty-result');},6000);
+session.timer=setTimer(()=>{if(active!==session)return;const text=joinSpeech([...heldParts,session.text||session.finalText].filter(Boolean));heldParts=[];heldText='';abortAndRelease(session);if(text)onResult(text);else report('empty-result');},6000);
 try{session.rec.stop();}catch(err){fail(session,err.name||'stop-error');}
 }
 function abort(){held=false;heldParts=[];heldText='';clearTimer(restartTimer);restartTimer=null;if(active)abortAndRelease(active);else onState('idle');}
 return {start,stop,abort};
 }
-const api={create,describe};if(typeof module!=='undefined')module.exports=api;root.MonoVoice=api;
+const api={create,describe,joinSpeech};if(typeof module!=='undefined')module.exports=api;root.MonoVoice=api;
 })(typeof window!=='undefined'?window:globalThis);
