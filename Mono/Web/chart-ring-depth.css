@@ -1,0 +1,7 @@
+/* Rounded segments, quiet highlights and static depth; values and category hit targets stay intact. */
+.chart-static-ring .chart-ring-body{filter:drop-shadow(0 4px 4px #0002)}
+.chart-static-ring .chart-ring-segment{pointer-events:visiblePainted;cursor:pointer}
+.chart-static-ring .chart-ring-sheen{pointer-events:none}
+.chart-ring-label strong{font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1.2}
+html[data-theme=dark] .chart-static-ring .chart-ring-body{filter:drop-shadow(0 4px 5px #0005)}
+@media(prefers-reduced-transparency:reduce){.chart-static-ring .chart-ring-body{filter:none}}
