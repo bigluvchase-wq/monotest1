@@ -69,7 +69,7 @@ function amountOf(text){
  try{const r=E.parse(text,new Date(),[],state,state.accounts[0].id);const e=r.entries[0];return e?.amount||null;}catch{return null;}
 }
 const amountRe=/(?:^|\s)((?:\d[\d\s]*(?:[.,]\d+)?|(?:сто|двести|триста|четыреста|пятьсот|шестьсот|семьсот|восемьсот|девятьсот|тысяч[ауи]?|миллион(?:а|ов)?|полтора|полторы|один|одна|две|два|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать|тринадцать|четырнадцать|пятнадцать|шестнадцать|семнадцать|восемнадцать|девятнадцать|двадцать|тридцать|сорок|пятьдесят|шестьдесят|семьдесят|восемьдесят|девяносто|\d+)(?:\s+|$))+)\s*(?:тыс\.?|тысяч[ауи]?|к|млн)?\s*(?:руб(?:лей|ля|ль)?|р\.?|₽|долларов|доллара|евро)?(?=\s|$)/;
-function takeAmount(ctx){let amount=null;if(cut(ctx,/(?:^|\s)(?:пару|пара)\s+тысяч[аиу]?(?=\s|$)/u,m=>{const a=amountOf(m[0].trim());if(!a)return false;amount=a;}))return amount;cut(ctx,amountRe,m=>{const a=amountOf(m[0].trim());if(!a)return false;amount=a;});return amount;}
+function takeAmount(ctx){ctx.text=E.normalizeThousands(ctx.text);let amount=null;if(cut(ctx,/(?:^|\s)(?:пару|пара)\s+тысяч[аиу]?(?=\s|$)/u,m=>{const a=amountOf(m[0].trim());if(!a)return false;amount=a;}))return amount;cut(ctx,amountRe,m=>{const a=amountOf(m[0].trim());if(!a)return false;amount=a;});return amount;}
 function currencyOf(ctx){let c=null;cut(ctx,/(?:^|\s)(?:в\s+)?(рубл(?:ях|ей|ь)|долларах|доллар(?:ов|а)?|usd|евро|eur|тенге|юан(?:ях|ей)|лир(?:ах)?|лари|драм(?:ах)?|дирхам(?:ах)?|фунт(?:ах|ов)?)(?=\s|$)/,m=>{const w=m[1];c=/рубл/.test(w)?'RUB':/доллар|usd/.test(w)?'USD':/евро|eur/.test(w)?'EUR':/тенге/.test(w)?'KZT':/юан/.test(w)?'CNY':/лир/.test(w)?'TRY':/лари/.test(w)?'GEL':/драм/.test(w)?'AMD':/дирхам/.test(w)?'AED':'GBP';});return c;}
 const stripLead=t=>t.replace(/\s+(?:на|в|во|за|по|с|со|для|к|и)$/,'').replace(/^(?:мне|нам|пожалуйста|что|чтобы|о том что|о том чтобы|про|об?|надо|нужно)\s+/,'').replace(/^(?:мне|надо|нужно|что|чтобы)\s+/,'').replace(/\s+(?:пожалуйста)$/,'').replace(/[.,!?;:]+$/,'').trim();
 const stem=w=>{w=norm(w);const r=w.replace(/(?:ами|ями|ого|ему|ому|ыми|ими|ая|яя|ую|юю|ое|ее|ий|ый|ой|ов|ев|ам|ям|ах|ях|ом|ем|ы|и|а|я|у|ю|е)$/u,'');return r.length>=3?r:w;};
@@ -178,7 +178,7 @@ function split(raw){
   const tail=chunk.slice(match.index+match[0].length);
   // Only split a tail with a monetary amount; planned infinitives stay in the reminder.
   if(!takeAmount({text:norm(tail)}))return [chunk];
-  return [chunk.slice(0,match.index).trim(),tail];
+  return [chunk.slice(0,match.index).trim().replace(/\s+(?:а|и)$/iu,''),tail];
  });
 }
 // Review reminders alongside money; nothing is written until the user saves.
@@ -257,7 +257,7 @@ function run(cmd){
 }
 // Список фраз, которыми можно управлять моно
 const phrases=[
- ['Расходы и доходы',['Кофе 280','Продукты 1500 и такси 400','Получил зарплату 80 тысяч','Вчера оплатил долями куртку за 8 тысяч','Кофе полтос','Такси 1,5к','Списали за инет 650','Зачислили стипендию 4500','Подработка принесла 4500']],
+ ['Расходы и доходы',['Кофе 280','Продукты 1500 и такси 400','Продукты 2к и такси 7к','Кофе 300 получил зарплату 70к и напомни завтра в 9 купить корм','Получил зарплату 80 тысяч','Вчера оплатил долями куртку за 8 тысяч','Кофе полтос','Такси 1,5к','Списали за инет 650','Зачислили стипендию 4500','Подработка принесла 4500']],
  ['Напоминания',['Поставь напоминалку завтра в 9 позвонить маме','Напомни накормить кота сегодня в 6 вечера','Напомни позвонить маме завтра в 10 утра','Напомни через 2 часа выключить духовку','Напомни в пятницу забрать посылку']],
  ['Цели',['Начни копить на отпуск 100 тысяч','Создай цель отпуск 200 тысяч','Хочу накопить на машину миллион','На отпуск 10 тысяч — пополнить цель']],
  ['Счета',['Добавь счёт наличные 5000','Создай счёт в долларах','Новый счёт карта Т-Банк с остатком 20 тысяч']],
