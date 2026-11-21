@@ -14,8 +14,6 @@ class NativeRecognition {
 function speechEvent(id,event,info){
  const session=sessions.get(id);
  if(!session)return;
- if(event==='level'){root.MonoVoiceRing?.setLevel(info.value);return;}
- if(event==='error'||event==='end')root.MonoVoiceRing?.setLevel(0);
  if(event==='start')session.onstart?.();
  if(event==='result'){
   const text=String(info.text||'').trim();

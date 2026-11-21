@@ -4,6 +4,7 @@
  const panel=document.querySelector('#chartPanel'),dialog=document.querySelector('#chartDialog');
  let gesture=null,settling=null,suppressUntil=0;
  function start(x,y,target,id){
+  if(panel.scrollTop>1){gesture=null;return;}
   if(!dialog.open||MonoCharts.isBusy()||target.closest('input,select,textarea,a,.chart-close,.chart-side-arrow,.chart-period-button,.entity-x,.delete-entry,.swipe-delete'))return;
   settling?.cancel();settling=null;
   gesture={x,y,id,started:performance.now(),dy:0,raw:0,scrollAtStart:panel.scrollTop,drag:false,cancelled:false};
@@ -13,7 +14,8 @@
   const dx=x-g.x,dy=y-g.y;g.raw=Math.max(0,dy);
   if(!g.drag){
    if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)||dy<-10){g.cancelled=true;return;}
-   if(dy<10||dy<Math.abs(dx)*1.4||(g.scrollAtStart>0&&dy<180))return;
+   if(panel.scrollTop>1){g.cancelled=true;return;}
+   if(dy<10||dy<Math.abs(dx)*1.4)return;
    g.drag=true;panel.classList.add('chart-pulling');if(event.pointerType&&event.pointerType!=='touch')panel.setPointerCapture?.(id);
   }
   g.raw=Math.max(0,dy);g.dy=Math.min(90,g.raw*.4);
