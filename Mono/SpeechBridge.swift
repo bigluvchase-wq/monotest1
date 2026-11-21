@@ -64,8 +64,24 @@ final class SpeechBridge {
             request.taskHint = .dictation
             // Prefer on-device recognition when iOS offers it for Russian.
             request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
-            input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+            var meterFrames = 0
+            input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self, weak session] buffer, _ in
                 request.append(buffer)
+                // Share the existing capture with the visual meter, at most 12 updates/sec.
+                // Only a normalized level crosses WebKit; no audio is copied or stored.
+                meterFrames += Int(buffer.frameLength)
+                guard meterFrames >= Int(format.sampleRate / 12) else { return }
+                meterFrames = 0
+                guard let samples = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return }
+                var sum: Float = 0
+                for i in 0..<Int(buffer.frameLength) { sum += samples[i] * samples[i] }
+                let rms = sqrt(sum / Float(buffer.frameLength))
+                let decibels = 20 * log10(max(rms, 0.00001))
+                let level = max(0, min(1, (decibels + 55) / 45))
+                DispatchQueue.main.async { [weak self, weak session] in
+                    guard let self, let session, self.current === session, !session.stopping else { return }
+                    self.emit(session.id, "level", ["value": String(level)])
+                }
             }
             session.hasTap = true
             session.task = recognizer.recognitionTask(with: request) { [weak self, weak session] result, error in

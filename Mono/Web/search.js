@@ -74,7 +74,7 @@ document.addEventListener('click',e=>{if(e.target.closest('#searchButton')){e.pr
 // Поиск в «Операциях»: пока открыта клавиатура, страница не прокручивается по вертикали.
 // Касание вне поля закрывает клавиатуру, и прокрутка возвращается.
 (()=>{const html=document.documentElement;let tap=null;
- const locked=()=>html.classList.contains('ops-search-lock');
+ const locked=()=>!open&&html.classList.contains('ops-search-lock');
  document.addEventListener('focusin',e=>{if(e.target.id==='search'){html.classList.add('ops-search-lock');}});
  document.addEventListener('focusout',e=>{if(e.target.id==='search')html.classList.remove('ops-search-lock');});
  document.addEventListener('touchstart',e=>{tap=locked()&&!e.target.closest('#search')?{x:e.touches[0].clientX,y:e.touches[0].clientY}:null;},{passive:true});

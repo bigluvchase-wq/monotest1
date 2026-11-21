@@ -43,5 +43,5 @@ for(const dialog of document.querySelectorAll('dialog:not(#onboarding):not(#char
 
 // Prevent vertical rubber-banding on the home canvas, preserving modal scrolling.
 document.addEventListener('touchmove',event=>{
- if(document.body.dataset.page==='home'&&!document.querySelector('dialog[open]')&&event.cancelable)event.preventDefault();
+ if(document.body.dataset.page==='home'&&!window.MonoSearch?.isOpen()&&!document.querySelector('dialog[open]')&&event.cancelable)event.preventDefault();
 },{passive:false});

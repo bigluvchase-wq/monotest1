@@ -19,7 +19,7 @@ header .icon-btn{width:44px!important;height:44px!important;min-height:44px!impo
 .entry-open{min-height:64px!important}.entry-title{font-size:15px!important;line-height:1.3}.entry-meta{font-size:12px!important;line-height:1.4}.entry-amount{font-size:15px!important}
 .entry .delete-entry{display:none}.entity-x:not([data-entity-kind=category]){display:none!important}
 .entry-info-close{min-width:44px;min-height:44px}
-.day-sum{min-height:44px;display:flex;align-items:center;font-size:13px}
+.day-sum{min-height:44px;display:inline-flex;align-items:center;font-size:13px}
 .reminder-check{width:44px!important;height:44px!important;min-height:44px!important;flex:none}
 .agenda-calendar-head .icon-btn{min-width:44px;min-height:44px}
 /* Compact, grouped navigation. */
@@ -32,12 +32,12 @@ header .icon-btn{width:44px!important;height:44px!important;min-height:44px!impo
 .menu-group .menu-copy{flex:1}.menu-group .menu-copy strong{font-size:16px!important;font-weight:550}.menu-group .menu-copy small{font-size:12px!important;margin-top:3px}.menu-chevron{font-size:24px;color:var(--muted)}
 /* Review preserves all native fields, revealing them only when needed. */
 #entryDialog .eyebrow{display:none}#entryDialog .sheet-head h2{font-size:25px;letter-spacing:-.025em;margin:0;line-height:1.2}
-#entryDialog{padding:22px 18px 0!important;scroll-padding-top:18px;scroll-padding-bottom:100px}
+#entryDialog{padding:22px 18px 20px!important;scroll-padding-top:18px;scroll-padding-bottom:100px}
 #entryDialog .sheet-head{align-items:center;margin-bottom:20px}
-.entry-source{border:1px solid var(--line);border-radius:14px;margin:12px 0 18px;padding:0 12px}
+.entry-source{border:0;border-radius:0;margin:0 0 20px;padding:0}
 .entry-source>summary{min-height:48px;display:flex;align-items:center;cursor:pointer;color:var(--muted);font-size:13px;list-style:none}
 .entry-source>summary::after{content:'⌄';margin-left:auto}.entry-source[open]>summary::after{transform:rotate(180deg)}
-.entry-source textarea{margin:0;box-shadow:none!important;border:0!important;padding:8px 0!important;background:transparent!important;min-height:100px;width:100%;font-size:16px}
+.entry-source textarea{margin:0;box-shadow:none!important;border:1px solid var(--line)!important;padding:14px!important;background:var(--input)!important;min-height:132px;width:100%;font-size:16px;line-height:1.5;border-radius:14px}
 .entry-source .input-meta{align-items:center;gap:12px;font-size:12px;margin:12px 0;flex-wrap:wrap}
 .entry-source .parse-tools{margin-left:auto}.entry-source .small-link{padding:8px 12px!important}
 .entry-source .phrases-link{min-height:44px}
@@ -115,3 +115,54 @@ html[data-design] .hd-delta{min-height:44px!important}
 .currency-tabs button{min-height:44px!important}
 
 .category-item>.entity-x{min-width:44px;min-height:44px}
+
+/* Scroll containers must match the grouped menu, not the previous fixed tile grid. */
+body[data-page=menu]{overflow-y:auto!important;overflow-x:clip;overscroll-behavior-y:none}
+body[data-page=menu] .app{height:auto!important;min-height:calc(100dvh - var(--main-nav-space) - env(safe-area-inset-top,0px))!important}
+body[data-page=menu] #workspace{flex:none;min-height:auto;padding-bottom:24px}
+body[data-page=menu] #pageBody{display:block;flex:none;min-height:auto}
+html[data-design] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-grid.menu-grouped{height:auto!important;gap:20px!important;padding:8px 0 24px!important;flex:none}
+.menu-group{min-width:0;flex:none}.menu-group .menu-copy{min-width:0;white-space:normal;overflow-wrap:anywhere}
+html[data-design][data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-group .menu-tile{box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible}
+/* Back is a text action, with a generous target but no floating surface. */
+html[data-design][data-theme] :is(.app,.root-preview) .page-head .back-pill{background:none!important;background-image:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border-radius:0!important;min-height:44px;padding:8px 0!important;margin:0 0 8px!important;gap:4px}
+html[data-design][data-theme] .back-pill::before,html[data-design][data-theme] .back-pill::after{display:none!important}
+/* Predictable space between headings, dates and records, including long names/amounts. */
+.page-head h1{overflow-wrap:anywhere}.section-row,.action-row{gap:12px;flex-wrap:wrap}
+.ops-head{grid-template-columns:minmax(0,1fr);margin-bottom:16px}
+.ops-head .balance-top{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.ops-head .operations-total{line-height:1.15;margin:0}.ops-head .together-mode.secondary{margin:4px 0 0}
+html[data-design][data-theme] .entry-day{padding:4px 16px 8px;contain-intrinsic-size:auto 128px}
+.entry-day>h3{padding:0!important;min-height:44px;gap:12px;margin:0;line-height:1.4}
+.entry-day>h3 time{min-width:0;overflow-wrap:anywhere}.entry-day>h3 .day-sum{padding:0 0 0 8px;white-space:nowrap}
+.entry-day .entry{padding:8px 0;gap:12px}.entry-open{gap:12px}.entry-title,.entry-meta{display:block;white-space:normal}.entry-meta{margin-top:4px}
+.entry-text{min-width:0}.entry-amount{margin-left:auto;text-align:right;max-width:48%;white-space:normal;overflow-wrap:anywhere;line-height:1.35;flex-shrink:0}
+/* One sheet, one text field, then actions; no nested card around the input. */
+#entryDialog:not(.has-review) .entry-source>summary{display:none}
+#entryDialog .entry-source>summary{padding:0;gap:8px}
+#entryDialog .input-meta{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin:14px 0 0;line-height:1.5}
+#entryDialog .input-meta>span:first-child{font-size:12px}
+#entryDialog .phrases-link{display:inline-flex;align-items:center;min-height:44px;margin:0;padding:4px 0;text-align:left;font-size:13px}
+#entryDialog .parse-tools{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin:0;width:100%}
+html[data-design][data-theme] #entryDialog .parse-tools .gallery-pick{width:48px!important;height:48px!important;min-width:48px;min-height:48px;flex:none;margin:0;padding:12px!important;border-radius:12px!important}
+html[data-design][data-theme] #entryDialog .parse-tools #parseButton{min-height:48px;flex:1;min-width:0;margin:0;padding:12px 18px!important;font-size:15px;text-align:center;border-radius:12px}
+#entryDialog .sheet-head{margin-bottom:20px;gap:12px}#entryDialog #closeEntry{width:44px;height:44px;min-width:44px;flex:none}
+#entryDialog textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#entryDialog .draft-editor{padding:16px}.draft-editor .draft-top{margin-top:0}.draft-top,.draft-bottom{gap:14px 12px}
+#entryDialog .draft-actions{align-items:flex-start;margin-top:14px}.draft-actions .tiny{flex:1}
+/* Scroll through search results while the home canvas behind stays stationary. */
+#searchLayer{touch-action:pan-y;top:var(--vv-top,0px);bottom:auto;height:var(--vv-h,100dvh)}
+#searchLayer .search-results{max-height:calc(var(--vv-h,100dvh) - env(safe-area-inset-top,0px) - 84px);overflow-x:hidden;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-padding-bottom:16px}
+#searchLayer .search-row-text{min-width:0;overflow-wrap:anywhere}#searchLayer .search-row{gap:12px;min-height:60px}
+/* Original Libraries.dev ring, with Mono's microphone icon remaining the touch target. */
+.voice-ring-visual{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:0}
+.voice-ring-visual canvas{display:block;max-width:none;pointer-events:none}
+html.voice-ring-ready .mic-beam-host{width:232px;height:232px;isolation:isolate}
+html.voice-ring-ready :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){width:176px;height:176px;background:transparent!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible;color:var(--accent)!important;z-index:1}
+html.voice-ring-ready :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic])::before{display:none}
+html.voice-ring-ready :is(.mic-beam,.mic-glint,.mic-core,.voice-ripple){display:none!important}
+html.voice-ring-ready #mic svg,html.voice-ring-ready [data-preview-id=mic] svg{display:block!important;width:44px!important;height:44px!important;opacity:1!important}
+html.voice-ring-ready .stop-mark{display:none!important}
+.summary-pair{gap:12px}.summary-pair .operation-card{min-width:0}
+.summary-pair .operation-card strong{max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.2;font-variant-numeric:tabular-nums}
+@media(max-width:360px){.entry-day .entry-open{gap:8px}.entry-day .entry-amount{max-width:45%;font-size:13px!important}.entry-day{padding-inline:12px!important}.summary-pair .operation-card{padding-inline:12px!important}}
