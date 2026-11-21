@@ -10,7 +10,7 @@
 
 ## What changed
 
-Sapphire is enabled by default for this trial. Settings → Оформление → «Сапфир · новое оформление» switches to the previous color themes. Selecting an existing theme also exits Sapphire. This compares colors; the new hierarchy and review structure remain. The complete old UI is available by building the backup branch.
+The existing theme remains the default. Settings → Оформление → Тема приложения → «Сапфир» explicitly selects the new colors. Selecting any other theme exits Sapphire. This compares colors; the new hierarchy and review structure remain. The complete old UI is available by building the backup branch.
 
 `hierarchy.css`, loaded last, owns the new visual layer. Ordinary content uses quiet solid surfaces, thin edges and readable secondary text; depth is reserved for modal overlays and the microphone. The existing account stack, speech recognition, account modes, server protocol and native animation implementations are retained.
 
@@ -25,6 +25,6 @@ Sapphire is enabled by default for this trial. Settings → Оформление
 
 - `node --test tests/*.test.cjs`: 108 passing tests.
 - `tools/verify-mixed-review.cjs`: mixed financial/reminder save, required date, cancellation, category learning, repeated transcript and shared account control.
-- `tools/verify-hierarchy.cjs`: Sapphire default, batch and individual accounts, summary editing, hidden validation, persistence, manual category correction, nine menu rows, 320/390/430px layouts and color comparison persisted after reload.
+- `tools/verify-hierarchy.cjs`: Classic default and optional Sapphire theme, batch and individual accounts, summary editing, hidden validation, persistence, manual category correction, nine menu rows, 320/390/430px layouts and color comparison persisted after reload.
 - Chromium screenshots reviewed for main, menu, account stack, goals and mixed review. All network API requests mocked and storage disposable.
 - Swift compilation and real-device WKWebView, keyboard, VoiceOver and haptic behavior still require the normal Codemagic/iPhone build. No server deployment is needed for these changes.
