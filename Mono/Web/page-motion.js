@@ -10,9 +10,6 @@ function sync(){if(!stage&&!navGesture)indicator(Math.max(0,rootPages.indexOf(pa
 function mirrorStyles(){if(document.querySelector('#previewRootStyles'))return;let css='';function visit(rules){let result='';for(const rule of rules){if(rule.selectorText&&(/#[a-zA-Z_]|body\[data-page/.test(rule.selectorText))){const selector=rule.selectorText.replace(/#([\w-]+)/g,'[data-preview-id="$1"]').replace(/body(?=\[data-page)/g,'.root-preview');result+=selector+'{'+rule.style.cssText+'}';}else if(rule.cssRules&&rule.conditionText){const head=rule.cssText.slice(0,rule.cssText.indexOf('{'));result+=head+'{'+visit(rule.cssRules)+'}';}}return result;}for(const sheet of document.styleSheets){try{css+=visit(sheet.cssRules);}catch{}}const style=document.createElement('style');style.id='previewRootStyles';style.textContent=css;document.head.append(style);}
 function mountPreview(target,clone){
  mirrorStyles();
- // cloneNode does not copy canvas pixels: keep the ring visible throughout swipes.
- const liveRing=document.querySelector('#home .voice-ring-visual canvas'),copyRing=clone.querySelector('.voice-ring-visual canvas');
- if(liveRing&&copyRing){copyRing.width=liveRing.width;copyRing.height=liveRing.height;copyRing.getContext('2d')?.drawImage(liveRing,0,0);}
  const layer=document.createElement('div');
  layer.className='root-preview';layer.dataset.page=target;layer.inert=true;layer.setAttribute('aria-hidden','true');
  clone.querySelectorAll('[id]').forEach(el=>{el.dataset.previewId=el.id;el.removeAttribute('id');});

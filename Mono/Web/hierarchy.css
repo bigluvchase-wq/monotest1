@@ -50,7 +50,7 @@ header .icon-btn{width:44px!important;height:44px!important;min-height:44px!impo
 .draft-editor{padding:0 16px 16px;border-top:1px solid var(--line)}.draft-editor .draft-top{margin-top:16px}
 #drafts .draft-actions{gap:12px}.draft-actions>button{min-height:44px;box-shadow:none!important;background:none!important;border:0!important;color:var(--accent);padding:8px!important}
 .review-account{margin:14px 0 20px}.review-account label{font-size:13px;display:block;color:var(--muted)}.review-account select{display:block;width:100%;min-height:48px;font-size:15px;padding:10px 12px;margin-top:8px;border:1px solid var(--line);border-radius:12px;background:var(--input);color:var(--ink)}.review-account small{font-size:11px;line-height:1.5;color:var(--muted);display:block;margin-top:6px}
-.review-footer{position:sticky;bottom:0;padding:14px 0 calc(14px + env(safe-area-inset-bottom));background:var(--paper);z-index:3;margin-top:16px}
+.review-footer{position:sticky;bottom:-20px;padding:14px 0 calc(20px + env(safe-area-inset-bottom));background:var(--card-solid,var(--paper));z-index:3;margin:16px -18px -20px;padding-inline:18px;border-top:1px solid var(--line);isolation:isolate}
 .review-footer:has([hidden]){display:none}.review-footer .primary{width:100%;min-height:52px;margin:0!important}
 #drafts>[data-reminder-index]{padding:16px;border:1px solid var(--line);border-radius:14px;margin:18px 0;background:var(--surface)}
 #drafts>[data-reminder-index]>strong{display:block;margin-bottom:16px;font-size:14px;color:var(--accent)}
@@ -151,18 +151,34 @@ html[data-design][data-theme] #entryDialog .parse-tools #parseButton{min-height:
 #entryDialog .draft-editor{padding:16px}.draft-editor .draft-top{margin-top:0}.draft-top,.draft-bottom{gap:14px 12px}
 #entryDialog .draft-actions{align-items:flex-start;margin-top:14px}.draft-actions .tiny{flex:1}
 /* Scroll through search results while the home canvas behind stays stationary. */
-#searchLayer{touch-action:pan-y;top:var(--vv-top,0px);bottom:auto;height:var(--vv-h,100dvh)}
+#searchLayer{touch-action:pan-y;inset:0;height:100dvh}
 #searchLayer .search-results{max-height:calc(var(--vv-h,100dvh) - env(safe-area-inset-top,0px) - 84px);overflow-x:hidden;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-padding-bottom:16px}
 #searchLayer .search-row-text{min-width:0;overflow-wrap:anywhere}#searchLayer .search-row{gap:12px;min-height:60px}
-/* Original Libraries.dev ring, with Mono's microphone icon remaining the touch target. */
-.voice-ring-visual{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:0}
-.voice-ring-visual canvas{display:block;max-width:none;pointer-events:none}
-html.voice-ring-ready .mic-beam-host{width:232px;height:232px;isolation:isolate}
-html.voice-ring-ready :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){width:176px;height:176px;background:transparent!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible;color:var(--accent)!important;z-index:1}
-html.voice-ring-ready :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic])::before{display:none}
-html.voice-ring-ready :is(.mic-beam,.mic-glint,.mic-core,.voice-ripple){display:none!important}
-html.voice-ring-ready #mic svg,html.voice-ring-ready [data-preview-id=mic] svg{display:block!important;width:44px!important;height:44px!important;opacity:1!important}
-html.voice-ring-ready .stop-mark{display:none!important}
 .summary-pair{gap:12px}.summary-pair .operation-card{min-width:0}
 .summary-pair .operation-card strong{max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.2;font-variant-numeric:tabular-nums}
 @media(max-width:360px){.entry-day .entry-open{gap:8px}.entry-day .entry-amount{max-width:45%;font-size:13px!important}.entry-day{padding-inline:12px!important}.summary-pair .operation-card{padding-inline:12px!important}}
+
+/* Center normal input/review sheets in the available area without transforming their content. */
+html[data-theme] dialog#entryDialog:not(#chartDialog):not(#onboarding):not(#lockDialog),html[data-theme] dialog#actionDialog{top:calc(var(--vv-top,0px) + env(safe-area-inset-top,0px) + 16px)!important;bottom:max(16px,calc(100dvh - var(--vv-top,0px) - var(--vv-h,100dvh) + env(safe-area-inset-bottom,0px)))!important;margin:auto!important;height:fit-content;max-height:calc(var(--vv-h,100dvh) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 32px)!important;overflow-y:auto;overscroll-behavior-y:contain}
+html[data-theme] #entryDialog .review-footer{background:var(--card-solid,var(--paper))!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+#entryDialog .review-footer .primary{display:block;min-height:52px;border-radius:14px}
+.ops-selectors{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;min-width:0}
+.ops-selectors .together-mode.secondary{margin:0;flex:none}
+.ops-selectors .currency-tabs{margin:0 0 0 auto;display:flex;gap:8px;overflow-x:auto;min-width:0;max-width:100%;padding:0;scrollbar-width:none}
+.ops-selectors .currency-tabs button{flex:none;margin:0;min-height:44px;padding:10px 14px}
+.ops-head{margin-bottom:10px}.ops-head .balance-top{gap:4px}.summary-pair{margin-top:0}
+#searchLayer .search-top{top:var(--vv-top,0px)}
+#searchLayer .search-results{top:calc(var(--vv-top,0px) + env(safe-area-inset-top,0px) + 66px)}
+#searchLayer .search-backdrop{position:absolute;inset:0}
+html.modal-scroll-locked body{position:fixed!important;top:var(--modal-scroll-top,0px)!important;left:0;right:0;width:100%;overflow:hidden!important}
+@media(max-width:360px){.review-footer{margin-inline:-14px;padding-inline:14px}}
+@media(max-height:650px){
+ :is(#home,[data-preview-id=home]).home-dash .recording-block{padding-top:0!important}
+ :is(#home,[data-preview-id=home]).home-dash .voice-zone{width:112px!important;height:112px!important}
+ :is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]){width:104px!important;height:104px!important}
+ :is(#home,[data-preview-id=home]).home-dash .account-picker{margin-top:8px}
+}
+/* Keep menu scrolling local, including after iOS releases a fixed-body modal lock. */
+body[data-page=menu]{height:100dvh;overflow:hidden!important}
+body[data-page=menu] .app{height:calc(100dvh - var(--main-nav-space) - env(safe-area-inset-top,0px))!important;min-height:0!important}
+body[data-page=menu] #workspace{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding-bottom:24px}
