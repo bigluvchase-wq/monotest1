@@ -72,7 +72,7 @@ function withTombstones(prev,next,remote){
  return next;
 }
 function persist(next,options={}){if(storageProblem){notify(storageMessage);return false;}try{next=withTombstones(state,next,!!options.remote);if(!E.validateState(next))throw Error('invalid');const before=state;if(window.MonoTogether?.active())window.MonoTogether.saveLocal(next);else localStorage.setItem(KEY,JSON.stringify(next));state=next;window.MonoNative?.refreshReminders();if(!options.remote){window.MonoAccess?.queueSync?.();limitAlerts(before,next);}return true;}catch{notify('Не удалось сохранить. Проверьте поля и свободное место в хранилище браузера.');return false;}}
-function commit(change,message,options={}){const next=structuredClone(state);change(next);if(!persist(next))return false;window.MonoNative?.pushWidget?.();refreshAccounts();renderHomeReminders();if(page!=='home'&&!options.deferRender)render();if(message)notify(message);return true;}
+function commit(change,message){const next=structuredClone(state);change(next);if(!persist(next))return false;window.MonoNative?.pushWidget?.();refreshAccounts();renderHomeReminders();if(page!=='home')render();if(message)notify(message);return true;}
 let systemDark=typeof window.monoSystemDark==='boolean'?window.monoSystemDark:matchMedia('(prefers-color-scheme:dark)').matches;
 // Цветные темы (фиолетовая, зелёная, бургунди) — светлые, со своим цветом фона и акцента: palettes.css
 // Цветные и чёрная темы доступны с Премиумом (и в пробный период). Без Премиума — «Как на устройстве», светлая и тёмная.
@@ -510,5 +510,3 @@ window.MonoNative?.refreshReminders();
 
 // Первый кадр готов — показываем интерфейс сразу в нужных размерах
 requestAnimationFrame(()=>requestAnimationFrame(()=>document.documentElement.classList.remove('booting')));
-
-window.MonoReminderRefresh=()=>{if(page==='reminders')render();};

@@ -14,15 +14,17 @@ function roundedSegment(start,end){
  return `M${p(outer,a+co)} A${outer} ${outer} 0 ${span-2*co>Math.PI?1:0} 1 ${p(outer,b-co)} Q${p(outer,b)} ${p(outer-corner,b)} L${p(inner+corner,b)} Q${p(inner,b)} ${p(inner,b-ci)} A${inner} ${inner} 0 ${span-2*ci>Math.PI?1:0} 0 ${p(inner,a+ci)} Q${p(inner,a)} ${p(inner+corner,a)} L${p(outer-corner,a)} Q${p(outer,a)} ${p(outer,a+co)} Z`;
 }
 function render(values,colours,type='expense'){
- const total=values.reduce((n,v)=>n+v.n,0),gradient='mono-ring-sheen-'+(type==='income'?'income':'expense');let cursor=0,arcs='';
+ const total=values.reduce((n,v)=>n+v.n,0),gradient='mono-ring-sheen-'+(type==='income'?'income':'expense');let cursor=0,arcs='',symbols='';
  values.forEach((v,i)=>{
   const share=total?v.n/total:0,start=cursor;cursor+=share;if(!share)return;const colour=colours[i%colours.length]||'var(--accent)';
+  if(share>=.055){const angle=-Math.PI/2+(values.length===1?0:start+share/2)*Math.PI*2,x=CENTER+RADIUS*Math.cos(angle),y=CENTER+RADIUS*Math.sin(angle);symbols+=`<g class="chart-ring-category-icon" transform="translate(${x} ${y})" style="color:${colour}"><circle r="10" fill="var(--paper)"/><g transform="translate(-7 -7) scale(.5833)" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${C.paths(C.key(v.name,type))}</g></g>`;}
+
   if(values.length===1){arcs+=`<circle class="chart-ring-segment" data-ring-category="0" cx="${CENTER}" cy="${CENTER}" r="${RADIUS}" fill="none" stroke="${colour}" stroke-width="${STROKE}"/><circle class="chart-ring-sheen" cx="${CENTER}" cy="${CENTER}" r="${RADIUS}" fill="none" stroke="url(#${gradient})" stroke-width="${STROKE}"/>`;return;}
   const halfGap=Math.min(3/(2*Math.PI*RADIUS)/2,share*.18),d=roundedSegment(start+halfGap,cursor-halfGap);
   arcs+=`<path class="chart-ring-segment" data-ring-category="${i}" d="${d}" fill="${colour}"/><path class="chart-ring-sheen" d="${d}" fill="url(#${gradient})"/>`;
  });
  if(!total)arcs=`<circle cx="${CENTER}" cy="${CENTER}" r="${RADIUS}" fill="none" stroke="var(--bar)" stroke-width="${STROKE}"/>`;
- return `<svg class="chart-static-ring" viewBox="0 0 ${SIZE} ${SIZE}" aria-hidden="true"><defs><linearGradient id="${gradient}" x1="0" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="white" stop-opacity=".24"/><stop offset=".45" stop-color="white" stop-opacity=".04"/><stop offset="1" stop-color="black" stop-opacity=".12"/></linearGradient></defs><g class="chart-ring-body">${arcs}</g><g class="chart-ring-icons"></g><g class="chart-ring-percentages"></g></svg>`;
+ return `<svg class="chart-static-ring" viewBox="0 0 ${SIZE} ${SIZE}" aria-hidden="true"><defs><linearGradient id="${gradient}" x1="0" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="white" stop-opacity=".24"/><stop offset=".45" stop-color="white" stop-opacity=".04"/><stop offset="1" stop-color="black" stop-opacity=".12"/></linearGradient></defs><g class="chart-ring-body">${arcs}</g><g class="chart-ring-icons">${symbols}</g><g class="chart-ring-percentages"></g></svg>`;
 }
 
 function icon(name,type='expense'){return C.category(name,type);}
