@@ -32,7 +32,7 @@ function group(r){if(r.done)return 'done';if(stamp(r)<nowStamp())return 'late';i
 const titles={late:'Просрочено',today:'Сегодня',tomorrow:'Завтра',later:'Позже',done:'Выполнено'};
 function card(r){
  const g=group(r);
- return `<div class="card goal-card reminder-card ${g==='late'?'is-late':''} ${r.done?'is-done':''}" data-reminder-id="${esc(r.id)}"><button type="button" class="reminder-check" data-toggle-reminder="${esc(r.id)}" aria-label="${r.done?'Вернуть в список':'Отметить выполненным'}" aria-pressed="${r.done?'true':'false'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></button><button type="button" class="reminder-main" data-edit-reminder="${esc(r.id)}"><strong>${esc(r.title)}</strong>${r.text?`<span class="reminder-text">${esc(r.text)}</span>`:''}<small>${bell}${esc(dayWord(r.date))} · ${esc(r.time)}${isRepeat(r)?' · '+esc(repeats()[r.repeat].toLowerCase()):''}${g==='late'?' · просрочено':''}</small></button></div>`;
+ return `<div class="card goal-card reminder-card ${g==='late'?'is-late':''} ${r.done?'is-done':''}" data-reminder-id="${esc(r.id)}"><button type="button" class="reminder-check" data-toggle-reminder="${esc(r.id)}" aria-label="${r.done?'Вернуть в список':'Отметить выполненным'}" aria-pressed="${r.done?'true':'false'}"><span class="reminder-tick" aria-hidden="true"><i class="tick-short"><b></b></i><i class="tick-long"><b></b></i></span></button><button type="button" class="reminder-main" data-edit-reminder="${esc(r.id)}"><strong><span class="reminder-title-text">${esc(r.title)}</span></strong>${r.text?`<span class="reminder-text">${esc(r.text)}</span>`:''}<small>${bell}${esc(dayWord(r.date))} · ${esc(r.time)}${isRepeat(r)?' · '+esc(repeats()[r.repeat].toLowerCase()):''}${g==='late'?' · просрочено':''}</small></button></div>`;
 }
 // Календарь напоминаний — как у платежей: раскрывается по нажатию на значок календаря
 const CAL='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M8 3v4m8-4v4M3.5 10h17M8 14h2m4 0h2M8 17.2h2"/></svg>';
@@ -93,10 +93,27 @@ function form(id,pre={}){if(!id&&window.MonoTogether?.offer(()=>form(id,pre)))re
  const del=$('#deleteReminder');
  if(del)del.onclick=()=>{if(!confirm('Удалить напоминание?'))return;if(commit(s=>{s.reminders=(s.reminders||[]).filter(x=>x.id!==id);},'Напоминание удалено'))$('#actionDialog').close();};
 }
+// Motion inspired by DesignBookmark's Checkbox List: pop, check, then left-to-right strike.
+const renderPageAfterCheck=()=>root.MonoReminderRefresh();
+let settleChecks=0;const repeatingChecks=new Set();
+function checkMotion(row,on,wasDone){
+ row.classList.add('is-check-animating');
+ const title=row.querySelector('.reminder-main strong'),text=title.querySelector('.reminder-title-text'),range=document.createRange();range.selectNodeContents(text);
+ const base=title.getBoundingClientRect(),rects=[...range.getClientRects()].filter(r=>r.width>0),lines=document.createElement('span');lines.className='reminder-strikes';lines.setAttribute('aria-hidden','true');
+ title.querySelector('.reminder-strikes')?.remove();
+ for(const rect of rects){const line=document.createElement('i');line.style.cssText=`left:${rect.left-base.left}px;top:${rect.top-base.top+rect.height*.55}px;width:${rect.width}px`;lines.append(line);}title.append(lines);
+ row.querySelectorAll('.reminder-strikes i').forEach((line,i)=>line.animate([{transform:wasDone?'scaleX(1)':'scaleX(0)'},{transform:on?'scaleX(1)':'scaleX(0)'}],{duration:on?300:220,delay:on?150+i*35:0,easing:'cubic-bezier(.22,1,.36,1)',fill:'both'}));
+ const check=row.querySelector('.reminder-check');check.getAnimations().forEach(a=>a.cancel());check.animate([{transform:'scale(.8)'},{transform:'scale(1.09)',offset:.55},{transform:'scale(1)'}],{duration:380,easing:'cubic-bezier(.22,1,.36,1)'});
+ row.classList.toggle('is-done',on);check.setAttribute('aria-pressed',String(on));check.setAttribute('aria-label',on?'Вернуть в список':'Отметить выполненным');
+ clearTimeout(settleChecks);settleChecks=setTimeout(()=>{repeatingChecks.clear();if(page!=='reminders'||document.querySelector('dialog[open]'))return;const focus=document.activeElement?.dataset.toggleReminder;renderPageAfterCheck();if(focus)document.querySelector(`[data-toggle-reminder="${CSS.escape(focus)}"]`)?.focus({preventScroll:true});},Math.max(520,rects.length*35+460));
+}
 function toggle(id){
- const cur=list().find(x=>x.id===id);
- if(cur&&isRepeat(cur)&&!cur.done){const nextDate=nextAfter(cur,cur.date);if(commit(s=>{const r=s.reminders.find(x=>x.id===id);r.anchor=r.anchor||r.date;r.date=nextDate;r.done=false;}))notify('Готово. Следующее: '+dayWord(nextDate).toLowerCase()+' в '+cur.time,true);return;}
- commit(s=>{const r=(s.reminders||[]).find(x=>x.id===id);if(r)r.done=!r.done;});
+ const cur=list().find(x=>x.id===id);if(!cur||repeatingChecks.has(id))return;
+ const row=document.querySelector(`[data-reminder-id="${CSS.escape(id)}"]`),animate=!!row&&!reducedMotion(),repeat=isRepeat(cur)&&!cur.done,nextDate=repeat?nextAfter(cur,cur.date):null;
+ const ok=commit(s=>{const r=s.reminders.find(x=>x.id===id);if(repeat){r.anchor=r.anchor||r.date;r.date=nextDate;r.done=false;}else r.done=!r.done;},undefined,{deferRender:animate});
+ if(!ok)return;
+ if(animate){if(repeat)repeatingChecks.add(id);checkMotion(row,!cur.done,cur.done);}
+ if(repeat)notify('Готово. Следующее: '+dayWord(nextDate).toLowerCase()+' в '+cur.time,true);
 }
 // Для главного экрана: сегодняшние и просроченные невыполненные
 function forHome(){roll();const today=E.dateString(new Date());return list().filter(r=>!r.done&&r.date<=today).sort((a,b)=>stamp(a).localeCompare(stamp(b)));}
@@ -122,7 +139,7 @@ function check(){
  if(!due.length)return;
  due.forEach(r=>seen[key(r)]=Date.now());saveSeen();
  notify(due.length===1?'Напоминание: '+due[0].title+(due[0].text?' — '+due[0].text:''):'Напоминание: '+due[0].title+' и ещё '+(due.length-1));
- if(page==='reminders')window.render();renderHomeReminders();
+ if(page==='reminders')renderPageAfterCheck();renderHomeReminders();
 }
 setInterval(check,15000);document.addEventListener('visibilitychange',check);setTimeout(check,2500);
 root.MonoReminders={render,form,toggle,forHome,focus,nativeItems,list,bell};
