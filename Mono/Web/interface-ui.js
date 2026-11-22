@@ -45,3 +45,41 @@ for(const dialog of document.querySelectorAll('dialog:not(#onboarding):not(#char
 document.addEventListener('touchmove',event=>{
  if(document.body.dataset.page==='home'&&!document.querySelector('dialog[open]')&&event.cancelable)event.preventDefault();
 },{passive:false});
+
+/* Keep inline editors and icon pickers in flow while their contents expand. */
+window.MonoDisclosure=(()=>{
+ const active=new WeakMap();
+ return (panel,expanded,onClosed)=>{
+  const previous=active.get(panel);
+  const start=panel.hidden?0:panel.getBoundingClientRect().height;
+  previous?.cancel();active.delete(panel);
+  panel.inert=!expanded;
+  const complete=()=>{
+   panel.classList.remove('disclosure-moving');
+   if(!expanded){panel.hidden=true;onClosed?.();}
+  };
+  panel.hidden=false;
+  const end=expanded?panel.getBoundingClientRect().height:0;
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches||Math.abs(start-end)<1){complete();return;}
+  panel.classList.add('disclosure-moving');
+  const animation=panel.animate([{height:start+'px',opacity:start?1:0},{height:end+'px',opacity:expanded?1:0}],
+   {duration:300,easing:'cubic-bezier(.24,.7,.3,1)',fill:'both'});
+  active.set(panel,animation);
+  animation.finished.then(()=>{
+   if(active.get(panel)!==animation)return;
+   active.delete(panel);complete();animation.cancel();
+  }).catch(()=>{});
+ };
+})();
+
+document.querySelector('#drafts').addEventListener('click',event=>{
+ const summary=event.target.closest('.draft-summary');
+ if(!summary)return;
+ const details=summary.parentElement,editor=details.querySelector('.draft-editor');
+ const expanded=summary.getAttribute('aria-expanded')!==null?summary.getAttribute('aria-expanded')!=='true':!details.open;
+ if(expanded&&!details.open){editor.hidden=true;details.open=true;}
+ event.preventDefault();
+ summary.setAttribute('aria-expanded',String(expanded));
+ details.toggleAttribute('data-editing',expanded);
+ MonoDisclosure(editor,expanded,()=>{details.open=false;editor.hidden=false;editor.inert=false;});
+});

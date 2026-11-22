@@ -21,7 +21,12 @@ function render(){
   return;
  }
  const hit=text=>tokens.every(t=>norm(text).includes(t));
- const entries=state.entries.filter(e=>hit(haystack(e))).sort((a,b)=>(b.date+(b.createdAt||'')).localeCompare(a.date+(a.createdAt||'')));
+ const day=MonoOperationQuery.searchDay(q);
+ const entries=state.entries.filter(e=>day?e.date===day:hit(haystack(e))).sort((a,b)=>(b.date+(b.createdAt||'')).localeCompare(a.date+(a.createdAt||'')));
+ if(day){
+  results.innerHTML=entries.length?block('Операции · '+MonoPeriod.label({start:day,end:day}),`<div class="search-entries">${entries.map(e=>entryHTML(e)).join('')}</div>`):'<p class="search-empty">За эту дату операций нет</p>';
+  return;
+ }
  const found=[
   block('Операции'+(entries.length>20?' · '+entries.length:''),entries.length?`<div class="search-entries">${entries.slice(0,20).map(e=>entryHTML(e)).join('')}</div>`:''),
   block('Разделы',sections.filter(([,t,m])=>hit(t+' '+m)).map(([k,t,m])=>row('page',k,t,m)).join('')),

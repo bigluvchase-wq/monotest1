@@ -25,6 +25,11 @@ const icons={
 function svg(key){return `<svg class="goal-symbol" viewBox="0 0 24 24" aria-hidden="true">${(icons[key]||icons.palm)[1]}</svg>`;}
 function field(key='palm'){return `<div class="goal-icon-control"><button type="button" class="goal-icon-current" aria-label="Выбрать иконку цели" aria-expanded="false">${svg(key)}</button><input type="hidden" name="icon" value="${key}"></div>`;}
 function picker(){return `<div class="goal-icon-picker" hidden>${Object.entries(icons).map(([key,[label]])=>`<button type="button" data-goal-icon="${key}" aria-label="${label}">${svg(key)}</button>`).join('')}</div>`;}
-function bind(container){const open=container.querySelector('.goal-icon-current'),list=container.querySelector('.goal-icon-picker');open.onclick=()=>{list.hidden=!list.hidden;open.setAttribute('aria-expanded',String(!list.hidden));};list.onclick=e=>{const b=e.target.closest('[data-goal-icon]');if(!b)return;container.querySelector('[name=icon]').value=b.dataset.goalIcon;open.innerHTML=svg(b.dataset.goalIcon);list.hidden=true;open.setAttribute('aria-expanded','false');};}
+function bind(container){
+ const open=container.querySelector('.goal-icon-current'),list=container.querySelector('.goal-icon-picker');
+ const set=expanded=>{open.setAttribute('aria-expanded',String(expanded));MonoDisclosure(list,expanded);};
+ open.onclick=()=>set(open.getAttribute('aria-expanded')!=='true');
+ list.onclick=e=>{const b=e.target.closest('[data-goal-icon]');if(!b)return;container.querySelector('[name=icon]').value=b.dataset.goalIcon;open.innerHTML=svg(b.dataset.goalIcon);set(false);};
+}
 root.MonoGoalIcons={svg,field,picker,bind,ids:Object.keys(icons)};
 })(window);

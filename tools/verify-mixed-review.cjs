@@ -17,7 +17,10 @@ const {chromium}=require(process.env.MONO_PLAYWRIGHT_MODULE||'playwright'),expre
  });
  assert(focus.active);
  assert.equal(focus.outline,'none');
- assert.equal(focus.ring,'none');
+ const restRing=await p.locator('#dictation').evaluate(field=>{
+  field.blur();const shadow=getComputedStyle(field).boxShadow;field.focus({preventScroll:true});return shadow;
+ });
+ assert.equal(focus.ring,restRing);
  await p.evaluate(()=>{document.documentElement.style.setProperty('--vv-top','35px');document.documentElement.style.setProperty('--vv-h','340px');});
  await p.waitForTimeout(300);
  const typing=await p.locator('#entryDialog').boundingBox();
@@ -30,6 +33,9 @@ const {chromium}=require(process.env.MONO_PLAYWRIGHT_MODULE||'playwright'),expre
  await p.locator('[data-index]>summary').click();
  await p.locator('[data-field=amount]').fill('270');
  assert.match(await p.locator('[data-index]>summary').innerText(),/270/);
+ await p.locator('[data-index]>summary').click();
+ await p.waitForFunction(()=>!document.querySelector('details[data-index]').open);
+ assert.match(await p.locator('[data-index]>summary').innerText(),/270[\s\S]*Изменить/);
  await p.locator('#closeEntry').click();
  await p.waitForFunction(()=>!$('#entryDialog').hasAttribute('open'));
  await p.evaluate(()=>{document.documentElement.style.removeProperty('--vv-top');document.documentElement.style.removeProperty('--vv-h');});

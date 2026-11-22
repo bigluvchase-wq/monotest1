@@ -39,5 +39,24 @@ for(let i=0;i<records.length;i++){
 }
 return merged;
 }
-const api={clauses,past};root.MonoSpeechDates=api;if(typeof module==='object')module.exports=api;
+function queryDay(text,now,{embedded=false}={}){
+ const cardinal='('+number+')\\s+('+monthTok+')(?:\\s+(\\d{4}))?';
+ const expression='(?:'+absolute+'|'+cardinal+'|позавчера|вчера|сегодня|\\d{1,2}[./]\\d{1,2})';
+ const re=new RegExp(embedded?'(?<![\\p{L}\\d])'+expression+'(?![\\p{L}\\d./])':'^'+expression+'$','iu');
+ let mark=text.match(re)?.[0];
+ if(!mark)return null;
+ const spoken=mark.match(new RegExp('^'+cardinal+'$','iu'));
+ if(spoken&&/^\p{L}/u.test(spoken[1])){
+  const day=spoken[1].toLowerCase().split(/\s+/).reduce((sum,word)=>sum+small[word],0);
+  mark=[day,spoken[2],spoken[3]].filter(Boolean).join(' ');
+ }
+ const short=mark.match(/^(\d{1,2})[./](\d{1,2})$/);
+ let date;
+ if(short){
+  date=build(now.getFullYear(),Number(short[2])-1,Number(short[1]));
+  if(date>now&&date.toDateString()!==now.toDateString())date=build(now.getFullYear()-1,Number(short[2])-1,Number(short[1]));
+ }else date=absoluteDate(now,mark)||past(now,mark.toLowerCase());
+ return [String(date.getFullYear()).padStart(4,'0'),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
+}
+const api={clauses,past,queryDay};root.MonoSpeechDates=api;if(typeof module==='object')module.exports=api;
 })(typeof window==='object'?window:globalThis);
