@@ -56,12 +56,17 @@
    return {color,points};
   });
   dialog.append(canvas);
-  const fade=ring.animate(opening?[{opacity:0,offset:0},{opacity:0,offset:.69},{opacity:1,offset:1}]:[{opacity:1},{opacity:0,offset:.24},{opacity:0}],{duration:opening?duration:closeDuration,fill:'both'});
-  animations.push(fade);
+  let showingRing=!opening;ring.style.transition='none';ring.style.opacity=showingRing?'1':'0';
   space.classList.add('ring-ready');running=true;
   const start=performance.now(),length=opening?duration:closeDuration;
+  const handoff=.68,closeFade=.22,finalBend=1-(1-handoff)**3;
   function draw(time){
-   const t=Math.min(1,Math.max(0,(time-start)/length)),q=opening?1-(1-t)**3:1-t*t*(3-2*t);
+   const t=Math.min(1,Math.max(0,(time-start)/length));
+   const bend=Math.max(0,(t-closeFade)/(1-closeFade));
+   const q=opening?Math.min(1,(1-(1-t)**3)/finalBend):1-bend*bend*(3-2*bend);
+   // Once the outlines align, fade the canvas off the finished ring and its icons.
+   const show=opening?t>=handoff:t<closeFade;
+   if(show!==showingRing){showingRing=show;ring.style.opacity=show?'1':'0';}
    ink.clearRect(0,0,width,height);
    for(const {color,points} of slices){
     ink.beginPath();
@@ -69,7 +74,7 @@
     ink.closePath();
     ink.fillStyle=color;ink.fill();
    }
-   canvas.style.opacity=String(opening?1-Math.max(0,(t-.69)/.31):Math.min(t/.24,1));
+   canvas.style.opacity=String(opening?1-Math.max(0,(t-handoff)/(1-handoff)):Math.min(t/closeFade,1));
    if(t<1){frame=requestAnimationFrame(draw);return;}
    frame=0;running=false;done();
   }
@@ -77,7 +82,8 @@
  }
  function showRing(){
   const space=panel.querySelector('.chart-morph-space');
-  space.classList.add('ring-ready');space.querySelector('.chart-static-ring').style.opacity='';
+  space.classList.add('ring-ready');
+  const ring=space.querySelector('.chart-static-ring');ring.style.opacity='';ring.style.transition='';
   const lab=space.querySelector('.chart-ring-label');if(lab){lab.style.opacity='';lab.style.transition='';}
   current.labels?.remove();current.labels=null;
   dialog.querySelector('.chart-morph-layer')?.remove();

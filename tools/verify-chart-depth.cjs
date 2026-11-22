@@ -4,10 +4,18 @@ const {chromium}=require(process.env.MONO_PLAYWRIGHT_MODULE||'playwright'),expre
  const p=await browser.newPage({viewport:{width:390,height:844},locale:'ru-RU'}),errors=[],out='/tmp/mono-chart-depth';fs.mkdirSync(out,{recursive:true});p.on('pageerror',e=>errors.push(e.message));await p.route('https://api.monoapp.ru/**',r=>r.fulfill({json:{ok:true,premium:false}}));let seed=E.initialState();seed.settings.onboarded=true;const date=E.dateString(new Date()),values=[500000,200000,120000,80000,35000,15000,1],cats=seed.categories.slice(0,7);seed=E.saveDrafts(seed,values.map((amount,i)=>({title:cats[i],type:'expense',category:cats[i],amount,date,account:'main'})).concat([{title:'Зарплата',type:'income',category:seed.incomeCategories[0],amount:1500000,date,account:'main'}])).next;
  await p.addInitScript(s=>localStorage.setItem('mono-v2',JSON.stringify(s)),seed);await p.goto('http://127.0.0.1:'+server.address().port);await p.evaluate(()=>{tourActive=false;$('#onboarding').close();});await p.waitForTimeout(600);assert(await p.locator('.app>footer').isVisible());await p.evaluate(()=>commit(s=>s.reminders=[{id:'home-note',title:'Корм',text:'',date:E.dateString(new Date()),time:'23:59',repeat:'once',done:false}]));await p.waitForFunction(()=>document.querySelector('#home').classList.contains('has-rem'));assert.equal(await p.locator('.app>footer').isVisible(),false);assert(await p.locator('.hd-delta').evaluate(e=>e.getBoundingClientRect().height<=26));await p.evaluate(()=>commit(s=>s.reminders=[]));await p.waitForFunction(()=>!document.querySelector('#home').classList.contains('has-rem'));assert(await p.locator('.app>footer').isVisible());await p.evaluate(()=>selectedMonth=MonoPeriod.shift(currentMonth(),-1));
  for(const type of ['income','expense']){
-  await p.locator(`[data-hd-go=${type}]`).click();
+  const card=p.locator(`[data-hd-go=${type}]`);
+  const bar=await card.locator('.mini-chart').boundingBox(),bounds=await card.boundingBox();
+  assert(bar.height>=5&&bar.y+bar.height<bounds.y+bounds.height,'the source strip fits inside the home card');
+  assert.equal(await card.locator('.mini-chart i').count(),type==='expense'?values.length:1);
+  await card.click();
   assert.equal(await p.evaluate(()=>page),'home');
   assert(await p.locator('#chartDialog').evaluate(d=>d.open));
   assert.equal(await p.evaluate(()=>selectedMonth),await p.evaluate(()=>currentMonth()));
+  await p.waitForFunction(()=>{
+   const canvas=document.querySelector('.chart-ring-flight'),ring=document.querySelector('.chart-static-ring');
+   return canvas&&ring.style.opacity==='1'&&Number(canvas.style.opacity)<1;
+  },null,{polling:'raf'});
   await p.waitForFunction(()=>!MonoCharts.isBusy());
   await p.locator('.chart-close').click();
   await p.waitForFunction(()=>!document.querySelector('#chartDialog').open);
