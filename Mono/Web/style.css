@@ -1712,9 +1712,6 @@ html.entry-scroll-locked body{position:fixed;inset:var(--entry-scroll-top,0px) 0
 html[data-entry-viewport] body > :is(.app,.bottom-nav,.bg-float){translate:0 var(--vv-top)}
 #entryDialog .sheet-head{flex:none}
 #entryDialog #dictation{display:block;width:100%}
-#entryDialog #dictation:focus{
- outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);
-}
 #entryDialog .entry-content{min-height:0;overflow:hidden auto;overscroll-behavior:contain;scroll-padding:8px 0}
 #entryDialog:not(.has-review) #entrySource>summary,#entryDialog #parseErrors:empty{display:none}
 #entrySource>summary{min-height:42px;align-content:center;cursor:pointer;color:var(--muted);font-size:13px}
@@ -1735,15 +1732,43 @@ html[data-entry-viewport] body > :is(.app,.bottom-nav,.bg-float){translate:0 var
 #entryDialog .entry-footer .primary{width:100%;margin:0}
 html[data-theme] #entryDialog::backdrop{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 @keyframes entry-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes entry-sheet-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes entry-review-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:no-preference){
  html[data-theme] dialog#entryDialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog){
-  animation:entry-fade-in 280ms cubic-bezier(.2,.65,.35,1) both!important;
+  animation:entry-sheet-in 340ms cubic-bezier(.24,.7,.32,1) both!important;
  }
- html[data-theme] #entryDialog[open]::backdrop{animation:entry-fade-in 240ms ease-out both}
- html[data-theme] #entryDialog.closing::backdrop{animation:entry-fade-in 200ms ease-in reverse both;transition:none}
- #entryDialog.has-review #drafts{animation:entry-fade-in 180ms ease-out both}
+ html[data-theme] #entryDialog[open]::backdrop{animation:entry-fade-in 300ms ease-out both}
+ html[data-theme] #entryDialog.closing::backdrop{animation:entry-fade-in 240ms ease-out reverse both;transition:none}
+ #entryDialog.has-review :is(#drafts,.entry-footer){animation:entry-review-in 250ms cubic-bezier(.22,.67,.35,1) both}
 }
 
 /* Match the category preview in Operations and keep the Home cards at their original scale. */
 .hd-flow .mini-chart{height:5px;margin:9px 0 0;border-radius:5px}
 @media(max-height:760px){.hd-flow .mini-chart{margin-top:6px}}
+
+/* Touch selection should not leave the system focus tint on the app surface. */
+body :is(button,a,input,select,textarea,summary,label){-webkit-tap-highlight-color:transparent}
+body.pointer-navigation :is(button,a,input,select,textarea,summary):focus,
+body.pointer-navigation :is(.picker-box,.month-control,.search-field):focus-within{outline:none!important}
+html[data-theme] body.pointer-navigation :is(.limit-items input,.friend-row input):focus{
+ border-color:var(--line)!important;box-shadow:none!important;
+}
+body:not(.pointer-navigation) :is(button,a,input,select,textarea,summary):focus-visible{
+ outline:2px solid var(--muted);outline-offset:2px;
+}
+.app:has(:is(#home,[data-preview-id=home]).has-rem)>footer{display:none}
+.ops-selectors{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;margin-bottom:12px}
+.ops-selectors .together-mode.secondary{margin:0;flex:none}
+.ops-selectors .currency-tabs{margin:0;min-width:0;max-width:100%;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+.ops-selectors .together-mode + .currency-tabs{margin-left:auto}
+.ops-selectors .currency-tabs::-webkit-scrollbar{display:none}
+.ops-selectors .currency-tabs button{flex:none;margin-block:0}
+html[data-theme] #actionDialog[open]:has(#actionFooter:not([hidden])){
+ display:flex;flex-direction:column;overflow:hidden;
+}
+#actionDialog:has(#actionFooter:not([hidden])) .sheet-head{flex:none;margin-bottom:10px}
+#actionDialog:has(#actionFooter:not([hidden])) #actionBody{min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 2px 6px}
+#actionFooter{flex:none;padding-top:8px;border-top:1px solid var(--line)}
+#actionFooter .primary{width:100%;margin:0;min-height:44px}
+#actionDialog :is(.deposit-form,.payment-form) .field{margin-block:8px}

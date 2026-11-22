@@ -4,7 +4,7 @@
 // Вид и скрытие сумм настраиваются в «Настройки → Главный экран». Классический вид — фраза «Просто скажи, сколько».
 const I=()=>root.MonoInsights;
 const cfg=()=>({mode:'dash',hideScope:'all',hideOnStart:false,...(state.settings.home||{})});
-let hidden=cfg().hideOnStart===true;
+let hidden=cfg().hideOnStart===true,hideOnStart=hidden;
 const cur=()=>state.accounts.some(a=>a.currency==='RUB')?'RUB':state.accounts[0].currency;
 const MASK='••••• ₽';
 const ico={
@@ -13,7 +13,7 @@ const ico={
  down:'<svg viewBox="0 0 24 24"><path d="M17 7 7 17M15 17H7V9"/></svg>',
  up:'<svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>'
 };
-function hides(part){if(!hidden)return false;const s=cfg().hideScope;return s==='all'||s===part;}
+function hides(part){if(!hidden)return false;const {mode,hideScope}=cfg();return mode===part||hideScope==='all'||hideScope===part;}
 
 function html(){
  const c=cur(),t=E.dateString(new Date()),ym=t.slice(0,7);
@@ -24,16 +24,19 @@ function html(){
  // Под балансом — сколько отложено в этом месяце: доходы минус расходы с 1-го числа
  const saved=inc-exp,monthName=['январе','феврале','марте','апреле','мае','июне','июле','августе','сентябре','октябре','ноябре','декабре'][new Date().getMonth()];
  const deltaHTML=(inc||exp)?(hb||hf?`<button type="button" class="hd-delta muted" data-hd-explain="saved">••• ₽<small>отложено в ${monthName}</small></button>`:`<button type="button" class="hd-delta ${saved>=0?'up':'down'}" data-hd-explain="saved">${saved>=0?'+':'−'}${money(Math.abs(saved),c)}<small>${saved>=0?'отложено':'больше, чем заработано'} в ${monthName}</small></button>`):'';
- return `<div class="hd-top"><div class="hd-label">Общий баланс <button type="button" class="hd-eye" data-hd-eye aria-pressed="${hidden}" aria-label="${hidden?'Показать суммы':'Скрыть суммы'}">${hidden?ico.eyeOff:ico.eye}</button></div>
- <div class="hd-balance">${hb?MASK:money(balance,c)}</div>${deltaHTML}</div>
- <div class="hd-row"><button type="button" class="hd-card hd-flow" data-hd-go="expense"><span class="hd-flow-top"><span class="hd-ic out">${ico.down}</span>Расходы</span><b>${hf?MASK:money(exp,c)}</b>${miniBar(hf?[]:items,'expense')}</button>
- <button type="button" class="hd-card hd-flow" data-hd-go="income"><span class="hd-flow-top"><span class="hd-ic in">${ico.up}</span>Доходы</span><b>${hf?MASK:money(inc,c)}</b>${miniBar(hf?[]:items,'income')}</button></div>
-`;
+ const mode=cfg().mode;
+ const eye=`<button type="button" class="hd-eye" data-hd-eye aria-pressed="${hidden}" aria-label="${hidden?'Показать суммы':'Скрыть суммы'}">${hidden?ico.eyeOff:ico.eye}</button>`;
+ const head=mode==='flows'?`<div class="hd-label">За месяц ${eye}</div>`:`<div class="hd-top"><div class="hd-label">Общий баланс ${eye}</div>
+ <div class="hd-balance">${hb?MASK:money(balance,c)}</div>${mode==='dash'?deltaHTML:''}</div>`;
+ const flows=`<div class="hd-row"><button type="button" class="hd-card hd-flow" data-hd-go="expense"><span class="hd-flow-top"><span class="hd-ic out">${ico.down}</span>Расходы</span><b>${hf?MASK:money(exp,c)}</b>${miniBar(hf?[]:items,'expense')}</button>
+ <button type="button" class="hd-card hd-flow" data-hd-go="income"><span class="hd-flow-top"><span class="hd-ic in">${ico.up}</span>Доходы</span><b>${hf?MASK:money(inc,c)}</b>${miniBar(hf?[]:items,'income')}</button></div>`;
+ return head+(mode==='balance'?'':flows);
 }
 
 function render(){
  const home=document.querySelector('#home');if(!home||typeof state!=='object')return;
- const dash=cfg().mode!=='classic';
+ const settings=cfg(),dash=settings.mode!=='classic';
+ if(settings.hideOnStart!==hideOnStart){hideOnStart=settings.hideOnStart;hidden=hideOnStart===true;}
  home.classList.toggle('home-dash',dash);
  let box=home.querySelector('.hd');
  if(!dash){box?.remove();return;}
