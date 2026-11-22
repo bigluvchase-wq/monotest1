@@ -114,3 +114,26 @@ test('amounts retain context on both sides up to the next action',()=>{
  const r=E.parse('купил на 300 кофе потом продукты 1500',now,[],s,'main');assert.deepEqual(r.errors,[]);assert.deepEqual(r.entries.map(e=>[e.amount,e.category]),[[30000,'Кафе'],[150000,'Продукты']]);
  const missing=E.parse('скинул 300 на цель',now,[],s,'main');assert.equal(missing.entries.length,0);assert.match(missing.errors[0],/Назовите цель/);
 });
+test('goal forms use the dictated title after the command and recognizer pauses',()=>{
+ const {split,detect}=root.MonoCommands;
+ for(const [phrase,name] of [
+  ['Создай цель отпуск','Отпуск'],
+  ['Создай цель подарок папе','Подарок папе'],
+  ['Создай цель: подарок папе','Подарок папе'],
+  ['Создай цель. Отпуск','Отпуск'],
+  ['Моно, создай цель отп создай цель отпуск','Отпуск'],
+  ['Создай цель создай цель подарок папе','Подарок папе'],
+  ['Создай цель с названием отпуск','Отпуск'],
+  ['Хочу накопить на новую машину','Новая машина']
+ ]){
+  const parts=split(phrase);
+  assert.equal(parts.length,1,phrase);
+  const command=detect(parts[0]);
+  assert.equal(command?.kind,'goal',phrase);
+  assert.equal(command.data.name,name,phrase);
+ }
+ const parts=split('Кофе 300, создай цель: подарок папе 5000 и создай цель отпуск 80000');
+ const commands=parts.slice(1).map(detect);
+ assert.equal(parts[0],'Кофе 300');
+ assert.deepEqual(Array.from(commands,c=>[c.data.name,c.data.target]),[['Подарок папе',500000],['Отпуск',8000000]]);
+});

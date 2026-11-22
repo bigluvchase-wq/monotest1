@@ -75,6 +75,10 @@ const stripLead=t=>t.replace(/\s+(?:на|в|во|за|по|с|со|для|к|и)
 const stem=w=>{w=norm(w);const r=w.replace(/(?:ами|ями|ого|ему|ому|ыми|ими|ая|яя|ую|юю|ое|ее|ий|ый|ой|ов|ев|ам|ям|ах|ях|ом|ем|ы|и|а|я|у|ю|е)$/u,'');return r.length>=3?r:w;};
 function matchCategory(text,list){const words=norm(text).split(/[^\p{L}]+/u).filter(Boolean).map(stem);let best=null;for(const c of list){const cw=norm(c).split(/[^\p{L}]+/u).filter(Boolean).map(stem);if(cw.length&&cw.every(w=>words.some(x=>x.startsWith(w)||w.startsWith(x)&&x.length>=4))&&(!best||c.length>best.length))best=c;}return best;}
 const CREATE='(?:создай(?:те)?|добавь(?:те)?|заведи(?:те)?|открой(?:те)?|сделай(?:те)?|создать|добавить|завести|открыть|поставь|установи|запланируй|запиши|новый|новая|новое|хочу)';
+const commandAddress=/^(?:моно[, ]+)?(?:пожалуйста[, ]+)?/iu;
+const goalStart=new RegExp('^(?:(?:'+CREATE+'\\s+)?цель(?=[\\s,:.\\u2013\\u2014-]|$)[\\s,:.\\u2013\\u2014-]*|(?:хочу\\s+)?(?:накопить|коплю|копить)\\s+(?=на(?:\\s|$)))','u');
+const goalReplay=new RegExp('(?:^|\\s)'+CREATE+'\\s+цель(?=[\\s,:.\\u2013\\u2014-]|$)[\\s,:.\\u2013\\u2014-]*','u');
+const goalNamePause=new RegExp('((?<!\\p{L})'+CREATE+'\\s+цель)[,:.\\u2013\\u2014-]+\\s*(?=\\p{L})','giu');
 // Удаление голосом: «убери лимит на кафе», «удали цель отпуск», «удали последнюю операцию»
 const REMOVE_VERB=/^(?:пожалуйста\s+)?(?:убери|удали|сними|отмени|убрать|удалить|снять|отменить)(?:те)?\s+/;
 const REMOVE_KINDS=[
@@ -127,8 +131,15 @@ const commands=[
   const amount=takeAmount(ctx);const rest=ctx.text.replace(/^(?:на|для|по|расходы\s+на|траты\s+на)\s+/,'');
   return {category:matchCategory(rest,state.categories),amount,raw:cap(stripLead(rest))};
  }},
- {kind:'goal',re:new RegExp('^(?:(?:'+CREATE+'\\s+)?цель(?:\\s|$)|(?:хочу\\s+)?(?:накопить|коплю|копить)\\s+на(?:\\s|$))'),parse(ctx){
-  ctx.text=ctx.text.replace(new RegExp('^(?:(?:'+CREATE+'\\s+)?цель\\s*|(?:хочу\\s+)?(?:накопить|коплю|копить)\\s+(?=на))'),'');
+ {kind:'goal',re:goalStart,parse(ctx){
+  ctx.text=ctx.text.replace(goalStart,'');
+  const replay=ctx.text.match(goalReplay);
+  if(replay){
+   const prefix=ctx.text.slice(0,replay.index).trim();
+   const full=ctx.text.slice(replay.index+replay[0].length).trim();
+   if(full.startsWith(prefix))ctx.text=full;
+  }
+  ctx.text=ctx.text.replace(/^(?:с названием|под названием|название)\s+/u,'');
   const target=takeAmount(ctx);const currency=currencyOf(ctx);
   const viaNa=/^на\s/.test(ctx.text);let name=stripLead(ctx.text.replace(/^(?:на|для)\s+/,'').replace(/\s+(?:на|в)$/,''));
   // «накопить на новую машину» → «Новая машина»
@@ -148,7 +159,7 @@ const commands=[
 // Conversational aliases still open the ordinary confirmation forms.
 function commandText(raw){
  return norm(raw).replace(/[.!?]+$/,'')
-  .replace(/^(?:моно[, ]+)?(?:пожалуйста[, ]+)?/u,'')
+  .replace(commandAddress,'')
   .replace(/^(?:напоминай(?:те)?|не забудь(?:те)?|не дай мне забыть|(?:мне )?нужно напомнить)\s+/u,'напомни ')
   .replace(/^(?:(?:поставь|создай|добавь|установи|сделай|хочу)\s+)?напоминалк[ау]\s+/u,'напомни ')
   .replace(/^(?:создать|добавить) напоминание\s+/u,'напомни ')
@@ -168,7 +179,9 @@ function detect(raw){
 function split(raw){
  const command='(?:напомни(?:те)?|напоминай|не забудь|(?:создай|добавь|поставь|установи|открой|заведи|запланируй)\\s+(?:(?:обязательный|ежемесячный|регулярный)\\s+)?(?:напоминание|напоминалку|цель|сч[её]т|лимит|плат[её]ж|вклад|копилку))';
  const separator='(?:[,;]\\s*(?:(?:а\\s+ещ[её]|и\\s+ещ[её]|а\\s+также|потом|затем|и|а)\\s+)?|\\s+(?:а\\s+ещ[её]|и\\s+ещ[её]|а\\s+также|потом|затем|и|а)\\s+)';
- const chunks=String(raw).split(new RegExp('(?<=[.!?])\\s+|\\n+|'+separator+'(?='+command+'(?:\\s|$))','iu')).map(s=>s.trim()).filter(Boolean);
+ const phrase=String(raw).replace(goalNamePause,'$1 ');
+ const addressed=phrase.replace(commandAddress,'');
+ const chunks=(goalStart.test(norm(addressed))?addressed:phrase).split(new RegExp('(?<=[.!?])\\s+|\\n+|'+separator+'(?='+command+'(?:\\s|$))','iu')).map(s=>s.trim()).filter(Boolean);
  // A completed transaction after a reminder is another action, not its title.
  const financialJoin=/(?:[,;]\s*(?:(?:а ещ[её]|и ещ[её]|потом|затем|и|а)\s+)?|\s+(?:а ещ[её]|и ещ[её]|потом|затем|и|а)\s+)(?=(?:(?:сегодня|вчера|позавчера)\s+)?(?:купил[аи]?|заплатил[аи]?|оплатил[аи]?|получил[аи]?|заработал[аи]?|потратил[аи]?|заправился|мне вернули)\s+)/iu;
  return chunks.flatMap(chunk=>{

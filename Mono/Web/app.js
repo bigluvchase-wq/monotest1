@@ -3,10 +3,36 @@
 (()=>{const P=HTMLDialogElement.prototype,nShow=P.showModal,nClose=P.close,od=Object.getOwnPropertyDescriptor(P,'open');
  const skip=d=>d.dataset.saveWave==='true'||['chartDialog','onboarding','homeAccountDialog'].includes(d.id)||matchMedia('(prefers-reduced-motion:reduce)').matches;
  Object.defineProperty(P,'open',{configurable:true,enumerable:true,get(){return od.get.call(this)&&!this._closing;},set(v){od.set.call(this,v);}});
- P.showModal=function(){if(this._closing){this._exit?.cancel();this._exit=null;this._closing=false;this.classList.remove('closing');this.style.animation='none';void this.offsetWidth;this.style.animation='';return;}if(od.get.call(this))return;return nShow.call(this);};
- P.close=function(v){if(!od.get.call(this)||this._closing)return;if(skip(this))return nClose.call(this,v);this._closing=true;this.classList.add('closing');
-  const current=getComputedStyle(this),entry=this.id==='entryDialog',detail=this.id==='entryInfoDialog'||this.matches('#actionDialog:has(#actionBody > .category-icon-picker)');const an=this.animate([{opacity:current.opacity,transform:current.transform},{opacity:0,transform:entry?'translateY(9px)':detail?'translateY(8px)':'translateY(18px) scale(.985)'}],{duration:entry||detail?240:280,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});this._exit=an;
-  an.finished.then(()=>{if(this._exit!==an)return;this._exit=null;this._closing=false;nClose.call(this,v);an.cancel();this.classList.remove('closing');}).catch(()=>{});};})();
+ const clearEntryExit=dialog=>{
+  if(dialog.id!=='entryDialog')return;
+  for(const name of ['top','height','backdrop'])dialog.style.removeProperty('--entry-exit-'+name);
+ };
+ P.showModal=function(){if(this._closing){this._exit?.cancel();this._exit=null;this._closing=false;this.classList.remove('closing');clearEntryExit(this);this.style.animation='none';void this.offsetWidth;this.style.animation='';return;}if(od.get.call(this))return;return nShow.call(this);};
+ P.close=function(v){
+  if(!od.get.call(this)||this._closing)return;
+  if(skip(this))return nClose.call(this,v);
+  const current=getComputedStyle(this),start={opacity:current.opacity,transform:current.transform};
+  const entry=this.id==='entryDialog',detail=this.id==='entryInfoDialog'||this.matches('#actionDialog:has(#actionBody > .category-icon-picker)');
+  const active=document.activeElement;
+  if(entry){
+   // Keep the sheet in place while the keyboard releases the visual viewport.
+   const bounds=this.getBoundingClientRect();
+   const offset=start.transform==='none'?0:new DOMMatrixReadOnly(start.transform).m42;
+   const viewportTop=window.visualViewport?.offsetTop||0;
+   this.style.setProperty('--entry-exit-top',bounds.top-offset-viewportTop+'px');
+   this.style.setProperty('--entry-exit-height',bounds.height+'px');
+   this.style.setProperty('--entry-exit-backdrop',getComputedStyle(this,'::backdrop').opacity);
+  }
+  this._closing=true;this.classList.add('closing');
+  const an=this.animate([start,{opacity:0,transform:entry?'translateY(14px)':detail?'translateY(8px)':'translateY(18px) scale(.985)'}],
+   {duration:entry?260:detail?240:280,easing:entry?'cubic-bezier(.22,1,.36,1)':'cubic-bezier(.4,0,.2,1)',fill:'forwards'});
+  this._exit=an;
+  if(entry&&this.contains(active)&&active.matches('input,textarea'))active.blur();
+  an.finished.then(()=>{
+   if(this._exit!==an)return;
+   this._exit=null;this._closing=false;nClose.call(this,v);an.cancel();this.classList.remove('closing');clearEntryExit(this);
+  }).catch(()=>{});
+ };})();
 const E=MonoEngine,$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 // Поля сумм всегда открывают цифровую клавиатуру
 function numericInputs(root){root?.querySelectorAll?.('input[type=number]:not([inputmode])').forEach(i=>i.setAttribute('inputmode',i.step==='1'?'numeric':'decimal'));}
@@ -442,6 +468,13 @@ function openEntry(text='',how=''){const gallery=document.querySelector('[data-d
  translateUI(dialog);
 }
 $('#textEntry').onclick=()=>openEntry();$('#closeEntry').onclick=()=>$('#entryDialog').close();
+for(const button of [$('#parseButton'),$('#closeEntry')]){
+ button.addEventListener('pointerdown',event=>{
+  // On touch, a focus change can move the sheet before the click is delivered.
+  if(event.isPrimary&&event.button===0&&document.activeElement===$('#dictation'))event.preventDefault();
+ });
+}
+$('#entryDialog').addEventListener('cancel',event=>{event.preventDefault();event.currentTarget.close();});
 $('#dictation').oninput=()=>{$('#entryDialog').classList.remove('has-review');cancelParse();drafts=[];reminderDrafts=[];parseErrors=[];$('#drafts').innerHTML='';$('#saveButton').hidden=true;$('#parseErrors').textContent='';};
 let parseTask=null,parseVersion=0;
 function cancelParse(){voicePlan=null;$('#voicePlan').textContent='';parseVersion++;parseTask?.abort();parseTask=null;$('#parseButton').disabled=false;$('#parseButton').textContent='Разобрать ↗';}
@@ -477,7 +510,7 @@ async function parseInput(){
  drafts=r.entries;reminderDrafts=r.reminders||[];parseErrors=r.errors;
  $('#parseErrors').innerHTML=(fallback?'<p class="muted tiny">Умный разбор недоступен — фраза разобрана на устройстве.</p>':'')+r.errors.map(e=>`<p class="warn">${esc(e)}</p>`).join('')+(r.errors.length&&drafts.length?'<p class="warn">Исправьте неразобранные части текста перед сохранением.</p>':'');renderDrafts();
 }
-$('#parseButton').onclick=()=>{if($('#dictation').value.trim())$('#dictation').blur();parseInput();};
+$('#parseButton').onclick=parseInput;
 function installmentRows(plan,currency){
  return plan.map((part,i)=>`<li><span>${esc(part.date.split('-').reverse().join('.'))} · ${i===0?'расход':'платёж'}</span><strong>${money(part.amount,currency)}</strong></li>`).join('');
 }
