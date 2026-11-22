@@ -1708,9 +1708,13 @@ html[data-theme] dialog#entryDialog[open]:not(#chartDialog):not(#onboarding):not
  max-height:calc(var(--vv-h) - env(safe-area-inset-top,0px) - var(--entry-safe-bottom) - var(--entry-top-gap,12px) - 12px);
  display:flex;flex-direction:column;overflow:hidden;
 }
+html[data-theme] dialog#entryDialog[open].closing:not(#chartDialog):not(#onboarding):not(#lockDialog){
+ top:calc(var(--entry-exit-top) + var(--vv-top));bottom:auto;margin-block:0;height:var(--entry-exit-height);max-height:none;
+}
 html.entry-scroll-locked body{position:fixed;inset:var(--entry-scroll-top,0px) 0 auto;width:100%}
 html[data-entry-viewport] body > :is(.app,.bottom-nav,.bg-float){translate:0 var(--vv-top)}
-html[data-theme] dialog#entryDialog[open]:not(.has-review):has(#dictation:focus){
+html[data-theme] dialog#entryDialog[open]:not(.has-review):has(#dictation:focus),
+html.kb[data-theme] dialog#entryDialog[open][data-typing-entry]:not(.has-review){
  --entry-block-margin:0;
  --entry-top-gap:24px;
 }
@@ -1743,6 +1747,7 @@ html.kb #entryDialog .entry-footer .primary{min-height:40px;padding-block:8px}
 html[data-theme] #entryDialog::backdrop{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 @keyframes entry-fade-in{from{opacity:0}to{opacity:1}}
 @keyframes entry-sheet-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes entry-backdrop-out{from{opacity:var(--entry-exit-backdrop,1)}to{opacity:0}}
 @keyframes entry-review-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:no-preference){
  html[data-theme] dialog#entryDialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog){
@@ -1752,7 +1757,7 @@ html[data-theme] #entryDialog::backdrop{backdrop-filter:none!important;-webkit-b
   animation-name:entry-fade-in!important;
  }
  html[data-theme] #entryDialog[open]::backdrop{animation:entry-fade-in 300ms ease-out both}
- html[data-theme] #entryDialog.closing::backdrop{animation:entry-fade-in 240ms ease-out reverse both;transition:none}
+ html[data-theme] #entryDialog[open].closing::backdrop{animation:entry-backdrop-out 260ms cubic-bezier(.22,1,.36,1) both!important;transition:none}
  #entryDialog.has-review :is(#drafts,.entry-footer){animation:entry-review-in 250ms cubic-bezier(.22,.67,.35,1) both}
 }
 
@@ -1789,8 +1794,8 @@ html[data-theme] #actionDialog[open]:has(#actionFooter:not([hidden])){
 /* Keep the rounded currency control free of the clipped glow from its scroll container. */
 .ops-selectors .currency-tabs .active{box-shadow:none;border-radius:999px}
 #entryDialog #dictation{
- border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line));
- background:color-mix(in srgb,var(--input) 92%,var(--accent));
+ border:1.1px solid var(--card-edge);
+ background:var(--input);
  box-shadow:inset 0 1px 3px var(--shadow);
 }
 #entryDialog .draft-editor .draft-top{margin-top:0}
