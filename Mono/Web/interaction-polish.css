@@ -1,8 +1,5 @@
-@font-face { font-family:Montserrat; src:url("./fonts/Montserrat-Regular.ttf") format("truetype"); font-weight:400; font-display:swap }
-@font-face { font-family:Montserrat; src:url("./fonts/Montserrat-Medium.ttf") format("truetype"); font-weight:500; font-display:swap }
-@font-face { font-family:Montserrat; src:url("./fonts/Montserrat-SemiBold.ttf") format("truetype"); font-weight:600; font-display:swap }
-@font-face { font-family:Montserrat; src:url("./fonts/Montserrat-Bold.ttf") format("truetype"); font-weight:700; font-display:swap }
-body { font-family:Montserrat,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif }
+@font-face{font-family:Onest;src:url("./fonts/Onest.ttf") format("truetype");font-weight:100 900;font-display:swap}
+body{font-family:Onest,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 body :is(button,input,select,textarea,a) { -webkit-tap-highlight-color:transparent }
 body.pointer-navigation :is(button,input,select,textarea,a):focus,
 body.pointer-navigation :is(.search-field,.picker-box,.month-control):focus-within,
@@ -22,8 +19,6 @@ body.pointer-navigation :is(.limit-items input,.friend-row input):focus{box-shad
  :is(.hd-row,.chart-origin) .hd-flow b{padding-bottom:6px;font-size:16px}
 }
 body[data-page=menu] #workspace{overscroll-behavior:contain;mask-image:none!important}
-html[data-design][data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) :is(.menu-group-items,.menu-group .menu-tile){box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
-html[data-design][data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-group-items{background:var(--card-solid,var(--paper))!important;border:1px solid var(--line)}
 html[data-design][data-theme] .ops-selectors .currency-tabs{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;overflow:visible;flex-wrap:wrap}
 html[data-design][data-theme] .ops-selectors .currency-tabs button.active{background:none!important;color:var(--accent)!important;box-shadow:none!important;text-decoration:underline;text-underline-offset:4px}
 html[data-theme] .agenda-day.today:not(.selected){background:transparent!important;border-color:transparent!important;color:var(--ink)!important}
@@ -69,37 +64,32 @@ html[data-theme] #entryDialog.closing::backdrop{
  html[data-theme] #entryDialog[open]::backdrop,
  html[data-theme] #entryDialog.has-review :is(#drafts,.review-footer){animation:none!important}
 }
-html[data-design][data-theme] :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){
- overflow:visible!important;background:transparent!important;border:0!important;box-shadow:none!important;
- color:var(--mic-ink,#fff)!important;
+/* Center both home layouts in viewport coordinates. Keep the controls below the microphone. */
+html[data-design] :is(#home,[data-preview-id=home]){--mic-center-size:clamp(94px,18svh,150px)}
+html[data-design] :is(#home,[data-preview-id=home]) .voice-zone{
+ position:fixed;left:50%;top:50svh;translate:-50% -50%;scale:1!important;
+ width:var(--mic-center-size)!important;height:var(--mic-center-size)!important;margin:0!important;
 }
-html[data-design] :is(#mic,[data-preview-id=mic])::before{display:none}
-html[data-design] :is(#mic,[data-preview-id=mic]) :is(.mic-glint,.mic-core){display:none}
-html[data-design][data-theme] :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]) svg.mic-circle{
- display:block!important;position:absolute;inset:0;width:100%!important;height:100%!important;
- z-index:-1;overflow:visible;pointer-events:none;animation:none!important;
+html[data-design] :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){
+ width:var(--mic-center-size)!important;height:var(--mic-center-size)!important;
 }
-.mic-circle circle{transform-origin:50% 50%;fill:color-mix(in srgb,var(--accent) 86%,#221a57);stroke:#f2edff;stroke-opacity:.65;stroke-width:.85}
-.mic-circle circle+circle{fill:none;stroke:var(--accent);stroke-opacity:.38;stroke-width:.7;transform:scale(1.02)}
-body[data-page=home] #mic .mic-circle circle:first-of-type{animation:mono-circle-drift 7s ease-in-out infinite alternate}
-body[data-page=home] #mic .mic-circle circle+circle{animation:mono-circle-outline 9s ease-in-out infinite alternate}
-body:is(.holding,.listening) #mic .mic-circle circle:first-of-type{animation:mono-circle-listen 1.65s ease-in-out infinite alternate}
-body:is(.holding,.listening) #mic .mic-circle circle+circle{animation-duration:2.2s}
-@keyframes mono-circle-drift{from{transform:scale(.98)}to{transform:scale(1)}}
-@keyframes mono-circle-outline{from{transform:scale(1)}to{transform:scale(1.035)}}
-@keyframes mono-circle-listen{from{transform:scale(.96)}to{transform:scale(1.05)}}
-body.mic-motion-paused #mic .mic-circle circle,body:has(dialog[open]) #mic .mic-circle circle{animation-play-state:paused!important}
-@media(prefers-reduced-motion:reduce){body #mic .mic-circle circle{animation:none!important}}
-#home.home-dash.has-rem .recording-block{padding-top:12px}
-@media(max-height:740px){#home.home-dash.has-rem .recording-block{padding-top:5px}}
-.mic-circle circle:first-of-type{fill:url(#monoMicFill)}
-.mic-circle .mic-fill-core{stop-color:color-mix(in srgb,var(--accent) 82%,#21184d)}
-.mic-circle .mic-fill-edge{stop-color:color-mix(in srgb,var(--accent) 55%,#e7dcff)}
-/* Swipe previews remove IDs. The solid base also supplies colour in those previews. */
-.root-preview .mic-circle circle:first-of-type{fill:var(--accent)}
+:is(#home,[data-preview-id=home]) .home-lower{
+ position:fixed;top:calc(50svh + var(--mic-center-size)/2 + 10px);left:50%;translate:-50% 0;
+ width:min(calc(100% - 32px),440px);display:flex;flex-direction:column;align-items:center;
+}
+html[data-design] :is(#home,[data-preview-id=home]) .home-lower .recording-block{
+ flex:none;padding:0!important;transform:none;justify-content:flex-start
+}
+:is(#home,[data-preview-id=home]) .home-lower .account-picker{margin-top:0}
+html[data-design] :is(#home,[data-preview-id=home]) .voice-zone .voice-ripple{display:block!important;inset:0}
+@media(prefers-reduced-motion:no-preference){
+ body[data-page=home]:is(.holding,.listening) #home .voice-ripple{animation:voice-ripple 1.8s cubic-bezier(.21,.55,.38,1) infinite}
+ body[data-page=home]:is(.holding,.listening) #home .ripple-second{animation-delay:.6s}
+ body:has(dialog[open]) #home .voice-ripple,body.mic-motion-paused #home .voice-ripple{animation-play-state:paused!important}
+}
 html[data-design][data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) .bottom-nav{box-shadow:none!important;background:var(--card-solid,var(--paper))!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 
-/* Montserrat needs less space in headings and wider columns for amounts. */
+/* Keep long titles and amounts within their columns. */
 html[data-design] :is(.page-head h1,.chart-details-head h1){font-size:clamp(24px,7vw,30px)!important;line-height:1.16}
 html[data-design] :is(#home,[data-preview-id=home]).home-dash .hd-balance{
  font-size:clamp(27px,8.4vw,38px);overflow-wrap:anywhere;font-variant-numeric:tabular-nums;
@@ -107,16 +97,41 @@ html[data-design] :is(#home,[data-preview-id=home]).home-dash .hd-balance{
 html[data-design] .hd-flow{min-width:0}
 html[data-design] .hd-flow b{font-size:clamp(14px,4.35vw,18px);line-height:1.2;overflow-wrap:anywhere}
 html[data-design] .summary-pair .operation-card strong{font-size:clamp(14px,4.35vw,18px)}
-html[data-design] .menu-group .menu-tile .menu-copy strong{font-size:15px!important;line-height:1.25}
 html[data-design] #entryDialog .sheet-head h2{font-size:clamp(20px,5.6vw,24px)}
-#entryDialog #dictation{font-size:16px;line-height:1.45}
-@media(max-height:740px){
- html[data-design] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-grid.menu-grouped{gap:16px!important}
- html[data-design] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-group .menu-tile{
-  min-height:60px!important;padding-block:10px!important;
- }
+#entryDialog #dictation{font-size:16px;line-height:1.45;min-height:84px}
+@media(max-height:650px){
+ html[data-design] :is(#home,[data-preview-id=home]).home-dash .hd-row{margin-top:5px}
+ html[data-design] :is(#home,[data-preview-id=home]).home-dash .hd-flow{min-height:59px;padding-block:6px}
+ html[data-design] :is(#home,[data-preview-id=home]).home-dash .hd-balance{font-size:24px}
+ html[data-design] :is(#home,[data-preview-id=home]).home-dash .hd-flow b{padding-bottom:4px}
 }
-
+/* The last row is shared by Settings and Support. */
+html[data-design] :is(body[data-page=menu],.root-preview[data-page=menu]) :is(#pageBody,[data-preview-id=pageBody]){
+ display:flex;flex:1;min-height:0;width:100%;
+}
+html[data-design] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-grid{
+ grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(5,minmax(0,1fr))!important;gap:8px!important;
+}
+html[data-design][data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile{
+ display:flex;flex-direction:row;justify-content:flex-start;align-items:center;gap:8px;
+ padding:6px 10px;min-height:0;border-radius:13px!important;box-shadow:none!important
+}
+:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile[data-go=reminders]{grid-column:1/-1}
+:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile .menu-symbol{width:28px;height:28px;border-radius:8px}
+:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile .menu-symbol svg{width:17px;height:17px}
+:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile .menu-copy{min-width:0}
+:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile .menu-copy strong{font-size:clamp(12px,3.65vw,15px);line-height:1.15}
+:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile .menu-copy small{line-height:1.15}
+@media(max-height:680px){:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile .menu-copy small{display:none!important}}
+/* Let the profile sheet scroll independently of the page above the keyboard. */
+html[data-theme] dialog#actionDialog[open]:has(.profile-edit-form){
+ display:flex;flex-direction:column;overflow:hidden;
+}
+#actionDialog:has(.profile-edit-form) .sheet-head{flex:none;margin-bottom:8px}
+#actionDialog:has(.profile-edit-form) #actionBody{min-height:0;overflow:auto;overscroll-behavior:contain}
+html[data-theme] dialog#actionDialog:has(.profile-edit-form input[name=name]:focus){
+ top:calc(var(--vv-top) + env(safe-area-inset-top,0px) + 12px)!important;bottom:auto!important;margin:0 auto!important;
+}
 :is(.app,.root-preview) .empty{padding:22px 16px}
 :is(.app,.root-preview) .empty h2{font-size:18px;line-height:1.25;margin:0}
 :is(.app,.root-preview) .empty p{line-height:1.5;margin:6px 0 0}

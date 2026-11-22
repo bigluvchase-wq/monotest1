@@ -11,36 +11,6 @@ for(const dialog of document.querySelectorAll('dialog:not(#onboarding):not(#char
 }
 })();
 
-// Главный экран: микрофон встаёт на уровень логотипа заставки; заголовок остаётся по центру.
-(function(){
- const root=document.documentElement;let queued=false;
- function alignHome(){
-  queued=false;
-  if(document.body.dataset.page!=='home')return;
-  if(document.querySelector('#home.home-dash')){root.style.setProperty('--home-shift','0px');return;}
-  const mic=document.querySelector('#mic'),key=document.querySelector('#textEntry');
-  if(!mic||!key)return;
-  // текущий сдвиг вычитаем из координат: при плавном переходе не сбрасываем его в ноль
-  const block=mic.closest('.recording-block'),t=block?getComputedStyle(block).transform:'none',ty=t&&t!=='none'?new DOMMatrixReadOnly(t).m42:0;
-  const shift=r=>({top:r.top-ty,height:r.height,bottom:r.bottom-ty});
-  const m=shift(mic.getBoundingClientRect()),k=shift(key.getBoundingClientRect()),foot=document.querySelector('.app footer')?.getBoundingClientRect();
-  const reminder=document.querySelector('#homeReminders')?.firstElementChild?.getBoundingClientRect();
-  const target=(window.__launchRatio||.47)*innerHeight,wanted=target-(m.top+m.height/2);
-  const floor=Math.min(foot?foot.top:innerHeight-110,reminder?reminder.top:Infinity),room=floor-k.bottom-8;
-  root.style.setProperty('--home-shift',Math.round(Math.max(0,Math.min(wanted,room)))+'px');
- }
- const queue=()=>{if(queued)return;queued=true;requestAnimationFrame(alignHome);};
- window.MonoAlignHome=alignHome;
- addEventListener('load',queue);addEventListener('resize',queue);addEventListener('orientationchange',queue);
- document.fonts?.ready.then(queue);
- new MutationObserver(queue).observe(document.body,{attributes:true,attributeFilter:['data-page']});
- const reminders=document.querySelector('#homeReminders');if(reminders)new MutationObserver(queue).observe(reminders,{childList:true});
- // высота блока напоминаний меняется после построения карусели — тоже пересчитываем
- if(reminders&&typeof ResizeObserver==='function')new ResizeObserver(queue).observe(reminders);
- setTimeout(queue,400);setTimeout(queue,1200);setTimeout(queue,2200);
- queue();
-})();
-
 // Prevent vertical rubber-banding on the home canvas, preserving modal scrolling.
 document.addEventListener('touchmove',event=>{
  if(document.body.dataset.page==='home'&&!window.MonoSearch?.isOpen()&&!document.querySelector('dialog[open]')&&event.cancelable)event.preventDefault();

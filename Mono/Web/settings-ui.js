@@ -5,7 +5,7 @@ function section(key,title,body){return `<section class="settings-section" data-
 function decorate(){
  if(page!=='settings')return;const body=document.querySelector('#pageBody');if(body.querySelector('.settings-stack'))return;
  const shell=document.createElement('div');shell.className='settings-stack';const sections=[...body.querySelectorAll('.settings-section')];sections.forEach(s=>shell.append(s));body.prepend(shell);
- const bar=document.createElement('div');bar.className='settings-stack-bar';bar.innerHTML='<button type="button" class="settings-stack-back" aria-label="Назад в настройки"><span aria-hidden="true">‹</span><span>Настройки</span></button><h2 tabindex="-1"></h2>';shell.prepend(bar);
+ const bar=document.createElement('div');bar.className='settings-stack-bar';bar.innerHTML='<button type="button" class="settings-stack-back" aria-label="Назад в настройки"><svg aria-hidden="true" viewBox="0 0 16 16"><path d="m10 3-5 5 5 5"/></svg><span>Настройки</span></button><h2 tabindex="-1"></h2>';shell.prepend(bar);
  const choice=document.createElement('div');choice.className='settings-choice-page';choice.hidden=true;shell.append(choice);
  const titleFor=key=>sections.find(s=>s.dataset.settingsKey===key)?.querySelector('.settings-toggle>span').textContent||'Настройки';
  function draw(direction=0){
