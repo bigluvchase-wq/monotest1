@@ -24,28 +24,44 @@ function joinSpeech(parts){
  }
  return words.join(' ');
 }
+// Detect whole replayed hypotheses before parsing. Keep explicitly joined operations.
+function collapseReplay(text,normalize=text=>text){
+ const words=text.trim().split(/\s+/);
+ if(words.length<4)return text;
+ const key=part=>normalize(part).toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}+−-]+/gu,' ').trim();
+ const candidate=key(text),half=(candidate.length-1)/2;
+ if(!Number.isInteger(half)||candidate[half]!==' ')return text;
+ const pattern=candidate.slice(0,half);
+ if(!/\p{L}/u.test(pattern)||candidate.slice(half+1)!==pattern)return text;
+ for(let split=2;split<=words.length-2;split++){
+  const first=words.slice(0,split).join(' ');
+  if(key(first)===pattern)return collapseReplay(first,normalize);
+ }
+ return text;
+}
 // One complete formatted hypothesis per recognition window. Never rebuild from words:
 // iOS can represent “650” as multiple segments while formattedString remains correct.
-function createTranscript(){
+function createTranscript(normalize){
  let prefix='',current='',start=null,end=null;
  const key=s=>s.toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
  return {update(text,rawStart,rawEnd){
   if(!text)return joinSpeech([prefix,current]);
+  text=collapseReplay(text,normalize);
   const nextStart=rawStart===undefined?NaN:Number(rawStart),nextEnd=rawEnd===undefined?NaN:Number(rawEnd);
   const full=joinSpeech([prefix,current]),incoming=key(text),known=key(full);
   // A cumulative hypothesis supersedes all earlier versions, including shifted timestamps.
-  if(known&&known.split(' ').length>=8&&incoming===known+' '+known)return full;
   if((start!==null&&Number.isFinite(nextStart)&&nextStart<start-.15)||(known&&(incoming===known||incoming.startsWith(known+' '))))prefix='';
   else if(start!==null&&end!==null&&nextStart>end+.15&&nextStart>start){prefix=full;}
   // Sliding-window revisions replace the current window rather than repeatedly appending it.
   current=text;
   start=Number.isFinite(nextStart)?nextStart:null;end=Number.isFinite(nextEnd)?nextEnd:null;
-  return joinSpeech([prefix,current]);
+  return collapseReplay(joinSpeech([prefix,current]),normalize);
  }};
 }
-function create({Recognition,secure=true,onState=()=>{},onResult=()=>{},onProgress=()=>{},onFailure=()=>{},setTimer=setTimeout,clearTimer=clearTimeout}){
+function create({Recognition,normalize,secure=true,onState=()=>{},onResult=()=>{},onProgress=()=>{},onFailure=()=>{},setTimer=setTimeout,clearTimer=clearTimeout}){
 let active=null, held=false, heldParts=[],restartTimer=null,heldText='';
-function finishHeld(){clearTimer(restartTimer);restartTimer=null;held=false;const text=joinSpeech(heldParts);heldParts=[];heldText='';onState('idle');if(text)onResult(text);else report('empty-result');}
+const assembled=parts=>collapseReplay(joinSpeech(parts),normalize);
+function finishHeld(){clearTimer(restartTimer);restartTimer=null;held=false;const text=assembled(heldParts);heldParts=[];heldText='';onState('idle');if(text)onResult(text);else report('empty-result');}
 const report=code=>onFailure({code,message:describe(code)});
 function release(session){if(active!==session)return false;clearTimer(session.timer);active=null;onState('idle');return true;}
 function abortAndRelease(session){if(active!==session)return;release(session);try{session.rec.abort();}catch{}}
@@ -57,7 +73,7 @@ onState('finishing');
 session.timer=setTimer(()=>abortAndRelease(session),3000);
 onFailure({code,message:describe(code),detail});
 }
-function resultAndRelease(session){if(!release(session))return;const text=session.text||session.finalText;if(text)onResult(text);else report('empty-result');}
+function resultAndRelease(session){if(!release(session))return;const text=assembled([session.text||session.finalText]);if(text)onResult(text);else report('empty-result');}
 function start(options={}){
 if(active||restartTimer)return;
 if(options.hold){held=true;heldParts=[];heldText='';}
@@ -90,11 +106,11 @@ if(restartTimer){clearTimer(restartTimer);restartTimer=null;finishHeld();return;
 if(!active){if(wasHeld)finishHeld();return;}
 if(active.failed||active.stopping)return;
 const session=active;session.stopping=true;clearTimer(session.timer);onState('stopping');
-session.timer=setTimer(()=>{if(active!==session)return;const text=joinSpeech([...heldParts,session.text||session.finalText].filter(Boolean));heldParts=[];heldText='';abortAndRelease(session);if(text)onResult(text);else report('empty-result');},6000);
+session.timer=setTimer(()=>{if(active!==session)return;const text=assembled([...heldParts,session.text||session.finalText]);heldParts=[];heldText='';abortAndRelease(session);if(text)onResult(text);else report('empty-result');},6000);
 try{session.rec.stop();}catch(err){fail(session,err.name||'stop-error');}
 }
 function abort(){held=false;heldParts=[];heldText='';clearTimer(restartTimer);restartTimer=null;if(active)abortAndRelease(active);else onState('idle');}
 return {start,stop,abort};
 }
-const api={create,describe,joinSpeech,createTranscript};if(typeof module!=='undefined')module.exports=api;root.MonoVoice=api;
+const api={create,describe,joinSpeech,createTranscript,collapseReplay};if(typeof module!=='undefined')module.exports=api;root.MonoVoice=api;
 })(typeof window!=='undefined'?window:globalThis);

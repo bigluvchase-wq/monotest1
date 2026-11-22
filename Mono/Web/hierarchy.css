@@ -22,14 +22,6 @@ header .icon-btn{width:44px!important;height:44px!important;min-height:44px!impo
 .day-sum{min-height:44px;display:inline-flex;align-items:center;font-size:13px}
 .reminder-check{width:44px!important;height:44px!important;min-height:44px!important;flex:none}
 .agenda-calendar-head .icon-btn{min-width:44px;min-height:44px}
-/* Compact, grouped navigation. */
-.menu-grid.menu-grouped{display:flex!important;flex-direction:column!important;gap:26px!important;padding-top:8px}
-.menu-group h2{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.03em;margin:0 0 10px 4px}
-.menu-group-items{border:1px solid var(--line);border-radius:var(--ui-radius);overflow:hidden;background:var(--surface)}
-.menu-group .menu-tile{display:flex!important;flex-direction:row!important;align-items:center;min-height:68px!important;padding:12px 16px!important;gap:14px!important;border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;transform:none!important;width:100%;text-align:left}
-.menu-group .menu-tile:last-child{border-bottom:0!important}
-.menu-group .menu-symbol{width:28px!important;height:28px!important;min-width:28px!important;padding:0!important;border:0!important;background:none!important;box-shadow:none!important}
-.menu-group .menu-copy{flex:1}.menu-group .menu-copy strong{font-size:16px!important;font-weight:550}.menu-group .menu-copy small{font-size:12px!important;margin-top:3px}.menu-chevron{font-size:24px;color:var(--muted)}
 /* Review preserves all native fields, revealing them only when needed. */
 #entryDialog .eyebrow{display:none}#entryDialog .sheet-head h2{font-size:25px;letter-spacing:-.025em;margin:0;line-height:1.2}
 #entryDialog{padding:12px 18px!important}
@@ -58,7 +50,7 @@ header .icon-btn{width:44px!important;height:44px!important;min-height:44px!impo
 #drafts>[data-reminder-index] label{font-size:12px}.review-draft label{font-size:12px}
 #drafts>[data-reminder-index] label:nth-child(-n+2){grid-column:1/-1}
 /* Sapphire surfaces: border for ordinary controls, shadow for raised panels only. */
-html[data-design=sapphire][data-theme] :is(.card,.goal-card,.reminder-card,.menu-group-items,.hd-card,.operation-card,.bank-import){background:var(--surface)!important;border:1px solid var(--line)!important;box-shadow:none!important;border-radius:16px!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html[data-design=sapphire][data-theme] :is(.card,.goal-card,.reminder-card,.hd-card,.operation-card,.bank-import){background:var(--surface)!important;border:1px solid var(--line)!important;box-shadow:none!important;border-radius:16px!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 html[data-design=sapphire][data-theme] :is(dialog,#searchLayer .search-top,#searchLayer .search-results){background:var(--paper)!important;color:var(--ink)!important;border:1px solid var(--line)!important;box-shadow:0 24px 60px #0007!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 html[data-design=sapphire][data-theme] dialog::backdrop{background:#0008!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 html[data-design=sapphire][data-theme] :is(input,select,textarea){background:var(--input);color:var(--ink);border-color:var(--line);box-shadow:none!important}
@@ -101,29 +93,15 @@ html[data-design=sapphire][data-theme] .entry{background:transparent!important;b
 html[data-design=sapphire][data-theme] .history-day .swipe-content{background:transparent!important}
 html[data-design=sapphire] .goal-value{font-size:30px;font-weight:600}.goal-more{margin-top:8px}.goal-more>summary{min-height:44px;display:flex;align-items:center;color:var(--muted);font-size:13px;cursor:pointer}
 html[data-design=sapphire] .reminder-card{padding:16px!important}.reminder-main strong{font-size:16px}.reminder-main small{font-size:13px!important}
-@media(hover:hover) and (pointer:fine){.menu-group .menu-tile:hover{background:var(--soft)!important}.draft-summary:hover{background:var(--soft)}}
+@media(hover:hover) and (pointer:fine){.draft-summary:hover{background:var(--soft)}}
 button{transition-timing-function:var(--ui-ease)}button:active{transition-duration:var(--ui-press)}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
-@media(max-width:360px){.draft-summary{padding:13px;gap:8px}.draft-summary>b{font-size:15px}.draft-summary small{font-size:11px}#entryDialog{padding-inline:14px!important}.menu-group .menu-tile{padding:12px!important}.entry-meta{font-size:11px!important}}
 /* Outrank legacy menu tile rules in both live pages and swipe previews. */
-html[data-design] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-group .menu-tile{height:auto!important;min-height:68px!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;border-radius:0!important;padding:12px 16px!important;gap:14px!important;background:transparent!important;border:0!important;border-bottom:1px solid var(--line)!important}
-html[data-design] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-group .menu-tile:last-child{border-bottom:0!important}
-html[data-design] .menu-group .menu-tile .menu-copy strong{font-size:16px!important}
-html[data-design] .menu-group .menu-tile .menu-copy small{display:block!important;font-size:12px!important}
-html[data-design] .menu-group .menu-tile .menu-symbol{width:28px!important;height:28px!important;background:none!important;border:0!important;box-shadow:none!important}
 html[data-design] .hd-delta{min-height:44px!important}
 .currency-tabs button{min-height:44px!important}
 
 .category-item>.entity-x{min-width:44px;min-height:44px}
 
-/* Scroll containers must match the grouped menu, not the previous fixed tile grid. */
-body[data-page=menu]{overflow-y:auto!important;overflow-x:clip;overscroll-behavior-y:none}
-body[data-page=menu] .app{height:auto!important;min-height:calc(100dvh - var(--main-nav-space) - env(safe-area-inset-top,0px))!important}
-body[data-page=menu] #workspace{flex:none;min-height:auto;padding-bottom:24px}
-body[data-page=menu] #pageBody{display:block;flex:none;min-height:auto}
-html[data-design] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-grid.menu-grouped{height:auto!important;gap:20px!important;padding:8px 0 24px!important;flex:none}
-.menu-group{min-width:0;flex:none}.menu-group .menu-copy{min-width:0;white-space:normal;overflow-wrap:anywhere}
-html[data-design][data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-group .menu-tile{box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible}
 /* Back is a text action, with a generous target but no floating surface. */
 html[data-design][data-theme] :is(.app,.root-preview) .page-head .back-pill{background:none!important;background-image:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border-radius:0!important;min-height:44px;padding:8px 0!important;margin:0 0 8px!important;gap:4px}
 html[data-design][data-theme] .back-pill::before,html[data-design][data-theme] .back-pill::after{display:none!important}
@@ -178,7 +156,7 @@ html.modal-scroll-locked body{position:fixed!important;top:var(--modal-scroll-to
  :is(#home,[data-preview-id=home]).home-dash :is(#mic,[data-preview-id=mic]){width:104px!important;height:104px!important}
  :is(#home,[data-preview-id=home]).home-dash .account-picker{margin-top:8px}
 }
-/* Keep menu scrolling local, including after iOS releases a fixed-body modal lock. */
+/* Reserve a full-height workspace above the tab bar. */
 body[data-page=menu]{height:100dvh;overflow:hidden!important}
 body[data-page=menu] .app{height:calc(100dvh - var(--main-nav-space) - env(safe-area-inset-top,0px))!important;min-height:0!important}
-body[data-page=menu] #workspace{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding-bottom:24px}
+body[data-page=menu] #workspace{flex:1;min-height:0;overflow:hidden;padding-bottom:8px}
