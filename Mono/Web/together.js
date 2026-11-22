@@ -65,7 +65,7 @@ function decorate(){
  body?.querySelectorAll('.together-switch,.together-mode').forEach(el=>{if(page!=='history')el.remove();});
  document.querySelector('#together-home')?.remove();document.querySelector('#together-invites')?.remove();
  if(body&&group){
-  if(page==='history'&&!body.querySelector('.together-mode'))body.querySelector('.ops-selectors')?.insertAdjacentHTML('afterbegin',modeButton());
+  if(page==='history'&&!body.querySelector('.together-mode'))body.querySelector('.ops-head .balance-top')?.insertAdjacentHTML('beforeend',modeButton());
   else if(['accounts','goals','limits','payments','categories','deposits','reminders'].includes(page)){
    const add=body.querySelector('[data-action],.limits-add-category,#categoryForm button.primary');
    if(add){if(page==='categories')add.textContent='+ Добавить';let row=add.closest('.section-row,.action-row,.together-toolbar');if(!row){row=document.createElement('div');add.before(row);row.append(add);}row.classList.add('together-toolbar');row.insertAdjacentHTML('beforeend',modeButton());const lock=row.closest('.premium-lock');if(lock)lock.before(row);}

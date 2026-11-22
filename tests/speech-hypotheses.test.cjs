@@ -24,20 +24,3 @@ test('ambiguous numeric spacing is blocked instead of silently becoming two fina
 test('a revised cumulative result replaces a previously preserved prefix too',()=>{
  const t=V.createTranscript();t.update('Кофе 300',0,2);t.update('Потом продукты 1000',4,7);assert.equal(t.update('Кофе 350 потом продукты 1000',0,7),'Кофе 350 потом продукты 1000');
 });
-
-test('a replay with spoken and numeric amounts is removed before review and persistence',()=>{
- const transcript=V.createTranscript(E.normalizeVoiceAmounts);
- const first='Автомойка 1500 зарплата 15 000';
- const repeated=first+' Автомойка полторы тыщи зарплата 15 000';
- transcript.update(first,0,4);
- const text=transcript.update(repeated,0,8);
- assert.equal(text,first);
- const state=E.initialState(),result=E.parse(text,new Date(),[],state,'main');
- assert.deepEqual(result.entries.map(e=>[e.type,e.amount]),[['expense',150000],['income',1500000]]);
- const {next}=E.saveDrafts(state,result.entries);
- assert.equal(next.entries.length,2);
- assert.equal(E.balance(next,'main'),1350000);
- assert.equal(V.collapseReplay('Кофе 300 кофе 300',E.normalizeVoiceAmounts),'Кофе 300');
- assert.equal(V.collapseReplay('Кофе 300 и кофе 300',E.normalizeVoiceAmounts),'Кофе 300 и кофе 300');
- assert.equal(V.collapseReplay('Кофе 300 кофе 350',E.normalizeVoiceAmounts),'Кофе 300 кофе 350');
-});

@@ -17,7 +17,7 @@ function speechEvent(id,event,info){
  if(event==='start')session.onstart?.();
  if(event==='result'){
   const text=String(info.text||'').trim();
-  if(!session.transcript)session.transcript=MonoVoice.createTranscript(root.MonoEngine?.normalizeVoiceAmounts);
+  if(!session.transcript)session.transcript=MonoVoice.createTranscript();
   session.speechText=session.transcript.update(text,info.segmentStart,info.segmentEnd);
   session.onresult?.({results:[{0:{transcript:session.speechText||''},isFinal:false}]});
  }
