@@ -18,16 +18,16 @@ function hides(part){if(!hidden)return false;const s=cfg().hideScope;return s===
 function html(){
  const c=cur(),t=E.dateString(new Date()),ym=t.slice(0,7);
  const balance=E.totals(state,c).available;
- const exp=state.entries.filter(e=>e.type==='expense'&&entryCurrency(e)===c&&e.date.startsWith(ym)).reduce((n,e)=>n+e.amount,0);
- const inc=state.entries.filter(e=>E.isIncomeForStats(e)&&entryCurrency(e)===c&&e.date.startsWith(ym)).reduce((n,e)=>n+e.amount,0);
+ const items=state.entries.filter(e=>entryCurrency(e)===c&&e.date.startsWith(ym)&&inChart(e));
+ const exp=sum(items,'expense'),inc=sum(items,'income');
  const hb=hides('balance'),hf=hides('flows');
  // Под балансом — сколько отложено в этом месяце: доходы минус расходы с 1-го числа
  const saved=inc-exp,monthName=['январе','феврале','марте','апреле','мае','июне','июле','августе','сентябре','октябре','ноябре','декабре'][new Date().getMonth()];
  const deltaHTML=(inc||exp)?(hb||hf?`<button type="button" class="hd-delta muted" data-hd-explain="saved">••• ₽<small>отложено в ${monthName}</small></button>`:`<button type="button" class="hd-delta ${saved>=0?'up':'down'}" data-hd-explain="saved">${saved>=0?'+':'−'}${money(Math.abs(saved),c)}<small>${saved>=0?'отложено':'больше, чем заработано'} в ${monthName}</small></button>`):'';
  return `<div class="hd-top"><div class="hd-label">Общий баланс <button type="button" class="hd-eye" data-hd-eye aria-pressed="${hidden}" aria-label="${hidden?'Показать суммы':'Скрыть суммы'}">${hidden?ico.eyeOff:ico.eye}</button></div>
  <div class="hd-balance">${hb?MASK:money(balance,c)}</div>${deltaHTML}</div>
- <div class="hd-row"><button type="button" class="hd-card hd-flow" data-hd-go="expense"><span class="hd-flow-top"><span class="hd-ic out">${ico.down}</span>Расходы</span><b>${hf?MASK:money(exp,c)}</b></button>
- <button type="button" class="hd-card hd-flow" data-hd-go="income"><span class="hd-flow-top"><span class="hd-ic in">${ico.up}</span>Доходы</span><b>${hf?MASK:money(inc,c)}</b></button></div>
+ <div class="hd-row"><button type="button" class="hd-card hd-flow" data-hd-go="expense"><span class="hd-flow-top"><span class="hd-ic out">${ico.down}</span>Расходы</span><b>${hf?MASK:money(exp,c)}</b>${miniBar(hf?[]:items,'expense')}</button>
+ <button type="button" class="hd-card hd-flow" data-hd-go="income"><span class="hd-flow-top"><span class="hd-ic in">${ico.up}</span>Доходы</span><b>${hf?MASK:money(inc,c)}</b>${miniBar(hf?[]:items,'income')}</button></div>
 `;
 }
 
@@ -53,7 +53,7 @@ function explain(){
 document.addEventListener('click',e=>{
  const day=e.target.closest('[data-day-expense]');if(day){const date=new Date(day.dataset.dayExpense+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}).replace(/ г\.$/,'');notify('Сумма расходов за '+date+' года. Доходы и переводы не включены.');return;}
  const eye=e.target.closest('[data-hd-eye]');if(eye){hidden=!hidden;render();return;}
- const go=e.target.closest('[data-hd-go]');if(go){const type=go.dataset.hdGo;navigate('history');setTimeout(()=>document.querySelector(`[data-operation="${type}"]`)?.click(),reducedMotion()?0:520);return;}
+ const go=e.target.closest('[data-hd-go]');if(go){root.MonoCharts?.open(go.dataset.hdGo,go,{homeCurrency:cur()});return;}
  const ex=e.target.closest('[data-hd-explain]');if(ex){explain();return;}
  const smart=e.target.closest('[data-smart-goal]');if(smart){const id=smart.dataset.smartGoal;let name='';
   if(commit(s=>{const g=s.goals.find(g=>g.id===id);if(g){g.smart=!g.smart;name=g.name;if(!g.smart)delete g.smart;}}))
