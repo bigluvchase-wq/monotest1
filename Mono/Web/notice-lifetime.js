@@ -1,13 +1,13 @@
 (function(root){
 'use strict';
 // Popover держит уведомление над модальными окнами, не забирая фокус.
-function enter(host,options={}){
+function enter(host){
  host.getAnimations().forEach(a=>a.cancel());delete host.dataset.noticeSwipeOffset;host.hidden=false;
  const dialogs=[...document.querySelectorAll('dialog[open]:not(.closing)')];
  (dialogs.at(-1)||document.body).append(host);
  if(host.showPopover){host.setAttribute('popover','manual');host.hidePopover();host.showPopover();}
  const reduce=root.matchMedia?.('(prefers-reduced-motion:reduce)').matches;
- host.animate([{opacity:0,transform:reduce?'none':options.gentle?'translateY(-12px)':'translateY(-14px) scale(.98)'},{opacity:1,transform:'none'}],{duration:reduce?120:options.gentle?380:240,easing:options.gentle?'cubic-bezier(.3,0,.18,1)':'cubic-bezier(.16,1,.3,1)'});
+ host.animate([{opacity:0,transform:reduce?'none':'translateY(-14px) scale(.98)'},{opacity:1,transform:'none'}],{duration:reduce?120:240,easing:'cubic-bezier(.16,1,.3,1)'});
 }
 function exit(host,done){
  host.getAnimations().forEach(a=>a.cancel());

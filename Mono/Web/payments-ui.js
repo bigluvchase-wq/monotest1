@@ -10,7 +10,7 @@
   const days=Array.from({length:offset},()=>'<span class="agenda-day-space"></span>');
   for(let n=1;n<=count;n++){
    const date=month+'-'+String(n).padStart(2,'0'),dues=items.filter(item=>item.due===date),today=date===E.dateString(new Date());
-   days.push(`<button type="button" class="agenda-day ${date===selectedDay?'selected':''} ${today?'today':''}" data-payment-day="${date}" ${today?'aria-current="date" ':''}aria-pressed="${date===selectedDay}" aria-label="${esc(fullDate(date))}${dues.length?', платежей: '+dues.length:''}"><span>${n}</span><i class="agenda-dots">${dues.slice(0,3).map(v=>`<b class="${v.paid?'paid':''}"></b>`).join('')}</i></button>`);
+   days.push(`<button type="button" class="agenda-day ${date===selectedDay?'selected':''} ${today?'today':''}" data-payment-day="${date}" aria-pressed="${date===selectedDay}" aria-label="${esc(fullDate(date))}${dues.length?', платежей: '+dues.length:''}"><span>${n}</span><i class="agenda-dots">${dues.slice(0,3).map(v=>`<b class="${v.paid?'paid':''}"></b>`).join('')}</i></button>`);
   }
   // при открытом календаре платежи выбранного дня — под ним (список «сегодня» сверху прячется)
   const isToday=selectedDay===E.dateString(new Date()),dayItems=selectedDay?.startsWith(month)&&!isToday?items.filter(item=>item.due===selectedDay):[];
