@@ -5,8 +5,8 @@
  Object.defineProperty(P,'open',{configurable:true,enumerable:true,get(){return od.get.call(this)&&!this._closing;},set(v){od.set.call(this,v);}});
  P.showModal=function(){if(this._closing){this._exit?.cancel();this._exit=null;this._closing=false;this.classList.remove('closing');this.style.animation='none';void this.offsetWidth;this.style.animation='';return;}if(od.get.call(this))return;return nShow.call(this);};
  P.close=function(v){if(!od.get.call(this)||this._closing)return;if(skip(this))return nClose.call(this,v);this._closing=true;this.classList.add('closing');
-  const current=getComputedStyle(this),entry=this.id==='entryDialog';const an=this.animate([{opacity:current.opacity,transform:current.transform},{opacity:0,transform:entry?'translateY(9px)':'translateY(18px) scale(.985)'}],{duration:entry?240:280,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});this._exit=an;
-  an.finished.then(()=>{if(this._exit!==an)return;this._exit=null;this._closing=false;this.classList.remove('closing');an.cancel();nClose.call(this,v);}).catch(()=>{});};})();
+  const current=getComputedStyle(this),entry=this.id==='entryDialog',detail=this.id==='entryInfoDialog'||this.matches('#actionDialog:has(#actionBody > .category-icon-picker)');const an=this.animate([{opacity:current.opacity,transform:current.transform},{opacity:0,transform:entry?'translateY(9px)':detail?'translateY(8px)':'translateY(18px) scale(.985)'}],{duration:entry||detail?240:280,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});this._exit=an;
+  an.finished.then(()=>{if(this._exit!==an)return;this._exit=null;this._closing=false;nClose.call(this,v);an.cancel();this.classList.remove('closing');}).catch(()=>{});};})();
 const E=MonoEngine,$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 // Поля сумм всегда открывают цифровую клавиатуру
 function numericInputs(root){root?.querySelectorAll?.('input[type=number]:not([inputmode])').forEach(i=>i.setAttribute('inputmode',i.step==='1'?'numeric':'decimal'));}
@@ -211,8 +211,14 @@ function groupedEntriesHTML(entries){
   `<section class="entry-day"><h3><time datetime="${esc(date)}">${esc(formatter.format(new Date(date+'T12:00:00')))}</time>${daySumHTML(rows)}</h3>${rows.map((e,i)=>[e,i]).sort((a,b)=>String(b[0].createdAt||'').localeCompare(String(a[0].createdAt||''))||b[1]-a[1]).map(([e])=>entryHTML(e,false)).join('')}</section>`
  ).join('');
 }
+function searchedOperations(){
+ const day=MonoOperationQuery.searchDay(search);
+ const entries=day?state.entries.filter(e=>e.date===day&&entryCurrency(e)===selectedCurrency):selectedEntries();
+ const query=search.toLowerCase().replace(/ё/g,'е').trim();
+ return entries.filter(e=>['income','expense','transfer'].includes(e.type)&&(day||(e.title+' '+(e.category||'')).toLowerCase().replace(/ё/g,'е').includes(query))).sort((a,b)=>b.date.localeCompare(a.date));
+}
 function renderOperations(){
- const tabs=currencyTabs(),all=selectedEntries(),items=all.filter(inChart),income=sum(items,'income'),expense=sum(items,'expense'),filtered=all.filter(e=>(e.title+' '+(e.category||'')).toLowerCase().includes(search.toLowerCase())&&['income','expense','transfer'].includes(e.type)).sort((a,b)=>b.date.localeCompare(a.date));
+ const tabs=currencyTabs(),all=selectedEntries(),items=all.filter(inChart),income=sum(items,'income'),expense=sum(items,'expense'),filtered=searchedOperations();
  return `<div class="ops-head"><div class="balance-top"><span class="total-label">На счетах</span><div class="operations-total">${money(E.totals(state,selectedCurrency).available,selectedCurrency)}</div></div></div><div class="ops-selectors">${window.MonoTogether?.modeHTML?.()||''}${tabs}</div><div class="summary-pair" id="operationCards">${[['expense','Расходы',expense],['income','Доходы',income]].map(([type,label,value])=>`<button class="operation-card " data-operation="${type}" aria-expanded="false" aria-controls="chartDialog"><strong class="${type==='income'?'positive':''}">${money(value,selectedCurrency)}</strong><span>${label}</span>${miniBar(items,type)}</button>`).join('')}</div><div class="operations-tools"><label class="month-control"><span class="month-label" aria-hidden="true">${esc(selectedRange?periodLabel():new Date(selectedMonth+'-01T12:00:00').toLocaleDateString(state.settings.language==='en'?'en-US':'ru-RU',{month:'long',year:'numeric'}).replace(/ г\.$/,''))}</span><input type="month" id="monthFilter" value="${selectedMonth}" min="${periodBounds().min}" max="${periodBounds().max}" aria-label="Месяц"></label><button class="record-button" data-add>+ Записать</button></div><div class="filter-row compact-search"><input type="search" id="search" value="${esc(search)}" placeholder="Найти операцию" aria-label="Поиск операций"></div><div id="historyList">${filtered.length?groupedEntriesHTML(filtered):empty('Пока нет операций','Начните с кнопки «+ Записать»',false)}</div>`;
 }
 
@@ -315,7 +321,7 @@ function renderHomeReminders(){
 function bindPage(){
  const on=(id,event,fn)=>{const el=$(id);if(el)el[event]=fn;};
  on('#monthFilter','onchange',e=>{const month=e.target.value||currentMonth(),b=periodBounds();try{MonoPeriod.month(month);if(month>b.max)throw Error('Последний доступный месяц — текущий.');if(month<b.min)throw Error('Этот месяц недоступен.');}catch(error){e.target.value=selectedMonth;notify(error.message);return;}selectedMonth=month;selectedRange=null;render();});
- on('#search','oninput',e=>{search=e.target.value;const list=selectedEntries().filter(x=>['income','expense','transfer'].includes(x.type)&&(x.title+' '+(x.category||'')).toLowerCase().includes(search.toLowerCase())).sort((a,b)=>b.date.localeCompare(a.date));$('#historyList').innerHTML=list.length?groupedEntriesHTML(list):empty('Ничего не найдено');window.MonoSwipe?.decorate();});
+ on('#search','oninput',e=>{search=e.target.value;const list=searchedOperations();$('#historyList').innerHTML=list.length?groupedEntriesHTML(list):empty('Ничего не найдено');window.MonoSwipe?.decorate();});
  on('#limitForm','onchange',e=>{const input=e.target.closest('input[name^=limit]');if(!input)return;if(!requireAccess('limits')){render();return;}const cat=state.categories[Number(input.name.slice(5))];if(!cat)return;const n=cents(input.value);if(input.value!==''&&!(n>=0)){notify('Проверьте сумму лимита.');return;}const was=state.limits[selectedCurrency]?.[cat]||0;if((n>0?n:0)===was)return;commit(s=>{s.limits[selectedCurrency]={...(s.limits[selectedCurrency]||{})};if(n>0)s.limits[selectedCurrency][cat]=n;else delete s.limits[selectedCurrency][cat];},n>0?'Лимит «'+cat+'» сохранён':'Лимит «'+cat+'» снят');});
  on('#limitForm','onsubmit',e=>{e.preventDefault();document.activeElement?.blur?.();return;if(!requireAccess('limits'))return;const f=new FormData(e.target),limits={};state.categories.forEach((c,i)=>{const n=cents(f.get('limit'+i));if(n>0)limits[c]=n;});commit(s=>s.limits[selectedCurrency]=limits,'Лимиты сохранены');});
  on('#categoryForm','onsubmit',e=>{e.preventDefault();const f=new FormData(e.target),type=f.get('type'),name=f.get('name').trim(),key=type==='income'?'incomeCategories':'categories';if(type==='expense'&&cents(f.get('limit'))>0&&!requireAccess('limits'))return;if(state[key].some(c=>E.normalizeTitle(c)===E.normalizeTitle(name))){notify('Такая категория уже есть');return;}commit(s=>{s[key].push(name);const icons=s.settings.categoryIcons||{};s.settings.categoryIcons={...icons,[type]:{...icons[type],[name]:f.get('icon')||'other'}};if(type==='expense'&&cents(f.get('limit'))>0){s.limits[selectedCurrency]||={};s.limits[selectedCurrency][name]=cents(f.get('limit'));}},'Категория добавлена');});
@@ -363,7 +369,29 @@ function runCommand(text){
 }
 function nextCommand(){const cmd=commandQueue.shift();if(cmd){MonoCommands.run(cmd);if(!$('#actionDialog').open)nextCommand();return;}if(commandAfter){const done=commandAfter;commandAfter=null;done();return;}if(commandRest){const t=commandRest;commandRest='';openEntry(t);}}
 $('#actionDialog').addEventListener('close',()=>{if(commandQueue.length||commandRest||commandAfter)setTimeout(nextCommand,320);});
-function openEntry(text='',how=''){const gallery=document.querySelector('[data-document-pick]');if(gallery)gallery.hidden=!!text;cancelParse();if(text&&!window.MonoVoiceAI?.enabled()&&runCommand(text))return;$('#entryDialog').dataset.enter=how;
+function showOperationReport(text){
+ const query=MonoOperationQuery.report(text,state);
+ if(!query)return false;
+ if(query.error){notify(query.error);return true;}
+ const entry=$('#entryDialog');
+ if(entry.open){
+  entry.addEventListener('close',()=>renderOperationReport(query),{once:true});
+  entry.close();
+ }else renderOperationReport(query);
+ return true;
+}
+function renderOperationReport({type,period,category}){
+ const rows=MonoPeriod.filter(state.entries,period,e=>(!type||(type==='flows'?['expense','income'].includes(e.type):e.type===type))&&(type!=='income'&&type!=='flows'||inChart(e))&&(!category||e.category===category)).sort((a,b)=>b.date.localeCompare(a.date));
+ const currencies=[...new Set(rows.map(entryCurrency))];
+ const totals=currencies.map(currency=>{
+  const items=rows.filter(e=>entryCurrency(e)===currency);
+  return `<div class="report-total">${type==='income'?'':`<span>Расходы <b>${money(sum(items,'expense'),currency)}</b></span>`}${type==='expense'?'':`<span>Доходы <b>${money(sum(items.filter(inChart),'income'),currency)}</b></span>`}</div>`;
+ }).join('');
+ const title=type==='expense'?'Расходы':type==='income'?'Доходы':type==='flows'?'Доходы и расходы':'Операции';
+ const heading=`<p class="muted">${esc(MonoPeriod.label(period))}${category?' · '+esc(category):''}</p>`;
+ actionDialog(title,heading+totals+(rows.length?groupedEntriesHTML(rows):empty('За этот период операций нет','',false)));
+}
+function openEntry(text='',how=''){const gallery=document.querySelector('[data-document-pick]');if(gallery)gallery.hidden=!!text;cancelParse();if(text&&showOperationReport(text))return;if(text&&!window.MonoVoiceAI?.enabled()&&runCommand(text))return;$('#entryDialog').dataset.enter=how;
  if(listening||holding)cancelVoice();drafts=[];reminderDrafts=[];parseErrors=[];$('#dictation').value=text;$('#drafts').innerHTML='';$('#parseErrors').textContent='';$('#saveButton').hidden=true;$('#sheetTitle').textContent='Что запишем?';const dialog=$('#entryDialog');
  dialog.classList.remove('has-review');$('#entrySource').open=true;
  if(!dialog.open)dialog.showModal();
@@ -378,6 +406,7 @@ function cancelParse(){parseVersion++;parseTask?.abort();parseTask=null;$('#pars
 $('#entryDialog').addEventListener('close',cancelParse);
 async function parseInput(){
  cancelParse();const text=$('#dictation').value.trim();if(!text)return;
+ if(showOperationReport(text))return;
  if(!window.MonoVoiceAI?.enabled()&&runCommand(text))return;
  const version=parseVersion,controller=new AbortController();parseTask=controller;
  const timeout=setTimeout(()=>controller.abort(),15000);
@@ -424,8 +453,8 @@ function reminderDraftHTML(r,i,open){
 }
 function renderDrafts(){
  const list=$('#drafts'),dialog=$('#entryDialog');
- const openDrafts=new Set([...list.querySelectorAll('details[data-index][open]')].map(row=>Number(row.dataset.index)));
- const openReminders=new Set([...list.querySelectorAll('details[data-reminder-index][open]')].map(row=>Number(row.dataset.reminderIndex)));
+ const openDrafts=new Set([...list.querySelectorAll('details[data-index][open]:not(:has(summary[aria-expanded=false]))')].map(row=>Number(row.dataset.index)));
+ const openReminders=new Set([...list.querySelectorAll('details[data-reminder-index][open]:not(:has(summary[aria-expanded=false]))')].map(row=>Number(row.dataset.reminderIndex)));
  const gallery=document.querySelector('[data-document-pick]');if(gallery)gallery.hidden=drafts.length>0||!!$('#dictation').value.trim();
  $('#sheetTitle').textContent=drafts.length+reminderDrafts.length?'Проверим и запишем':'Что запишем?';
  $('#drafts').innerHTML=drafts.map((e,i)=>{const a=account(e.account)||account(voiceAccount),transfer=e.type==='transfer',saving=e.type==='saving',installment=e.installmentTotal!==undefined;
@@ -461,7 +490,9 @@ $('#drafts').oninput=e=>{const reminderField=e.target.dataset.reminderField;if(r
  }else if(field==='account'||field==='goalId')renderDrafts();
 };
 $('#drafts').onclick=e=>{const reminder=e.target.closest('[data-remove-reminder]');if(reminder){reminderDrafts.splice(Number(reminder.dataset.removeReminder),1);$('#drafts').replaceChildren();renderDrafts();return;}const b=e.target.closest('[data-remove]');if(b){drafts.splice(Number(b.dataset.remove),1);$('#drafts').replaceChildren();renderDrafts();}};
-$('#saveButton').onclick=()=>{if((!drafts.length&&!reminderDrafts.length)||parseErrors.length)return;if(reminderDrafts.length&&!requireAccess('reminders'))return;if(drafts.some(d=>d.type==='saving')&&!requireAccess('goals'))return;if(drafts.some(d=>d.installmentTotal!==undefined)&&!requireAccess('payments'))return;for(const input of $('#drafts').querySelectorAll('input,select'))if(!input.checkValidity()){input.closest('details').open=true;input.reportValidity();return;}let next,added;try{({next,added}=E.saveDrafts(state,drafts,new Date().toISOString(),reminderDrafts));}catch(error){notify(error.message);return;}
+$('#saveButton').onclick=()=>{if((!drafts.length&&!reminderDrafts.length)||parseErrors.length)return;if(reminderDrafts.length&&!requireAccess('reminders'))return;if(drafts.some(d=>d.type==='saving')&&!requireAccess('goals'))return;if(drafts.some(d=>d.installmentTotal!==undefined)&&!requireAccess('payments'))return;for(const input of $('#drafts').querySelectorAll('input,select'))if(!input.checkValidity()){const row=input.closest('details'),summary=row.querySelector('summary'),editor=row.querySelector('.draft-editor');
+ row.open=true;row.setAttribute('data-editing','');summary.setAttribute('aria-expanded','true');
+ MonoDisclosure(editor,true);input.reportValidity();return;}let next,added;try{({next,added}=E.saveDrafts(state,drafts,new Date().toISOString(),reminderDrafts));}catch(error){notify(error.message);return;}
  if(added.some(e=>e.type==='saving'&&E.balance(next,e.account)<0)&&!confirm('Пополнение цели сделает остаток счёта отрицательным. Продолжить?'))return;
  for(const entry of added)window.MonoBankMerchants?.remember(next,entry);
  const finish=()=>{
