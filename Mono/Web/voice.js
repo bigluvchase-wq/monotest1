@@ -24,6 +24,20 @@ function joinSpeech(parts){
  }
  return words.join(' ');
 }
+// A recognizer can restart the same hypothesis after emitting an unfinished word.
+function repairReplay(text){
+ const words=String(text).trim().split(/\s+/);
+ const keys=words.map(word=>word.toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}]/gu,''));
+ for(let restart=5;restart<=Math.floor((words.length+1)/2);restart++){
+  const first=keys.slice(0,restart),next=keys.slice(restart,restart*2);
+  // Require the same amount and sentence prefix. A conjunction is an explicit boundary.
+  if(!first.slice(0,-1).some(key=>/\d|тысяч/u.test(key))||!first.slice(0,-1).every((key,i)=>key===next[i]))continue;
+  const last=first.at(-1);
+  if(!last||/^(?:и|потом|затем)$/u.test(last)||!/\p{L}/u.test(last)&&last!==next.at(-1))continue;
+  if(next.length===restart&&next.at(-1).startsWith(last))return words.slice(restart).join(' ');
+ }
+ return text;
+}
 // One complete formatted hypothesis per recognition window. Never rebuild from words:
 // iOS can represent “650” as multiple segments while formattedString remains correct.
 function createTranscript(){
@@ -31,6 +45,7 @@ function createTranscript(){
  const key=s=>s.toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
  return {update(text,rawStart,rawEnd){
   if(!text)return joinSpeech([prefix,current]);
+  text=repairReplay(text);
   const nextStart=rawStart===undefined?NaN:Number(rawStart),nextEnd=rawEnd===undefined?NaN:Number(rawEnd);
   const full=joinSpeech([prefix,current]),incoming=key(text),known=key(full);
   // A cumulative hypothesis supersedes all earlier versions, including shifted timestamps.
@@ -40,12 +55,12 @@ function createTranscript(){
   // Sliding-window revisions replace the current window rather than repeatedly appending it.
   current=text;
   start=Number.isFinite(nextStart)?nextStart:null;end=Number.isFinite(nextEnd)?nextEnd:null;
-  return joinSpeech([prefix,current]);
+  return repairReplay(joinSpeech([prefix,current]));
  }};
 }
 function create({Recognition,secure=true,onState=()=>{},onResult=()=>{},onProgress=()=>{},onFailure=()=>{},setTimer=setTimeout,clearTimer=clearTimeout}){
 let active=null, held=false, heldParts=[],restartTimer=null,heldText='';
-function finishHeld(){clearTimer(restartTimer);restartTimer=null;held=false;const text=joinSpeech(heldParts);heldParts=[];heldText='';onState('idle');if(text)onResult(text);else report('empty-result');}
+function finishHeld(){clearTimer(restartTimer);restartTimer=null;held=false;const text=repairReplay(joinSpeech(heldParts));heldParts=[];heldText='';onState('idle');if(text)onResult(text);else report('empty-result');}
 const report=code=>onFailure({code,message:describe(code)});
 function release(session){if(active!==session)return false;clearTimer(session.timer);active=null;onState('idle');return true;}
 function abortAndRelease(session){if(active!==session)return;release(session);try{session.rec.abort();}catch{}}
@@ -74,8 +89,8 @@ rec.onstart=()=>{if(active!==session||session.failed)return;clearTimer(session.t
 rec.onresult=event=>{
 if(active!==session||session.failed)return;
 const results=Array.from(event.results);
-session.text=results.map(r=>r[0]?.transcript||'').join(' ').trim();
-session.finalText=results.filter(r=>r.isFinal).map(r=>r[0]?.transcript||'').join(' ').trim();
+session.text=repairReplay(results.map(r=>r[0]?.transcript||'').join(' ').trim());
+session.finalText=repairReplay(results.filter(r=>r.isFinal).map(r=>r[0]?.transcript||'').join(' ').trim());
 heldText=session.text||session.finalText;onProgress([...heldParts,session.text].filter(Boolean).join(' '));
 };
 rec.onerror=event=>{if(held&&event.error==='no-speech')return;held=false;clearTimer(restartTimer);restartTimer=null;fail(session,event.error||'unknown-error',String(event.message||''));};
@@ -90,11 +105,11 @@ if(restartTimer){clearTimer(restartTimer);restartTimer=null;finishHeld();return;
 if(!active){if(wasHeld)finishHeld();return;}
 if(active.failed||active.stopping)return;
 const session=active;session.stopping=true;clearTimer(session.timer);onState('stopping');
-session.timer=setTimer(()=>{if(active!==session)return;const text=joinSpeech([...heldParts,session.text||session.finalText].filter(Boolean));heldParts=[];heldText='';abortAndRelease(session);if(text)onResult(text);else report('empty-result');},6000);
+session.timer=setTimer(()=>{if(active!==session)return;const text=repairReplay(joinSpeech([...heldParts,session.text||session.finalText].filter(Boolean)));heldParts=[];heldText='';abortAndRelease(session);if(text)onResult(text);else report('empty-result');},6000);
 try{session.rec.stop();}catch(err){fail(session,err.name||'stop-error');}
 }
 function abort(){held=false;heldParts=[];heldText='';clearTimer(restartTimer);restartTimer=null;if(active)abortAndRelease(active);else onState('idle');}
 return {start,stop,abort};
 }
-const api={create,describe,joinSpeech,createTranscript};if(typeof module!=='undefined')module.exports=api;root.MonoVoice=api;
+const api={create,describe,joinSpeech,createTranscript,repairReplay};if(typeof module!=='undefined')module.exports=api;root.MonoVoice=api;
 })(typeof window!=='undefined'?window:globalThis);

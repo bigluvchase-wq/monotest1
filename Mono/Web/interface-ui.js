@@ -79,6 +79,7 @@ document.querySelector('#drafts').addEventListener('click',event=>{
  const expanded=summary.getAttribute('aria-expanded')!==null?summary.getAttribute('aria-expanded')!=='true':!details.open;
  if(expanded&&!details.open){editor.hidden=true;details.open=true;}
  event.preventDefault();
+ if(!expanded&&editor.contains(document.activeElement))summary.focus({preventScroll:true});
  summary.setAttribute('aria-expanded',String(expanded));
  details.toggleAttribute('data-editing',expanded);
  MonoDisclosure(editor,expanded,()=>{details.open=false;editor.hidden=false;editor.inert=false;});

@@ -16,3 +16,14 @@ test('local voice reports recognise calendar weeks, dates, ranges and categories
  assert.match(report('Покажи расходы за 31 февраля').error,/даты нет/);
  assert.equal(report('Купил кофе за 300'),null);
 });
+test('voice history uses one or several categories before or after the period',()=>{
+ const report=text=>Q.report(text,state,now);
+ assert.equal(report('Покажи расходы на авто в этом месяце').category,'Авто');
+ assert.deepEqual(report('расходы на продукты за прошлую неделю').period,{start:'2026-11-09',end:'2026-11-15'});
+ assert.equal(report('расходы на продукты за прошлую неделю').category,'Продукты');
+ assert.deepEqual(report('покажи расходы за эту неделю на продукты и на дом').categories,['Продукты','Дом']);
+ assert.equal(report('Покажи расходы на продукты 5 ноября').category,'Продукты');
+ assert.deepEqual(report('Покажи расходы на одежду и обувь и дом за эту неделю').categories,['Одежда и обувь','Дом']);
+ assert.match(report('Покажи расходы на продукты и на неизвестную категорию').error,/Категория не найдена/);
+ assert.equal(report('расходы на такси 300'),null);
+});

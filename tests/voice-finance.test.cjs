@@ -55,3 +55,33 @@ test('voice reports read limits, goals, comparable dates and unpaid payments',()
  assert.match(read('Какие платежи остались до зарплаты').error,/Уточните дату/);
  assert.equal(read('Какие платежи до 5 декабря').items[0].payment.name,'Интернет');
 });
+test('replayed salary shorthand allocates the repeated thousands unit once',()=>{
+ const state=fixture();
+ const phrase='Пришла зп 100 тысяч 10 из них отложил на отпуск';
+ for(const raw of [phrase,phrase.replace('тысяч 10','тысяч, 10'),'Пришла зп сто тысяч десять из них отложил на отпуск',phrase.slice(0,-4)+' '+phrase]){
+  const result=V.review(raw,state,'main',now);
+  assert.deepEqual(result.errors,[]);
+  assert.deepEqual(result.entries.map(e=>e.amount),[10000000,1000000]);
+  const {next}=E.saveDrafts(state,result.entries,today+'T12:00:00.000Z');
+  assert.equal(E.goalBalance(next,'holiday'),1000000);
+  assert.equal(E.balance(next,'main'),9000000);
+  assert.equal(next.entries.length,2);
+ }
+ const ambiguous=V.review('Получил ЗП 100 010 из них закинул на от Получил ЗП 100 010 из них закинул на отпуск',state,'main',now);
+ assert.deepEqual(ambiguous.entries,[]);
+ assert.match(ambiguous.errors[0],/Укажите сумму пополнения отдельно/);
+});
+test('spoken weekly comparison selects the same weekdays and filters all requested categories',()=>{
+ const state=fixture(),midweek=new Date(2026,10,25,12);
+ const rows=[['23','Продукты'],['24','Дом'],['25','Авто'],['16','Продукты'],['17','Дом'],['19','Продукты']];
+ state.entries=rows.map(([day,category])=>({date:'2026-11-'+day,category,type:'expense',amount:10000,account:'main'}));
+ const single=V.read('Сколько я потратил на продукты за эту неделю по сравнению с прошлой',state,'main',midweek);
+ assert.deepEqual(single.period,{start:'2026-11-23',end:'2026-11-25'});
+ assert.deepEqual(single.previous,{start:'2026-11-16',end:'2026-11-18'});
+ assert.deepEqual(single.rows.map(e=>e.date),['2026-11-23']);
+ assert.deepEqual(single.priorRows.map(e=>e.date),['2026-11-16']);
+ const multiple=V.read('сколько я потратил на продукты и на дом на этой неделе по сравнению с прошлой',state,'main',midweek);
+ assert.deepEqual(multiple.categories,['Продукты','Дом']);
+ assert.deepEqual(multiple.rows.map(e=>e.category),['Продукты','Дом']);
+ assert.deepEqual(multiple.priorRows.map(e=>e.category),['Продукты','Дом']);
+});

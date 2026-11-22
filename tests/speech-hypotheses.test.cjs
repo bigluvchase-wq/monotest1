@@ -24,3 +24,10 @@ test('ambiguous numeric spacing is blocked instead of silently becoming two fina
 test('a revised cumulative result replaces a previously preserved prefix too',()=>{
  const t=V.createTranscript();t.update('Кофе 300',0,2);t.update('Потом продукты 1000',4,7);assert.equal(t.update('Кофе 350 потом продукты 1000',0,7),'Кофе 350 потом продукты 1000');
 });
+test('recognition replaces a replay with a truncated final word and preserves explicit repeated items',()=>{
+ const transcript=V.createTranscript(),phrase='Пришла зп 100 тысяч 10 из них отложил на отпуск';
+ const partial=phrase.slice(0,-4);
+ transcript.update(partial,0,5);
+ assert.equal(transcript.update(partial+' '+phrase,0,12),phrase);
+ assert.equal(V.repairReplay('Купил в магазине кофе 300 и купил в магазине кофе 300'),'Купил в магазине кофе 300 и купил в магазине кофе 300');
+});
