@@ -612,6 +612,7 @@ aside{background:var(--card-solid)}
  radial-gradient(120% 60% at 100% -10%,var(--blob-a),transparent 62%),
  radial-gradient(110% 55% at -10% 110%,var(--blob-b),transparent 62%),
  linear-gradient(165deg,var(--bg1),var(--bg2) 55%,var(--bg3))}
+#chartPanel{background-color:var(--paper)}
 .chart-details-head,.chart-condensed .chart-ring-stage{background:transparent}
 .chart-details-head h1{font-weight:760;letter-spacing:-1px}
 .chart-close{background:var(--glass);border:1px solid var(--card-edge);box-shadow:0 6px 16px var(--shadow)}
@@ -1710,6 +1711,10 @@ html[data-theme] dialog#entryDialog[open]:not(#chartDialog):not(#onboarding):not
 html.entry-scroll-locked body{position:fixed;inset:var(--entry-scroll-top,0px) 0 auto;width:100%}
 html[data-entry-viewport] body > :is(.app,.bottom-nav,.bg-float){translate:0 var(--vv-top)}
 #entryDialog .sheet-head{flex:none}
+#entryDialog #dictation{display:block;width:100%}
+#entryDialog #dictation:focus{
+ outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);
+}
 #entryDialog .entry-content{min-height:0;overflow:hidden auto;overscroll-behavior:contain;scroll-padding:8px 0}
 #entryDialog:not(.has-review) #entrySource>summary,#entryDialog #parseErrors:empty{display:none}
 #entrySource>summary{min-height:42px;align-content:center;cursor:pointer;color:var(--muted);font-size:13px}
