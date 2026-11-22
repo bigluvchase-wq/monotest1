@@ -7,7 +7,7 @@ function enter(host,{gentle=false}={}){
  (dialogs.at(-1)||document.body).append(host);
  if(host.showPopover){host.setAttribute('popover','manual');host.hidePopover();host.showPopover();}
  const reduce=root.matchMedia?.('(prefers-reduced-motion:reduce)').matches;
- host.animate([{opacity:0,transform:reduce?'none':gentle?'translateY(-10px)':'translateY(-14px) scale(.98)'},{opacity:1,transform:'none'}],{duration:reduce?120:gentle?360:240,easing:gentle?'cubic-bezier(.3,0,.18,1)':'cubic-bezier(.16,1,.3,1)'});
+ host.animate([{opacity:0,transform:reduce?'none':gentle?'translateY(-10px)':'translateY(-14px) scale(.98)'},{opacity:1,transform:'none'}],{duration:reduce?120:gentle?470:240,easing:gentle?'cubic-bezier(.3,0,.18,1)':'cubic-bezier(.16,1,.3,1)'});
 }
 function exit(host,done){
  host.getAnimations().forEach(a=>a.cancel());

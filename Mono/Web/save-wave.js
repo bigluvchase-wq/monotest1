@@ -33,12 +33,16 @@ function ready(id,captured){
 }
 function finished(id){const session=current;if(session?.id===id){if(!session.done)ready(id,false);else release(session);}}
 function afterFinish(callback){if(current)current.after=callback;else callback();}
-function simple(button,commit){
+function simple(button,commit,{feedback=true}={}){
  if(current||button.disabled)return;
- root.MonoNative?.saveFeedback?.();button.disabled=true;let saved=false;
+ const panel=button.closest('dialog');button.disabled=true;let saved=false;
  try{saved=commit(false)===true;}catch(error){notify(error.message||'Не удалось сохранить запись.');}
  if(!saved)button.disabled=false;
- else button.closest('dialog')?.addEventListener('close',()=>{button.disabled=false;},{once:true});
+ else{
+  if(feedback)root.MonoNative?.saveFeedback?.();
+  if(panel&&(panel.open||panel.hasAttribute?.('open')))panel.addEventListener('close',()=>{button.disabled=false;},{once:true});
+  else button.disabled=false;
+ }
 }
 function confirm(panel,message){
  panel.inert=true;const clear=showReceipt(panel,message),receipt=panel.querySelector('.save-wave-receipt'),M=root.MonoMotion;
