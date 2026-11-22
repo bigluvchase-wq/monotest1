@@ -153,7 +153,7 @@ window.MonoMenuMarks=marks;
 function icon(name){return `<span class="menu-symbol"><svg viewBox="0 0 24 24">${marks[name]||marks.accounts}</svg></span>`;}
 function renderMenu(){return `<div class="menu-grid">${[
 ['accounts','Счета','Кошельки и валюты'],['goals','Цели','Копите на мечты'],['limits','Лимиты','Контроль расходов'],['payments','Платежи','Даты и напоминания'],['categories','Категории','Порядок в операциях'],['deposits','Вклады','Проценты в доход'],['reminders','Напоминания','Не забыть важное'],['settings','Настройки','Настройте под себя'],['support','Поддержка','Вопросы и идеи']
-].map(([p,title,sub])=>`<button class="menu-tile" data-go="${p}">${icon(p)}<span class="menu-copy"><strong>${title}</strong><small>${sub}</small></span></button>`).join('')}</div>`;}
+].map(([p,title,sub])=>`<button class="menu-tile${p==='support'?' menu-wide':''}" data-go="${p}">${icon(p)}<span class="menu-copy"><strong>${title}</strong><small>${sub}</small></span></button>`).join('')}</div>`;}
 const BASE_PALETTE=['#6551dc','#ec7fb4','#f5a572','#4cc0a0','#5aa7f0','#b49cf7','#f2c24f','#ea6a7c','#8e93b8'];
 // чёрно-белая тема: категории в графиках — оттенками серого
 const MONO_GREYS=['#f2f2f4','#a9a9b0','#d4d4d8','#7d7d85','#c0c0c5','#5f5f66','#e3e3e6','#8f8f96','#4a4a50'];
@@ -370,7 +370,6 @@ function nextCommand(){const cmd=commandQueue.shift();if(cmd){MonoCommands.run(c
 $('#actionDialog').addEventListener('close',()=>{if(commandQueue.length||commandRest||commandAfter)setTimeout(nextCommand,320);});
 function openEntry(text='',how=''){const gallery=document.querySelector('[data-document-pick]');if(gallery)gallery.hidden=!!text;cancelParse();if(text&&!window.MonoVoiceAI?.enabled()&&runCommand(text))return;$('#entryDialog').dataset.enter=how;
  if(listening||holding)cancelVoice();drafts=[];reminderDrafts=[];parseErrors=[];$('#entrySource').open=!text;$('#dictation').value=text;$('#drafts').innerHTML='';$('#entryDialog').classList.remove('has-review');$('#reviewAccount').hidden=true;$('#parseErrors').textContent='';$('#saveButton').hidden=true;$('#sheetTitle').textContent='Что запишем?';const entry=$('#entryDialog'),field=$('#dictation');
- entry.toggleAttribute('data-typing',!text);
  if(!entry.open)entry.showModal();
  entry.querySelector('.entry-content').scrollTop=0;
  if(text)parseInput();else field.focus({preventScroll:true});translateUI(entry);
