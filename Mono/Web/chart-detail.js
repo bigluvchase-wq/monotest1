@@ -9,31 +9,40 @@
  function cancelAnimations(){cancelAnimationFrame(frame);frame=0;dialog.querySelector('.chart-ring-flight')?.remove();closingOrigin?.remove();closingOrigin=null;animations.forEach(a=>a.cancel());animations=[];running=false;}
  function surfaceAnimation(from,to,closing){const clipFor=(r,off=0,radius=23)=>`inset(${(r.top-off).toFixed(1)}px ${(innerWidth-r.left-r.width).toFixed(1)}px ${(innerHeight-(r.top-off)-r.height).toFixed(1)}px ${r.left.toFixed(1)}px round ${radius}px)`,full=clipFor({left:0,top:0,width:innerWidth,height:innerHeight},0,0);
   const frames=closing?[{translate:`0px ${from.top||0}px`,clipPath:full},{translate:'0px 0px',clipPath:clipFor(to)}]:[{clipPath:clipFor(from)},{clipPath:full}];
-  const a=panel.animate(frames,{duration:closing?closeDuration:duration,easing:closing?closeEasing:easing,fill:'both'});animations.push(a);const content=panel.querySelector('.chart-details-content'),origin=panel.querySelector('.chart-origin');animations.push(content.animate(closing?[{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(12px)'}]:[{opacity:0,transform:'translateY(18px)'},{opacity:1,transform:'translateY(0)'}],{duration:closing?180:370,delay:closing?0:160,fill:'both',easing:'ease-out'}));animations.push(origin.animate(closing?[{opacity:0},{opacity:1}]:[{opacity:1},{opacity:0}],{duration:closing?closeDuration*.45:160,delay:closing?closeDuration*.55:0,fill:'both'}));return a;}
+  const a=panel.animate(frames,{duration:closing?closeDuration:duration,easing:closing?closeEasing:easing,fill:'both'});animations.push(a);const content=panel.querySelector('.chart-details-content'),origin=panel.querySelector('.chart-origin');animations.push(content.animate(closing?[{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(12px)'}]:[{opacity:0},{opacity:1}],{duration:closing?180:370,delay:closing?0:160,fill:'both',easing:'ease-out'}));animations.push(origin.animate(closing?[{opacity:0},{opacity:1}]:[{opacity:1},{opacity:0}],{duration:closing?closeDuration*.45:160,delay:closing?closeDuration*.55:0,fill:'both'}));return a;}
  // Unroll the actual ring outlines into the source strip, then bend them back into place.
  function animateRing(opening, source, done){
   const space=panel.querySelector('.chart-morph-space'),ring=space.querySelector('.chart-static-ring');
   const bounds=ring.getBoundingClientRect(),size=MonoChartRing.size,center=size/2;
-  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.setAttribute('aria-hidden','true');svg.classList.add('chart-ring-flight');
-  svg.setAttribute('viewBox',`0 0 ${innerWidth} ${innerHeight}`);
   const mini=sourceButton()?.querySelector('.mini-chart'),bar=mini?.getBoundingClientRect();
   const strip=bar?.width?{x:bar.left,y:bar.top+bar.height/2,width:bar.width,height:bar.height}:
    {x:source.left+16,y:source.top+source.height-15,width:Math.max(1,source.width-32),height:6};
+  const left=Math.floor(Math.min(bounds.left,strip.x)-2),top=Math.floor(Math.min(bounds.top,strip.y-strip.height/2)-2);
+  const width=Math.ceil(Math.max(bounds.right,strip.x+strip.width)-left+2);
+  const height=Math.ceil(Math.max(bounds.bottom,strip.y+strip.height/2)-top+2);
+  const canvas=document.createElement('canvas'),ink=canvas.getContext('2d');
+  if(!ink){done();return;}
+  canvas.className='chart-ring-flight';canvas.setAttribute('aria-hidden','true');
+  Object.assign(canvas.style,{left:left+'px',top:top+'px',width:width+'px',height:height+'px'});
+  const scale=Math.min(devicePixelRatio||1,2);
+  canvas.width=width*scale;canvas.height=height*scale;ink.scale(scale,scale);
+
   const total=current.values.reduce((n,v)=>n+v.n,0);
   let progress=0;
   const slices=[...ring.querySelectorAll('.chart-ring-body > :not(.chart-ring-sheen)')].map(node=>{
    const share=total?current.values[Number(node.dataset.ringCategory)]?.n/total:1;
    const mid=progress+(share||0)/2;progress+=share||0;
-   const path=document.createElementNS(svg.namespaceURI,'path');
-   path.setAttribute('fill',node.getAttribute('fill')==='none'?node.getAttribute('stroke'):node.getAttribute('fill'));
-   svg.append(path);
+   const style=getComputedStyle(node),color=style.fill==='none'?style.stroke:style.fill;
    const points=[];
+   const add=(x,y,u,v)=>{
+    const fromX=strip.x+strip.width*u-left,fromY=strip.y+strip.height*v/MonoChartRing.stroke-top;
+    points.push({fromX,fromY,dx:bounds.left+x*bounds.width/size-left-fromX,dy:bounds.top+y*bounds.height/size-top-fromY});
+   };
    if(node.tagName.toLowerCase()==='circle'){
     const radius=MonoChartRing.radius,half=MonoChartRing.stroke/2;
     for(const r of [radius+half,radius-half])for(let i=0;i<=64;i++){
      const u=r>radius?i/64:1-i/64,a=u*2*Math.PI-Math.PI/2;
-     points.push({x:center+r*Math.cos(a),y:center+r*Math.sin(a),u,v:r-radius});
+     add(center+r*Math.cos(a),center+r*Math.sin(a),u,r-radius);
     }
    }else{
     const length=node.getTotalLength(),count=Math.min(110,Math.max(20,Math.ceil(length/4)));
@@ -41,23 +50,26 @@
      const {x,y}=node.getPointAtLength(i*length/count);
      let u=(Math.atan2(y-center,x-center)+Math.PI/2)/(2*Math.PI);
      u+=Math.round(mid-u);
-     points.push({x,y,u,v:Math.hypot(x-center,y-center)-MonoChartRing.radius});
+     add(x,y,u,Math.hypot(x-center,y-center)-MonoChartRing.radius);
     }
    }
-   return {path,points};
+   return {color,points};
   });
-  dialog.append(svg);
+  dialog.append(canvas);
   const fade=ring.animate(opening?[{opacity:0,offset:0},{opacity:0,offset:.69},{opacity:1,offset:1}]:[{opacity:1},{opacity:0,offset:.24},{opacity:0}],{duration:opening?duration:closeDuration,fill:'both'});
   animations.push(fade);
   space.classList.add('ring-ready');running=true;
   const start=performance.now(),length=opening?duration:closeDuration;
   function draw(time){
    const t=Math.min(1,Math.max(0,(time-start)/length)),q=opening?1-(1-t)**3:1-t*t*(3-2*t);
-   for(const {path,points} of slices)path.setAttribute('d',points.map(({x,y,u,v},i)=>{
-    const fromX=strip.x+strip.width*u,fromY=strip.y+strip.height*v/MonoChartRing.stroke;
-    return (i?'L':'M')+(fromX+(bounds.left+x*bounds.width/size-fromX)*q).toFixed(2)+' '+(fromY+(bounds.top+y*bounds.height/size-fromY)*q).toFixed(2);
-   }).join('')+'Z');
-   svg.style.opacity=String(opening?1-Math.max(0,(t-.69)/.31):Math.min(t/.24,1));
+   ink.clearRect(0,0,width,height);
+   for(const {color,points} of slices){
+    ink.beginPath();
+    for(const {fromX,fromY,dx,dy} of points)ink.lineTo(fromX+dx*q,fromY+dy*q);
+    ink.closePath();
+    ink.fillStyle=color;ink.fill();
+   }
+   canvas.style.opacity=String(opening?1-Math.max(0,(t-.69)/.31):Math.min(t/.24,1));
    if(t<1){frame=requestAnimationFrame(draw);return;}
    frame=0;running=false;done();
   }

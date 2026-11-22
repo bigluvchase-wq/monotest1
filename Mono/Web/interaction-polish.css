@@ -9,12 +9,12 @@ body.pointer-navigation :is(.search-field,.picker-box,.month-control):focus-with
 #globalSearch:focus { outline:none!important }
 body:not(.pointer-navigation) :is(input,select,textarea):focus-visible { outline:2px solid var(--muted)!important;outline-offset:2px }
 body.pointer-navigation :is(.limit-items input,.friend-row input):focus{box-shadow:none!important;border-color:var(--line)!important}
-.chart-ring-flight{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+.chart-ring-flight{position:fixed;pointer-events:none;z-index:5}
 #chartDialog .chart-return-card{position:fixed;z-index:4;pointer-events:none}
 .chart-origin .hd-flow{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;width:100%;height:100%;padding:10px 14px}
 body[data-page=menu] #workspace{overscroll-behavior:contain;mask-image:none!important}
-html[data-theme] body[data-page=menu] .menu-group-items,html[data-theme] body[data-page=menu] .menu-group .menu-tile{box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
-html[data-theme] body[data-page=menu] .menu-group-items{background:var(--card-solid,var(--paper))!important;border:1px solid var(--line)}
+html[data-design][data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) :is(.menu-group-items,.menu-group .menu-tile){box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html[data-design][data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-group-items{background:var(--card-solid,var(--paper))!important;border:1px solid var(--line)}
 html[data-design][data-theme] .ops-selectors .currency-tabs{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;overflow:visible;flex-wrap:wrap}
 html[data-design][data-theme] .ops-selectors .currency-tabs button.active{background:none!important;color:var(--accent)!important;box-shadow:none!important;text-decoration:underline;text-underline-offset:4px}
 html[data-theme] .agenda-day.today:not(.selected){background:transparent!important;border-color:transparent!important;color:var(--ink)!important}
@@ -27,41 +27,69 @@ html[data-theme] .agenda-day.today.selected{background:var(--soft)!important;bor
 #actionFooter .primary{margin:0;min-height:46px}
 #actionDialog :is(.payment-form,.deposit-form) .field{margin:10px 0}
 #actionDialog :is(.payment-form,.deposit-form) .form-grid{align-items:end}
-@keyframes mono-entry-appear{from{opacity:.76}to{opacity:1}}
-html[data-theme] dialog#entryDialog[data-enter=swipe][open]:not(#chartDialog):not(#onboarding):not(#lockDialog){
+/* Keep the typing surface near the top before WebKit scrolls to the caret. */
+html[data-theme] dialog#entryDialog[data-typing]:not(.has-review):not(#chartDialog):not(#onboarding):not(#lockDialog){
+ top:calc(var(--vv-top,0px) + env(safe-area-inset-top,0px) + clamp(12px,4svh,32px))!important;
+ bottom:auto!important;margin:0 auto!important;
+ max-height:calc(var(--vv-h,100dvh) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - clamp(12px,4svh,32px) - 12px)!important;
+}
+html[data-entry-viewport] body > :is(.app,.bottom-nav,.bg-float){translate:0 var(--vv-top,0px)}
+@keyframes mono-entry-appear{from{opacity:0}to{opacity:1}}
+html[data-theme] dialog#entryDialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog){
+ animation:mono-entry-appear 240ms ease-out both!important;
+}
+html[data-theme] #entryDialog::backdrop{
  animation:mono-entry-appear 200ms ease-out both!important;
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
 }
-html[data-theme] #entryDialog[data-enter=swipe]::backdrop{animation:none!important}
 @media(prefers-reduced-motion:reduce){
- html[data-theme] dialog#entryDialog[data-enter=swipe][open]:not(#chartDialog):not(#onboarding):not(#lockDialog){animation:none!important}
+ html[data-theme] dialog#entryDialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog),
+ html[data-theme] #entryDialog::backdrop{animation:none!important}
 }
-/* The hit area stays circular while the two inner shapes move. */
 html[data-design][data-theme] :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){
  overflow:visible!important;background:transparent!important;border:0!important;box-shadow:none!important;
  color:var(--mic-ink,#fff)!important;
 }
 html[data-design] :is(#mic,[data-preview-id=mic])::before{display:none}
 html[data-design] :is(#mic,[data-preview-id=mic]) :is(.mic-glint,.mic-core){display:none}
-html[data-design][data-theme] :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]) svg.mic-triangle{
+html[data-design][data-theme] :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]) svg.mic-circle{
  display:block!important;position:absolute;inset:0;width:100%!important;height:100%!important;
  z-index:-1;overflow:visible;pointer-events:none;animation:none!important;
 }
-.mic-triangle path{transform-origin:50% 50%;fill:color-mix(in srgb,var(--accent) 86%,#221a57);stroke:#f2edff;stroke-opacity:.65;stroke-width:.85}
-.mic-triangle path+path{fill:none;stroke:var(--accent);stroke-opacity:.38;stroke-width:.7;transform:rotate(23deg) scale(1.08)}
-body[data-page=home] #mic .mic-triangle path:first-child{animation:mono-triangle-drift 7s ease-in-out infinite alternate}
-body[data-page=home] #mic .mic-triangle path+path{animation:mono-triangle-outline 9s ease-in-out infinite alternate}
-body:is(.holding,.listening) #mic .mic-triangle path:first-child{animation:mono-triangle-listen 1.65s ease-in-out infinite alternate}
-body:is(.holding,.listening) #mic .mic-triangle path+path{animation-duration:2.2s}
-@keyframes mono-triangle-drift{from{transform:rotate(-9deg) scale(.97)}to{transform:rotate(11deg) scale(1.02)}}
-@keyframes mono-triangle-outline{from{transform:rotate(17deg) scale(1.04)}to{transform:rotate(46deg) scale(1.1)}}
-@keyframes mono-triangle-listen{from{transform:rotate(-15deg) scale(.95)}to{transform:rotate(13deg) scale(1.08)}}
-body.mic-motion-paused #mic .mic-triangle path,body:has(dialog[open]) #mic .mic-triangle path{animation-play-state:paused!important}
-@media(prefers-reduced-motion:reduce){body #mic .mic-triangle path{animation:none!important}}
+.mic-circle circle{transform-origin:50% 50%;fill:color-mix(in srgb,var(--accent) 86%,#221a57);stroke:#f2edff;stroke-opacity:.65;stroke-width:.85}
+.mic-circle circle+circle{fill:none;stroke:var(--accent);stroke-opacity:.38;stroke-width:.7;transform:scale(1.02)}
+body[data-page=home] #mic .mic-circle circle:first-of-type{animation:mono-circle-drift 7s ease-in-out infinite alternate}
+body[data-page=home] #mic .mic-circle circle+circle{animation:mono-circle-outline 9s ease-in-out infinite alternate}
+body:is(.holding,.listening) #mic .mic-circle circle:first-of-type{animation:mono-circle-listen 1.65s ease-in-out infinite alternate}
+body:is(.holding,.listening) #mic .mic-circle circle+circle{animation-duration:2.2s}
+@keyframes mono-circle-drift{from{transform:scale(.98)}to{transform:scale(1)}}
+@keyframes mono-circle-outline{from{transform:scale(1)}to{transform:scale(1.035)}}
+@keyframes mono-circle-listen{from{transform:scale(.96)}to{transform:scale(1.05)}}
+body.mic-motion-paused #mic .mic-circle circle,body:has(dialog[open]) #mic .mic-circle circle{animation-play-state:paused!important}
+@media(prefers-reduced-motion:reduce){body #mic .mic-circle circle{animation:none!important}}
 #home.home-dash.has-rem .recording-block{padding-top:12px}
 @media(max-height:740px){#home.home-dash.has-rem .recording-block{padding-top:5px}}
-.mic-triangle path:first-of-type{fill:url(#monoMicFill)}
-.mic-triangle .mic-fill-core{stop-color:color-mix(in srgb,var(--accent) 82%,#21184d)}
-.mic-triangle .mic-fill-edge{stop-color:color-mix(in srgb,var(--accent) 55%,#e7dcff)}
+.mic-circle circle:first-of-type{fill:url(#monoMicFill)}
+.mic-circle .mic-fill-core{stop-color:color-mix(in srgb,var(--accent) 82%,#21184d)}
+.mic-circle .mic-fill-edge{stop-color:color-mix(in srgb,var(--accent) 55%,#e7dcff)}
 /* Swipe previews remove IDs. The solid base also supplies colour in those previews. */
-.root-preview .mic-triangle path:first-of-type{fill:var(--accent)}
-html[data-design][data-theme] body[data-page=menu] .bottom-nav{background:var(--card-solid,var(--paper))!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.root-preview .mic-circle circle:first-of-type{fill:var(--accent)}
+html[data-design][data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) .bottom-nav{box-shadow:none!important;background:var(--card-solid,var(--paper))!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+
+/* Montserrat needs less space in headings and wider columns for amounts. */
+html[data-design] :is(.page-head h1,.chart-details-head h1){font-size:clamp(24px,7vw,30px)!important;line-height:1.16}
+html[data-design] :is(#home,[data-preview-id=home]).home-dash .hd-balance{
+ font-size:clamp(27px,8.4vw,38px);overflow-wrap:anywhere;font-variant-numeric:tabular-nums;
+}
+html[data-design] .hd-flow{min-width:0}
+html[data-design] .hd-flow b{font-size:clamp(14px,4.35vw,18px);line-height:1.2;overflow-wrap:anywhere}
+html[data-design] .summary-pair .operation-card strong{font-size:clamp(14px,4.35vw,18px)}
+html[data-design] .menu-group .menu-tile .menu-copy strong{font-size:15px!important;line-height:1.25}
+html[data-design] #entryDialog .sheet-head h2{font-size:clamp(20px,5.6vw,24px)}
+#entryDialog #dictation{font-size:16px;line-height:1.45}
+@media(max-height:740px){
+ html[data-design] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-grid.menu-grouped{gap:16px!important}
+ html[data-design] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-group .menu-tile{
+  min-height:60px!important;padding-block:10px!important;
+ }
+}

@@ -366,9 +366,9 @@ function nextCommand(){const cmd=commandQueue.shift();if(cmd){MonoCommands.run(c
 $('#actionDialog').addEventListener('close',()=>{if(commandQueue.length||commandRest||commandAfter)setTimeout(nextCommand,320);});
 function openEntry(text='',how=''){const gallery=document.querySelector('[data-document-pick]');if(gallery)gallery.hidden=!!text;cancelParse();if(text&&!window.MonoVoiceAI?.enabled()&&runCommand(text))return;$('#entryDialog').dataset.enter=how;
  if(listening||holding)cancelVoice();drafts=[];reminderDrafts=[];parseErrors=[];$('#entrySource').open=!text;$('#dictation').value=text;$('#drafts').innerHTML='';$('#entryDialog').classList.remove('has-review');$('#reviewAccount').hidden=true;$('#parseErrors').textContent='';$('#saveButton').hidden=true;$('#sheetTitle').textContent='Что запишем?';const entry=$('#entryDialog'),field=$('#dictation');
- field.autofocus=!text;
+ entry.toggleAttribute('data-typing',!text);
  if(!entry.open)entry.showModal();
- if(text)parseInput();else if(document.activeElement!==field)field.focus({preventScroll:true});translateUI();
+ if(text)parseInput();else field.focus({preventScroll:true});translateUI();
 }
 $('#textEntry').onclick=()=>openEntry();$('#closeEntry').onclick=()=>$('#entryDialog').close();
 $('#dictation').oninput=()=>{cancelParse();drafts=[];reminderDrafts=[];parseErrors=[];$('#drafts').innerHTML='';$('#entryDialog').classList.remove('has-review');$('#reviewAccount').hidden=true;$('#saveButton').hidden=true;$('#parseErrors').textContent='';};
@@ -399,7 +399,7 @@ async function parseInput(){
  drafts=r.entries;reminderDrafts=r.reminders||[];parseErrors=r.errors;
  $('#parseErrors').innerHTML=(fallback?'<p class="muted tiny">Умный разбор недоступен — фраза разобрана на устройстве.</p>':'')+r.errors.map(e=>`<p class="warn">${esc(e)}</p>`).join('')+(r.errors.length&&drafts.length?'<p class="warn">Исправьте неразобранные части текста перед сохранением.</p>':'');renderDrafts();
 }
-$('#parseButton').onclick=parseInput;
+$('#parseButton').onclick=()=>{if($('#dictation').value.trim())$('#dictation').blur();parseInput();};
 function installmentRows(plan,currency){
  return plan.map((part,i)=>`<li><span>${esc(part.date.split('-').reverse().join('.'))} · ${i===0?'расход':'платёж'}</span><strong>${money(part.amount,currency)}</strong></li>`).join('');
 }
@@ -523,8 +523,21 @@ window.MonoNative?.refreshReminders();
 
 // Видимая область над клавиатурой: окна не уходят под клавиатуру на любых iPhone
 (()=>{const vv=window.visualViewport,root=document.documentElement;if(!vv)return;
- let lastH=-1,lastTop=-1;const sync=()=>{const h=Math.round(vv.height),t=Math.round(vv.offsetTop);if(h===lastH&&t===lastTop)return;lastH=h;lastTop=t;root.style.setProperty('--vv-h',h+'px');root.style.setProperty('--vv-top',t+'px');root.classList.toggle('kb',innerHeight-h>120);};
- vv.addEventListener('resize',sync);vv.addEventListener('scroll',sync);addEventListener('orientationchange',()=>setTimeout(sync,250));sync();})();
+ const entry=$('#entryDialog');
+ let syncFrame=0;
+ const sync=()=>{
+  syncFrame=0;
+  const height=Math.round(vv.height),top=Math.round(vv.offsetTop);
+  root.style.setProperty('--vv-h',height+'px');
+  root.style.setProperty('--vv-top',top+'px');
+  root.classList.toggle('kb',innerHeight-height>120);
+  // WebKit can pan the visual viewport during keyboard motion while the document stays locked.
+  root.toggleAttribute('data-entry-viewport',vv.scale===1&&(entry.open||root.hasAttribute('data-entry-viewport')&&top>0));
+ };
+ const schedule=()=>{if(!syncFrame)syncFrame=requestAnimationFrame(sync);};
+ vv.addEventListener('resize',schedule);vv.addEventListener('scroll',schedule);
+ new MutationObserver(schedule).observe(entry,{attributes:true,attributeFilter:['open']});
+ addEventListener('orientationchange',()=>setTimeout(schedule,250));sync();})();
 // Смахивание вверх на главной открывает ввод текстом
 (()=>{const home=$('#home');let g=null;
  home.addEventListener('touchstart',e=>{if(page!=='home'||e.touches.length!==1||holding||listening||tourActive||e.target.closest('#mic,#voiceAccount,#homeAccountButton,.reminder,.rem-carousel,.rem-arrow')){g=null;return;}const t=e.touches[0];g={x:t.clientX,y:t.clientY,t:performance.now()};},{passive:true});
