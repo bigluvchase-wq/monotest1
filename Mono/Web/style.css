@@ -1757,7 +1757,7 @@ html[data-theme] body.pointer-navigation :is(.limit-items input,.friend-row inpu
 body:not(.pointer-navigation) :is(button,a,input,select,textarea,summary):focus-visible{
  outline:2px solid var(--muted);outline-offset:2px;
 }
-.app:has(:is(#home,[data-preview-id=home]).has-rem)>footer{display:none}
+.app:has(:is(#home,[data-preview-id=home]).has-rem)>footer{display:none!important}
 .ops-selectors{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;margin-bottom:12px}
 .ops-selectors .together-mode.secondary{margin:0;flex:none}
 .ops-selectors .currency-tabs{margin:0;min-width:0;max-width:100%;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
