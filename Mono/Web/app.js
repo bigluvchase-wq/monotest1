@@ -382,7 +382,7 @@ function renderVoiceInsight(report){
    const percent=prior?' · '+(delta>0?'+':'')+new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1}).format(delta/prior*100)+'%':'';
    return {title:currency,detail:`${money(current,currency)} и ${money(prior,currency)} · ${delta>0?'+':delta<0?'−':''}${money(Math.abs(delta),currency)}${percent}`};
   });
-  actionDialog('Сравнение расходов',`<p class="muted">${format(report.period)} и ${format(report.previous)}${report.category?' · '+esc(report.category):''}</p>`+(textLines(lines)||`<p>${noItems}</p>`));return;
+  actionDialog('Сравнение расходов',`<p class="muted">${format(report.period)} и ${format(report.previous)}${report.categories?.length||report.category?' · '+esc(report.categories?.join(', ')||report.category):''}</p>`+(textLines(lines)||`<p>${noItems}</p>`));return;
  }
  if(report.kind==='budget'){
   const lines=report.items.map(({name,limit,spent})=>({title:name,detail:`Потрачено ${money(spent,report.currency)} из ${money(limit,report.currency)}. ${spent>limit?'Превышение':'Осталось'} ${money(Math.abs(limit-spent),report.currency)}`}));
@@ -410,9 +410,9 @@ function depositDraftHTML(draft,i,opened){
  const a=account(draft.account);
  const options=(state.deposits||[]).filter(d=>account(d.account)?.currency===a?.currency&&d.start<=draft.date&&draft.date<d.end);
  return `<details class="draft review-draft" data-index="${i}" ${opened||!draft.depositTopUpId?'open':''}>${draftSummary(draft.title,draftAmount(draft))}
- <div class="draft-editor"><div class="draft-bottom"><label>Вклад<select data-field="depositTopUpId" required><option value="">Выберите вклад</option>${options.map(d=>`<option value="${esc(d.id)}" ${d.id===draft.depositTopUpId?'selected':''}>${esc(d.name)}</option>`).join('')}</select></label>
+ <div class="draft-editor"><div class="draft-editor-content"><div class="draft-bottom"><label>Вклад<select data-field="depositTopUpId" required><option value="">Выберите вклад</option>${options.map(d=>`<option value="${esc(d.id)}" ${d.id===draft.depositTopUpId?'selected':''}>${esc(d.name)}</option>`).join('')}</select></label>
  <label>Сумма, ${esc(a?.currency||'')}<input data-field="amount" type="number" min="0.01" max="10000000000" step="0.01" required value="${draft.amount/100}"></label></div>
- <div class="draft-actions"><span class="muted tiny">Со счёта «${esc(a?.name||'')}» на вклад</span><button type="button" data-remove="${i}">Убрать</button></div></div></details>`;
+ <div class="draft-actions"><span class="muted tiny">Со счёта «${esc(a?.name||'')}» на вклад</span><button type="button" data-remove="${i}">Убрать</button></div></div></div></details>`;
 }
 function showOperationReport(text){
  const query=MonoVoiceFinance.read(text,state,voiceAccount)||MonoOperationQuery.report(text,state);
@@ -422,20 +422,20 @@ function showOperationReport(text){
  if(entry.open){entry.addEventListener('close',show,{once:true});entry.close();}else show();
  return true;
 }
-function renderOperationReport({type,period,category}){
- const rows=MonoPeriod.filter(state.entries,period,e=>(!type||(type==='flows'?['expense','income'].includes(e.type):e.type===type))&&(type!=='income'&&type!=='flows'||inChart(e))&&(!category||e.category===category)).sort((a,b)=>b.date.localeCompare(a.date));
+function renderOperationReport({type,period,category,categories=category?[category]:[]}){
+ const rows=MonoPeriod.filter(state.entries,period,e=>(!type||(type==='flows'?['expense','income'].includes(e.type):e.type===type))&&(type!=='income'&&type!=='flows'||inChart(e))&&(!categories.length||categories.includes(e.category))).sort((a,b)=>b.date.localeCompare(a.date));
  const currencies=[...new Set(rows.map(entryCurrency))];
  const totals=currencies.map(currency=>{
   const items=rows.filter(e=>entryCurrency(e)===currency);
   return `<div class="report-total">${type==='income'?'':`<span>Расходы <b>${money(sum(items,'expense'),currency)}</b></span>`}${type==='expense'?'':`<span>Доходы <b>${money(sum(items.filter(inChart),'income'),currency)}</b></span>`}</div>`;
  }).join('');
  const title=type==='expense'?'Расходы':type==='income'?'Доходы':type==='flows'?'Доходы и расходы':'Операции';
- const heading=`<p class="muted">${esc(MonoPeriod.label(period))}${category?' · '+esc(category):''}</p>`;
+ const heading=`<p class="muted">${esc(MonoPeriod.label(period))}${categories.length?' · '+esc(categories.join(', ')):''}</p>`;
  actionDialog(title,heading+totals+(rows.length?groupedEntriesHTML(rows):empty('За этот период операций нет','',false)));
 }
 function openEntry(text='',how=''){const gallery=document.querySelector('[data-document-pick]');if(gallery)gallery.hidden=!!text;cancelParse();if(text&&showOperationReport(text))return;if(text&&!MonoVoiceFinance.isAllocation(text)&&!window.MonoVoiceAI?.enabled()&&runCommand(text))return;$('#entryDialog').dataset.enter=how;
  if(listening||holding)cancelVoice();drafts=[];reminderDrafts=[];parseErrors=[];$('#dictation').value=text;$('#drafts').innerHTML='';$('#parseErrors').textContent='';$('#saveButton').hidden=true;$('#sheetTitle').textContent='Что запишем?';const dialog=$('#entryDialog');
- dialog.classList.remove('has-review');$('#entrySource').open=true;
+ dialog.classList.remove('has-review');dialog.toggleAttribute('data-typing-entry',!text);$('#entrySource').open=true;
  if(!dialog.open)dialog.showModal();
  dialog.querySelector('.entry-content').scrollTop=0;
  if(text)parseInput();else $('#dictation').focus({preventScroll:true});
@@ -497,7 +497,7 @@ function draftSummary(title,amount){
  return `<summary class="draft-summary"><strong data-summary-title>${esc(title)}</strong><b data-summary-amount>${esc(amount)}</b><span class="draft-edit-label">Изменить</span><span class="draft-done-label">Готово</span></summary>`;
 }
 function reminderDraftHTML(r,i,open){
- return `<details class="draft review-draft" data-reminder-index="${i}" ${open?'open':''}>${draftSummary(r.title,r.time||'Напоминание')}<div class="draft-editor"><div class="draft-bottom"><label>Название<input data-reminder-field="title" required maxlength="120" value="${esc(r.title||'')}"></label><label>Описание<input data-reminder-field="text" maxlength="1000" value="${esc(r.text||'')}"></label><label>Дата<input data-reminder-field="date" type="date" required value="${esc(r.date||'')}"></label><label>Время<input data-reminder-field="time" type="time" required value="${esc(r.time||'')}"></label><label>Повтор<select data-reminder-field="repeat">${Object.entries(MonoSchedule.label).map(([value,label])=>`<option value="${value}" ${r.repeat===value?'selected':''}>${label}</option>`).join('')}</select></label></div><div class="draft-actions"><span class="muted tiny">Проверьте дату и время напоминания</span><button type="button" data-remove-reminder="${i}">Убрать</button></div></div></details>`;
+ return `<details class="draft review-draft" data-reminder-index="${i}" ${open?'open':''}>${draftSummary(r.title,r.time||'Напоминание')}<div class="draft-editor"><div class="draft-editor-content"><div class="draft-bottom"><label>Название<input data-reminder-field="title" required maxlength="120" value="${esc(r.title||'')}"></label><label>Описание<input data-reminder-field="text" maxlength="1000" value="${esc(r.text||'')}"></label><label>Дата<input data-reminder-field="date" type="date" required value="${esc(r.date||'')}"></label><label>Время<input data-reminder-field="time" type="time" required value="${esc(r.time||'')}"></label><label>Повтор<select data-reminder-field="repeat">${Object.entries(MonoSchedule.label).map(([value,label])=>`<option value="${value}" ${r.repeat===value?'selected':''}>${label}</option>`).join('')}</select></label></div><div class="draft-actions"><span class="muted tiny">Проверьте дату и время напоминания</span><button type="button" data-remove-reminder="${i}">Убрать</button></div></div></div></details>`;
 }
 function renderDrafts(){
  const list=$('#drafts'),dialog=$('#entryDialog');
@@ -508,7 +508,7 @@ function renderDrafts(){
  $('#drafts').innerHTML=drafts.map((e,i)=>{const a=account(e.account)||account(voiceAccount),transfer=e.type==='transfer',saving=e.type==='saving',installment=e.installmentTotal!==undefined;
  if(e.depositTopUp)return depositDraftHTML(e,i,openDrafts.has(i));
  const plan=installment&&e.installmentTotal>=4&&e.date?E.installmentPlan(e.installmentTotal,e.date):[];
- return `<details class="draft review-draft" data-index="${i}" ${openDrafts.has(i)?'open':''}>${draftSummary(e.title,draftAmount(e))}<div class="draft-editor"><div class="draft-top"><label>Название<input data-field="title" required maxlength="300" value="${esc(e.title)}"></label><label>${installment?'Полная сумма':'Сумма'}, ${a.currency}<input data-field="${installment?'installmentTotal':'amount'}" type="number" min="${installment?'0.04':'0.01'}" max="10000000000" step="0.01" required value="${(e.installmentTotal??e.amount)/100}"></label></div><div class="draft-bottom"><label>Тип<select data-field="type" ${installment||transfer?'disabled':''}><option value="expense" ${e.type==='expense'?'selected':''}>Расход</option><option value="income" ${e.type==='income'?'selected':''}>Доход</option><option value="saving" ${saving?'selected':''} >Накопления</option>${transfer?'<option value="transfer" selected>Перевод между своими</option>':''}</select></label><label>${transfer?'С какого счёта':'Счёт'}<select data-field="account" required>${transfer?'<option value="">Выберите счёт</option>':''}${accountOptions(e.account,saving?state.goals.find(g=>g.id===e.goalId)?.currency??null:null)}</select></label>${transfer?transferDraftFields(e):saving?`<label>Цель<select data-field="goalId"><option value="" ${!e.goalId?'selected':''}>Накопления без цели</option>${state.goals.filter(g=>g.currency===a.currency).map(g=>`<option value="${esc(g.id)}" ${g.id===e.goalId?'selected':''}>${esc(g.name)}</option>`).join('')}</select></label>`:`<label>Категория<select data-field="category">${categoryOptions(e.type,e.category)}</select></label>`}<label>Дата<input data-field="date" type="date" required value="${e.date}"></label></div>${installment?`<div class="draft-installments"><strong>Долями · 4 платежа</strong><ol data-installment-plan>${installmentRows(plan,a.currency)}</ol></div>`:''}<div class="draft-actions"><span class="muted tiny">${saving?'Со счёта в цель · не расход':'Проверьте сумму, категорию и счёт'}</span><button data-remove="${i}">Убрать</button></div></div></details>`;}).join('');
+ return `<details class="draft review-draft" data-index="${i}" ${openDrafts.has(i)?'open':''}>${draftSummary(e.title,draftAmount(e))}<div class="draft-editor"><div class="draft-editor-content"><div class="draft-top"><label>Название<input data-field="title" required maxlength="300" value="${esc(e.title)}"></label><label>${installment?'Полная сумма':'Сумма'}, ${a.currency}<input data-field="${installment?'installmentTotal':'amount'}" type="number" min="${installment?'0.04':'0.01'}" max="10000000000" step="0.01" required value="${(e.installmentTotal??e.amount)/100}"></label></div><div class="draft-bottom"><label>Тип<select data-field="type" ${installment||transfer?'disabled':''}><option value="expense" ${e.type==='expense'?'selected':''}>Расход</option><option value="income" ${e.type==='income'?'selected':''}>Доход</option><option value="saving" ${saving?'selected':''} >Накопления</option>${transfer?'<option value="transfer" selected>Перевод между своими</option>':''}</select></label><label>${transfer?'С какого счёта':'Счёт'}<select data-field="account" required>${transfer?'<option value="">Выберите счёт</option>':''}${accountOptions(e.account,saving?state.goals.find(g=>g.id===e.goalId)?.currency??null:null)}</select></label>${transfer?transferDraftFields(e):saving?`<label>Цель<select data-field="goalId"><option value="" ${!e.goalId?'selected':''}>Накопления без цели</option>${state.goals.filter(g=>g.currency===a.currency).map(g=>`<option value="${esc(g.id)}" ${g.id===e.goalId?'selected':''}>${esc(g.name)}</option>`).join('')}</select></label>`:`<label>Категория<select data-field="category">${categoryOptions(e.type,e.category)}</select></label>`}<label>Дата<input data-field="date" type="date" required value="${e.date}"></label></div>${installment?`<div class="draft-installments"><strong>Долями · 4 платежа</strong><ol data-installment-plan>${installmentRows(plan,a.currency)}</ol></div>`:''}<div class="draft-actions"><span class="muted tiny">${saving?'Со счёта в цель · не расход':'Проверьте сумму, категорию и счёт'}</span><button data-remove="${i}">Убрать</button></div></div></div></details>`;}).join('');
  $('#voicePlan').innerHTML=voicePlanHTML();
  $('#drafts').insertAdjacentHTML('beforeend',reminderDrafts.map((reminder,i)=>reminderDraftHTML(reminder,i,openReminders.has(i))).join(''));
  const count=drafts.length+reminderDrafts.length;
@@ -645,8 +645,16 @@ window.MonoNative?.refreshReminders();
 
 // Видимая область над клавиатурой: окна не уходят под клавиатуру на любых iPhone
 (()=>{const vv=window.visualViewport,root=document.documentElement;if(!vv)return;
- const entry=$('#entryDialog');
+ const entry=$('#entryDialog'),content=entry.querySelector('.entry-content');
  let frame=0;
+ function keepDraftFieldVisible(){
+  const field=document.activeElement;
+  if(!entry.open||!field?.matches('.draft-editor input,.draft-editor select')||!content.contains(field))return;
+  const fieldRect=field.getBoundingClientRect(),area=content.getBoundingClientRect();
+  if(!fieldRect.height)return;
+  if(fieldRect.bottom>area.bottom-10)content.scrollTop+=fieldRect.bottom-area.bottom+10;
+  else if(fieldRect.top<area.top+10)content.scrollTop-=area.top-fieldRect.top+10;
+ }
  function sync(){
   frame=0;
   const h=Math.round(vv.height),top=Math.round(vv.offsetTop);
@@ -654,9 +662,11 @@ window.MonoNative?.refreshReminders();
   root.style.setProperty('--vv-top',top+'px');
   root.classList.toggle('kb',innerHeight-h>120);
   root.toggleAttribute('data-entry-viewport',vv.scale===1&&(entry.hasAttribute('open')||root.hasAttribute('data-entry-viewport')&&top>0));
+  if(root.classList.contains('kb'))keepDraftFieldVisible();
  }
  const schedule=()=>{if(!frame)frame=requestAnimationFrame(sync);};
  vv.addEventListener('resize',schedule);vv.addEventListener('scroll',schedule);
+ entry.addEventListener('focusin',event=>{if(root.classList.contains('kb')&&event.target.closest('.draft-editor'))schedule();});
  new MutationObserver(schedule).observe(entry,{attributes:true,attributeFilter:['open']});
  addEventListener('orientationchange',()=>setTimeout(schedule,250));sync();
 })();

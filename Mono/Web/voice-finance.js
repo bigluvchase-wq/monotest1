@@ -5,6 +5,7 @@ const Period=typeof module==='object'?require('./period'):root.MonoPeriod;
 const Query=typeof module==='object'?require('./operation-query'):root.MonoOperationQuery;
 const Payments=typeof module==='object'?require('./payment-dates'):root.MonoPaymentDates;
 const S=typeof module==='object'?require('./schedule'):root.MonoSchedule;
+const Voice=typeof module==='object'?require('./voice'):root.MonoVoice;
 const allocationMarker=/[,; ]*\s+(?:из ни[хз]|из эт(?:ой суммы|их денег)|в том числе)\s+/u;
 const clean=text=>text.toLowerCase().replace(/ё/g,'е').replace(/[«»"]/g,'').replace(/[.!?;]+$/,'').trim();
 const stem=text=>clean(text).replace(/(?:ов|ев|ам|ям|ах|ях|[аеиоуыюяьй]+)(?=\s|$)/gu,'');
@@ -19,24 +20,26 @@ function titleAfter(text,pattern){return clean(text.match(pattern)?.[1]||'');}
 function catchError(run){try{return run();}catch(error){return {error:error.message};}}
 function read(raw,state,account,now=new Date()){
  const text=clean(raw),today=E.dateString(now),currency=state.accounts.find(a=>a.id===account)?.currency||'RUB';
- if(/^(?:моно[, ]+)?(?:сравни|на сколько (?:больше|меньше))/u.test(text)&&/(?:расход|потрат|трат)/u.test(text)){
+ const comparison=/^(?:моно[, ]+)?(?:сравни|на сколько (?:больше|меньше)|сколько\s+.+\sпо сравнению с)(?:\s|$)/u.test(text);
+ if(comparison&&/(?:расход|потрат|трат)/u.test(text)){
   return catchError(()=>{
-   const category=titleAfter(text.replace(/^.*?(?:сравни|потратил[аи]?)/u,''),/(?:по категории|на)\s+(.+?)(?=\s+(?:за|в этом|в прошлом|по сравнению)\s|$)/u);
-   const match=category?named(category,state.categories.map(name=>({name}))):null;
-   if(category&&!match)throw Error('Не нашёл категорию для сравнения.');
-   const phrase=text.replace(/\s+по сравнению с.+$/u,'').replace(/в этом месяце/u,'за этот месяц').replace(/в прошлом месяце/u,'за прошлый месяц');
+   const phrase=Query.calendarPhrase(text.replace(/\s+по сравнению с.+$/u,''));
+   const filter=Query.spokenCategories(phrase,state.categories);
+   const categories=filter.categories||(filter.category?[filter.category]:[]);
    const selected=Query.spokenPeriod(phrase,now);
    const period={...selected,end:selected.end>today?today:selected.end};
    if(period.end<period.start)throw Error('Выберите прошедший период для сравнения.');
    const days=Math.round((Date.parse(period.end)-Date.parse(period.start))/86400000)+1;
    const month=Period.month(period.start.slice(0,7));
    let previous;
-   if(period.start===month.start&&(selected.end===month.end)){
+   if(period.start===month.start&&selected.end===month.end){
     const prior=Period.month(Period.shift(period.start.slice(0,7),-1));
     previous={start:prior.start,end:period.end===month.end?prior.end:S.addDays(prior.start,Math.min(days-1,Number(prior.end.slice(8))-1))};
+   }else if(/(?:эту|текущую|прошлую|предыдущую) неделю/u.test(phrase)){
+    previous={start:S.addDays(period.start,-7),end:S.addDays(period.end,-7)};
    }else previous={start:S.addDays(period.start,-days),end:S.addDays(period.start,-1)};
-   const predicate=e=>e.type==='expense'&&(!match||e.category===match.name);
-   return {kind:'compare',period,previous,category:match?.name,rows:Period.filter(state.entries,period,predicate),priorRows:Period.filter(state.entries,previous,predicate)};
+   const predicate=e=>e.type==='expense'&&(!categories.length||categories.includes(e.category));
+   return {kind:'compare',period,previous,...filter,rows:Period.filter(state.entries,period,predicate),priorRows:Period.filter(state.entries,previous,predicate)};
   });
  }
  if(/^(?:моно[, ]+)?покажи\s+(?:(?:мои|наши)\s+)?(?:расход|трат|доход|операци|истори)/u.test(text))return null;
@@ -73,24 +76,38 @@ function read(raw,state,account,now=new Date()){
  return null;
 }
 function review(raw,state,account,now=new Date()){
- const text=clean(raw).replace(/(?<!\p{L})зп(?!\p{L})/gu,'зарплата')
+ const text=clean(Voice.repairReplay(raw)).replace(/(?<!\p{L})зп(?!\p{L})/gu,'зарплата')
   .replace(/(?<=\d)\s*р(?:уб(?:лей|ля|ль)?)?\.?(?![\p{L}])/gu,' рублей');
  const marker=text.match(allocationMarker);
  if(!marker)return null;
  const header=text.slice(0,marker.index).replace(/^(?:разбей|раздели)\s+(?:покупку|расход|трату)\s*/u,'');
- const main=E.parse(header,now,state.entries,state,account);
+ const rest=text.slice(marker.index+marker[0].length),segments=rest.split(/\s+и\s+|\s*[,;]\s*(?=\p{L})/u).filter(Boolean);
+ const shorthand=E.slang(header).match(/^(.*тысяч[аиу]?)[, ]+([^,]+)$/u);
+ const tail=shorthand&&E.voiceAmounts(shorthand[2]);
+ const relayedAmount=tail?.amounts[0];
+ const canCarryThousands=relayedAmount&&tail.amounts.length===1&&relayedAmount.end===tail.text.length&&relayedAmount.start===0&&
+  relayedAmount.amount>=100&&relayedAmount.amount<100000&&relayedAmount.amount%100===0;
+ let main;
+ if(canCarryThousands&&segments.length&&!E.voiceAmounts(segments[0]).amounts.length){
+  const income=E.parse(shorthand[1],now,state.entries,state,account);
+  if(income.entries.length===1&&income.entries[0].type==='income'&&!income.errors.length){
+   main=income;
+   segments[0]=relayedAmount.amount/100+' тысяч '+segments[0];
+  }
+ }
+ main??=E.parse(header,now,state.entries,state,account);
  const original=main.entries[0];
  const result={entries:[],errors:[],reminders:[]};
  if(!original||main.entries.length!==1||main.errors.length||!['income','expense'].includes(original.type)){
   result.errors.push('Назовите одну общую сумму перед «из них».');return result;
  }
- const rest=text.slice(marker.index+marker[0].length),segments=rest.split(/\s+и\s+|\s*[,;]\s*(?=\p{L})/u).filter(Boolean);
  const rows=[],currency=state.accounts.find(a=>a.id===original.account)?.currency;
  let remainder=null;
  try{
   for(const segment of segments){
    const {text:part,amounts}=E.voiceAmounts(segment);
    const money=amounts[0],isRest=/(?<!\p{L})(?:остальное|остаток)(?!\p{L})/u.test(part);
+   if(!money&&!isRest&&original.type==='income')throw Error('Укажите сумму пополнения отдельно. Например, «из них 10 тысяч на отпуск».');
    if(isRest?amounts.length>0:amounts.length!==1||money.amount<=0)throw Error('Назовите сумму для каждой части или скажите «остальное».');
    if(isRest&&remainder)throw Error('Укажите только одну часть «остальное».');
    const words=clean(money?part.slice(0,money.start)+' '+part.slice(money.end):part)

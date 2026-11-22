@@ -1702,17 +1702,27 @@ body[data-page=home]:has(#home.home-dash) .app{height:auto;min-height:calc(100dv
 #entryDialog{--entry-safe-bottom:env(safe-area-inset-bottom,0px)}
 html.kb #entryDialog{--entry-safe-bottom:0px}
 html[data-theme] dialog#entryDialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog){
- top:calc(var(--vv-top) + env(safe-area-inset-top,0px) + 12px);
- bottom:calc(100dvh - var(--vv-top) - var(--vv-h) + var(--entry-safe-bottom) + 12px);
- margin:auto;height:fit-content;
- max-height:calc(var(--vv-h) - env(safe-area-inset-top,0px) - var(--entry-safe-bottom) - 24px);
+ top:calc(var(--vv-top) + env(safe-area-inset-top,0px) + var(--entry-top-gap,12px));
+ bottom:calc(100% - var(--vv-top) - var(--vv-h) + var(--entry-safe-bottom) + 12px);
+ margin:var(--entry-block-margin,auto) auto;height:fit-content;
+ max-height:calc(var(--vv-h) - env(safe-area-inset-top,0px) - var(--entry-safe-bottom) - var(--entry-top-gap,12px) - 12px);
  display:flex;flex-direction:column;overflow:hidden;
 }
 html.entry-scroll-locked body{position:fixed;inset:var(--entry-scroll-top,0px) 0 auto;width:100%}
 html[data-entry-viewport] body > :is(.app,.bottom-nav,.bg-float){translate:0 var(--vv-top)}
+html[data-theme] dialog#entryDialog[open]:not(.has-review):has(#dictation:focus){
+ --entry-block-margin:0;
+ --entry-top-gap:24px;
+}
+#entryDialog:not(.has-review){padding-block:16px}
 #entryDialog .sheet-head{flex:none}
+#entryDialog:not(.has-review) .sheet-head{margin-bottom:14px}
+html.kb #entryDialog.has-review{padding-block:12px}
+html.kb #entryDialog.has-review .sheet-head{margin-bottom:8px}
+html.kb #entryDialog.has-review .eyebrow{display:none}
+html.kb #entryDialog .entry-footer .primary{min-height:40px;padding-block:8px}
 #entryDialog #dictation{display:block;width:100%}
-#entryDialog .entry-content{min-height:0;overflow:hidden auto;overscroll-behavior:contain;scroll-padding:8px 0}
+#entryDialog .entry-content{min-height:0;overflow:hidden auto;overscroll-behavior:contain;scroll-padding:10px 0;overflow-anchor:none}
 #entryDialog:not(.has-review) #entrySource>summary,#entryDialog #parseErrors:empty{display:none}
 #entrySource>summary{min-height:42px;align-content:center;cursor:pointer;color:var(--muted);font-size:13px}
 #entrySource[open]>summary{margin-bottom:6px}
@@ -1726,7 +1736,7 @@ html[data-entry-viewport] body > :is(.app,.bottom-nav,.bg-float){translate:0 var
 .draft-summary b{font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
 .draft-summary :is(.draft-edit-label,.draft-done-label){font-size:12px;color:var(--accent)}
 .review-draft[open] .draft-edit-label,.review-draft:not([open]) .draft-done-label{display:none}
-#entryDialog .draft-editor{border-top:1px solid var(--line);padding:12px 14px}
+#entryDialog .draft-editor-content{border-top:1px solid var(--line);padding:12px 14px}
 #entryDialog .entry-footer{flex:none;padding-top:8px}
 #entryDialog .entry-footer:has([hidden]){display:none}
 #entryDialog .entry-footer .primary{width:100%;margin:0}
@@ -1737,6 +1747,9 @@ html[data-theme] #entryDialog::backdrop{backdrop-filter:none!important;-webkit-b
 @media(prefers-reduced-motion:no-preference){
  html[data-theme] dialog#entryDialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog){
   animation:entry-sheet-in 430ms cubic-bezier(.24,.7,.32,1) both!important;
+ }
+ html[data-theme] dialog#entryDialog[data-typing-entry][open]:not(#chartDialog):not(#onboarding):not(#lockDialog){
+  animation-name:entry-fade-in!important;
  }
  html[data-theme] #entryDialog[open]::backdrop{animation:entry-fade-in 300ms ease-out both}
  html[data-theme] #entryDialog.closing::backdrop{animation:entry-fade-in 240ms ease-out reverse both;transition:none}
@@ -1775,7 +1788,11 @@ html[data-theme] #actionDialog[open]:has(#actionFooter:not([hidden])){
 
 /* Keep the rounded currency control free of the clipped glow from its scroll container. */
 .ops-selectors .currency-tabs .active{box-shadow:none;border-radius:999px}
-#entryDialog #dictation{border:1px solid var(--card-edge);background:var(--input);box-shadow:inset 0 1px 3px var(--shadow)}
+#entryDialog #dictation{
+ border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line));
+ background:color-mix(in srgb,var(--input) 92%,var(--accent));
+ box-shadow:inset 0 1px 3px var(--shadow);
+}
 #entryDialog .draft-editor .draft-top{margin-top:0}
 #entryDialog .review-draft[data-editing] .draft-edit-label,
 #entryDialog .review-draft:has(summary[aria-expanded=false]) .draft-done-label{display:none}
