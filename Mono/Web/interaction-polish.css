@@ -1,0 +1,67 @@
+@font-face { font-family:Montserrat; src:url("./fonts/Montserrat-Regular.ttf") format("truetype"); font-weight:400; font-display:swap }
+@font-face { font-family:Montserrat; src:url("./fonts/Montserrat-Medium.ttf") format("truetype"); font-weight:500; font-display:swap }
+@font-face { font-family:Montserrat; src:url("./fonts/Montserrat-SemiBold.ttf") format("truetype"); font-weight:600; font-display:swap }
+@font-face { font-family:Montserrat; src:url("./fonts/Montserrat-Bold.ttf") format("truetype"); font-weight:700; font-display:swap }
+body { font-family:Montserrat,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif }
+body :is(button,input,select,textarea,a) { -webkit-tap-highlight-color:transparent }
+body.pointer-navigation :is(button,input,select,textarea,a):focus,
+body.pointer-navigation :is(.search-field,.picker-box,.month-control):focus-within,
+#globalSearch:focus { outline:none!important }
+body:not(.pointer-navigation) :is(input,select,textarea):focus-visible { outline:2px solid var(--muted)!important;outline-offset:2px }
+body.pointer-navigation :is(.limit-items input,.friend-row input):focus{box-shadow:none!important;border-color:var(--line)!important}
+.chart-ring-flight{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+#chartDialog .chart-return-card{position:fixed;z-index:4;pointer-events:none}
+.chart-origin .hd-flow{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;width:100%;height:100%;padding:10px 14px}
+body[data-page=menu] #workspace{overscroll-behavior:contain;mask-image:none!important}
+html[data-theme] body[data-page=menu] .menu-group-items,html[data-theme] body[data-page=menu] .menu-group .menu-tile{box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html[data-theme] body[data-page=menu] .menu-group-items{background:var(--card-solid,var(--paper))!important;border:1px solid var(--line)}
+html[data-design][data-theme] .ops-selectors .currency-tabs{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;overflow:visible;flex-wrap:wrap}
+html[data-design][data-theme] .ops-selectors .currency-tabs button.active{background:none!important;color:var(--accent)!important;box-shadow:none!important;text-decoration:underline;text-underline-offset:4px}
+html[data-theme] .agenda-day.today:not(.selected){background:transparent!important;border-color:transparent!important;color:var(--ink)!important}
+.agenda-day.today>span{border-bottom:2px solid var(--accent);line-height:1.25}
+html[data-theme] .agenda-day.today.selected{background:var(--soft)!important;border-color:var(--line)!important;color:var(--ink)!important}
+#actionDialog[open]:has(#actionFooter:not([hidden])){display:flex;flex-direction:column;overflow:hidden!important}
+#actionDialog:has(#actionFooter:not([hidden])) .sheet-head{flex:none;margin-bottom:12px}
+#actionDialog:has(#actionFooter:not([hidden])) #actionBody{min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 3px 6px}
+#actionFooter{flex:none;padding-top:10px;border-top:1px solid var(--line)}
+#actionFooter .primary{margin:0;min-height:46px}
+#actionDialog :is(.payment-form,.deposit-form) .field{margin:10px 0}
+#actionDialog :is(.payment-form,.deposit-form) .form-grid{align-items:end}
+@keyframes mono-entry-appear{from{opacity:.76}to{opacity:1}}
+html[data-theme] dialog#entryDialog[data-enter=swipe][open]:not(#chartDialog):not(#onboarding):not(#lockDialog){
+ animation:mono-entry-appear 200ms ease-out both!important;
+}
+html[data-theme] #entryDialog[data-enter=swipe]::backdrop{animation:none!important}
+@media(prefers-reduced-motion:reduce){
+ html[data-theme] dialog#entryDialog[data-enter=swipe][open]:not(#chartDialog):not(#onboarding):not(#lockDialog){animation:none!important}
+}
+/* The hit area stays circular while the two inner shapes move. */
+html[data-design][data-theme] :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){
+ overflow:visible!important;background:transparent!important;border:0!important;box-shadow:none!important;
+ color:var(--mic-ink,#fff)!important;
+}
+html[data-design] :is(#mic,[data-preview-id=mic])::before{display:none}
+html[data-design] :is(#mic,[data-preview-id=mic]) :is(.mic-glint,.mic-core){display:none}
+html[data-design][data-theme] :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]) svg.mic-triangle{
+ display:block!important;position:absolute;inset:0;width:100%!important;height:100%!important;
+ z-index:-1;overflow:visible;pointer-events:none;animation:none!important;
+}
+.mic-triangle path{transform-origin:50% 50%;fill:color-mix(in srgb,var(--accent) 86%,#221a57);stroke:#f2edff;stroke-opacity:.65;stroke-width:.85}
+.mic-triangle path+path{fill:none;stroke:var(--accent);stroke-opacity:.38;stroke-width:.7;transform:rotate(23deg) scale(1.08)}
+body[data-page=home] #mic .mic-triangle path:first-child{animation:mono-triangle-drift 7s ease-in-out infinite alternate}
+body[data-page=home] #mic .mic-triangle path+path{animation:mono-triangle-outline 9s ease-in-out infinite alternate}
+body:is(.holding,.listening) #mic .mic-triangle path:first-child{animation:mono-triangle-listen 1.65s ease-in-out infinite alternate}
+body:is(.holding,.listening) #mic .mic-triangle path+path{animation-duration:2.2s}
+@keyframes mono-triangle-drift{from{transform:rotate(-9deg) scale(.97)}to{transform:rotate(11deg) scale(1.02)}}
+@keyframes mono-triangle-outline{from{transform:rotate(17deg) scale(1.04)}to{transform:rotate(46deg) scale(1.1)}}
+@keyframes mono-triangle-listen{from{transform:rotate(-15deg) scale(.95)}to{transform:rotate(13deg) scale(1.08)}}
+body.mic-motion-paused #mic .mic-triangle path,body:has(dialog[open]) #mic .mic-triangle path{animation-play-state:paused!important}
+@media(prefers-reduced-motion:reduce){body #mic .mic-triangle path{animation:none!important}}
+#home.home-dash.has-rem .recording-block{padding-top:12px}
+@media(max-height:740px){#home.home-dash.has-rem .recording-block{padding-top:5px}}
+.mic-triangle path:first-of-type{fill:url(#monoMicFill)}
+.mic-triangle .mic-fill-core{stop-color:color-mix(in srgb,var(--accent) 82%,#21184d)}
+.mic-triangle .mic-fill-edge{stop-color:color-mix(in srgb,var(--accent) 55%,#e7dcff)}
+/* Swipe previews remove IDs. The solid base also supplies colour in those previews. */
+.root-preview .mic-triangle path:first-of-type{fill:var(--accent)}
+html[data-design][data-theme] body[data-page=menu] .bottom-nav{background:var(--card-solid,var(--paper))!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}

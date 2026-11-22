@@ -53,7 +53,7 @@ function explain(){
 document.addEventListener('click',e=>{
  const day=e.target.closest('[data-day-expense]');if(day){const date=new Date(day.dataset.dayExpense+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}).replace(/ г\.$/,'');notify('Сумма расходов за '+date+' года. Доходы и переводы не включены.');return;}
  const eye=e.target.closest('[data-hd-eye]');if(eye){hidden=!hidden;render();return;}
- const go=e.target.closest('[data-hd-go]');if(go){const type=go.dataset.hdGo;navigate('history');setTimeout(()=>document.querySelector(`[data-operation="${type}"]`)?.click(),reducedMotion()?0:520);return;}
+ const go=e.target.closest('[data-hd-go]');if(go){window.MonoCharts?.open(go.dataset.hdGo,go,{homeCurrency:cur()});return;}
  const ex=e.target.closest('[data-hd-explain]');if(ex){explain();return;}
  const smart=e.target.closest('[data-smart-goal]');if(smart){const id=smart.dataset.smartGoal;let name='';
   if(commit(s=>{const g=s.goals.find(g=>g.id===id);if(g){g.smart=!g.smart;name=g.name;if(!g.smart)delete g.smart;}}))
