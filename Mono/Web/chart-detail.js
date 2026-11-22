@@ -12,20 +12,35 @@
  function motionDuration(closing){
   return current?.homeFilters?(closing?300:420):(closing?closeDuration:duration);
  }
- function homeSurface(closing,dragOffset=0){
-  if(dragOffset)panel.style.transform=`translateY(${dragOffset}px)`;
-  const frames=closing?[{opacity:1},{opacity:0}]:[{opacity:0},{opacity:1}];
-  const animation=panel.animate(frames,{duration:motionDuration(closing),easing:closing?closeEasing:'ease-out',fill:'both'});
-  animations.push(animation);return animation;
- }
  function sourceButton(){
   if(!current)return null;
   if(current.button.isConnected)return current.button;
   return document.querySelector(current.homeFilters?`[data-hd-go="${current.type}"]`:`[data-operation="${current.type}"]`);
  }
- function surfaceAnimation(from,to,closing){const clipFor=(r,off=0,radius=23)=>`inset(${(r.top-off).toFixed(1)}px ${(innerWidth-r.left-r.width).toFixed(1)}px ${(innerHeight-(r.top-off)-r.height).toFixed(1)}px ${r.left.toFixed(1)}px round ${radius}px)`,full=clipFor({left:0,top:0,width:innerWidth,height:innerHeight},0,0);
-  const frames=closing?[{translate:`0px ${from.top||0}px`,clipPath:full},{translate:'0px 0px',clipPath:clipFor(to)}]:[{clipPath:clipFor(from)},{clipPath:full}];
-  const a=panel.animate(frames,{duration:closing?closeDuration:duration,easing:closing?closeEasing:easing,fill:'both'});animations.push(a);const content=panel.querySelector('.chart-details-content'),origin=panel.querySelector('.chart-origin');animations.push(content.animate(closing?[{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(12px)'}]:[{opacity:0,transform:'translateY(18px)'},{opacity:1,transform:'translateY(0)'}],{duration:closing?180:370,delay:closing?0:160,fill:'both',easing:'ease-out'}));animations.push(origin.animate(closing?[{opacity:0},{opacity:1}]:[{opacity:1},{opacity:0}],{duration:closing?closeDuration*.45:160,delay:closing?closeDuration*.55:0,fill:'both'}));return a;}
+ function surfaceAnimation(from,to,closing){
+  const clipFor=(r,radius=23)=>`inset(${r.top.toFixed(1)}px ${(innerWidth-r.left-r.width).toFixed(1)}px ${(innerHeight-r.top-r.height).toFixed(1)}px ${r.left.toFixed(1)}px round ${radius}px)`;
+  const full=clipFor({left:0,top:0,width:innerWidth,height:innerHeight},0);
+  const frames=closing
+   ?[{translate:`0px ${from.top||0}px`,clipPath:full},{translate:'0px 0px',clipPath:clipFor(to)}]
+   :[{clipPath:clipFor(from)},{clipPath:full}];
+  const animation=panel.animate(frames,{duration:motionDuration(closing),easing:closing?closeEasing:easing,fill:'both'});
+  animations.push(animation);
+  const content=panel.querySelector('.chart-details-content');
+  if(current.homeFilters){
+   // Fade only the content inside the opaque reveal, so the two screens never blend.
+   animations.push(content.animate(closing?[{opacity:1},{opacity:0}]:[{opacity:0},{opacity:1}],
+    {duration:closing?110:175,delay:closing?0:80,easing:'ease-out',fill:'both'}));
+  }else{
+   const origin=panel.querySelector('.chart-origin');
+   const contentFrames=closing
+    ?[{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(12px)'}]
+    :[{opacity:0,transform:'translateY(18px)'},{opacity:1,transform:'translateY(0)'}];
+   animations.push(content.animate(contentFrames,{duration:closing?180:370,delay:closing?0:160,fill:'both',easing:'ease-out'}));
+   animations.push(origin.animate(closing?[{opacity:0},{opacity:1}]:[{opacity:1},{opacity:0}],
+    {duration:closing?closeDuration*.45:160,delay:closing?closeDuration*.55:0,fill:'both'}));
+  }
+  return animation;
+ }
  function svgLayer(){const svg=document.createElementNS(NS,'svg');svg.setAttribute('aria-hidden','true');svg.classList.add('chart-morph-layer');svg.setAttribute('viewBox',`0 0 ${innerWidth} ${innerHeight}`);dialog.append(svg);return svg;}
  function drawPath(svg,items,bar,circle,t){
   const total=items.reduce((sum,v)=>sum+v.n,0),parts=items.length?items:[{n:1}];
@@ -129,7 +144,7 @@
   if(homeFilters||reducedMotion())panel.querySelector('.chart-origin').style.opacity='0';
   if(reducedMotion()){showRing();return;}
   const labelLayer=document.createElementNS(NS,'svg');labelLayer.classList.add('chart-morph-labels');labelLayer.setAttribute('viewBox',`0 0 ${MonoChartRing.size} ${MonoChartRing.size}`);labelLayer.setAttribute('aria-hidden','true');labelLayer.style.cssText=`left:${space.left}px;top:${space.top}px;width:${space.width}px;height:${space.height}px;opacity:0`;const staticRing=panel.querySelector('.chart-static-ring');for(const group of staticRing.querySelectorAll('.chart-ring-icons,.chart-ring-percentages'))labelLayer.append(group.cloneNode(true));dialog.append(labelLayer);current.labels=labelLayer;
-  if(homeFilters)homeSurface(false);else surfaceAnimation(source,null,false);
+  surfaceAnimation(source,null,false);
   animatePaths(values,bar,circle,true,()=>{if(!current)return;cancelAnimations();panel.querySelector('.chart-origin').style.opacity='0';showRing();if(closeQueued){closeQueued=false;close();}});
  }
  function close(options={}){
@@ -142,15 +157,16 @@
   const dragOffset=Number(options.dragOffset)||0;panel.style.transform='';
   if(reducedMotion()){finish();return;}
   current.closing=true;
+  const closeSurface=()=>surfaceAnimation({top:dragOffset},source,true);
   if(fromHome&&(scrolled||root.MonoChartPeriod?.isMonthly())){
-   homeSurface(true,dragOffset).finished.then(finish,()=>{});
+   closeSurface().finished.then(finish,()=>{});
    return;
   }
   const space=panel.querySelector('.chart-morph-space');
   if(fromHome)animations.push(space.querySelector('.chart-static-ring').animate([{opacity:1},{opacity:0}],{duration:85,fill:'forwards'}));
   else space.classList.remove('ring-ready');
   const origin=panel.querySelector('.chart-origin');origin.style.left=source.left+'px';origin.style.top=source.top+'px';origin.style.width=source.width+'px';origin.style.height=source.height+'px';origin.style.opacity='0';
-  const transition=fromHome?homeSurface(true,dragOffset):surfaceAnimation({left:0,top:dragOffset,width:innerWidth,height:innerHeight},source,true);
+  const transition=closeSurface();
   if(root.MonoChartPeriod?.isMonthly()){
    transition.finished.then(finish,()=>{});
    return;

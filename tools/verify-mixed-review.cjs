@@ -11,7 +11,13 @@ const {chromium}=require(process.env.MONO_PLAYWRIGHT_MODULE||'playwright'),expre
  await p.addInitScript(seed=>localStorage.setItem('mono-v2',JSON.stringify(seed)),seed);await p.goto('http://127.0.0.1:'+server.address().port);
  await p.evaluate(()=>{tourActive=false;$('#onboarding').close();MonoAccess.canUse=()=>true;});await p.waitForTimeout(600);
  await p.evaluate(()=>openEntry());
- assert(await p.locator('#dictation').evaluate(field=>document.activeElement===field));
+ const focus=await p.locator('#dictation').evaluate(field=>{
+  const style=getComputedStyle(field);
+  return {active:document.activeElement===field,outline:style.outlineStyle,ring:style.boxShadow};
+ });
+ assert(focus.active);
+ assert.equal(focus.outline,'none');
+ assert.match(focus.ring,/inset/);
  await p.evaluate(()=>{document.documentElement.style.setProperty('--vv-top','35px');document.documentElement.style.setProperty('--vv-h','340px');});
  await p.waitForTimeout(300);
  const typing=await p.locator('#entryDialog').boundingBox();
@@ -68,6 +74,13 @@ const {chromium}=require(process.env.MONO_PLAYWRIGHT_MODULE||'playwright'),expre
   assert.equal(await p.evaluate(()=>page),'home');
   assert.equal(await p.evaluate(()=>selectedMonth),await p.evaluate(()=>currentMonth()));
   assert.equal(await p.locator('.chart-origin').evaluate(el=>el.style.opacity),'0');
+  const reveal=await p.locator('#chartPanel').evaluate(panel=>({
+   opacity:getComputedStyle(panel).opacity,
+   frames:panel.getAnimations().flatMap(animation=>animation.effect.getKeyframes())
+  }));
+  assert.equal(reveal.opacity,'1','the chart surface must stay opaque during the reveal');
+  assert(reveal.frames.some(frame=>frame.clipPath?.startsWith('inset(')));
+  assert(reveal.frames.every(frame=>frame.opacity===undefined));
   await p.waitForFunction(()=>!MonoCharts.isBusy());
   const scroll=await p.evaluate(()=>{
    const chart=$('#chartPanel');chart.scrollTop=180;
