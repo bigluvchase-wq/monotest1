@@ -11,24 +11,32 @@ const amountRe=new RegExp('(?<![\\p{L}\\d])(?:\\d{1,3}(?:[ \\u00a0]\\d{3})+(?:[.
 function rubles(s){let total=0,group=0;for(const w of s.toLowerCase().split(/\s+/)){if(/^тысяч/.test(w)){total+=(group||1)*1000;group=0;}else if(/^миллион/.test(w)){total+=(group||1)*1e6;group=0;}else if(w in nums)group+=nums[w];else if(/^\d/.test(w))group+=Number(w.replace(',','.'));}return Math.round((total+group)*100);}
 function amountValue(s){const compact=s.replace(/(\d)[ \u00a0](?=\d{3}(?:\D|$))/g,'$1');return rubles(compact);}
 function clean(s){
- return Speech.normalizedName(s.replace(/(?<!\p{L})(?:сегодня|вчера|позавчера|утром|вечером|потом|затем|плюс|сразу|минус|потратил[аи]?|заплатил[аи]?|купил[аи]?|взял[аи]?|расходы?|списали|списалось|списал[аи]?|выручил[аи]?|зачислили|получил[аи]?|заработал[аи]?|доход|рублей|рубля|рубль|руб\.?|наличными|наличкой|с основной карты|с карты|на карту|на основной сч[её]т|основная карта)(?!\p{L})|₽/giu,' ')
+ return Speech.normalizedName(s.replace(/(?<!\p{L})(?:сегодня|вчера|позавчера|утром|вечером|потом|затем|плюс|сразу|минус|потратил[аи]?|заплатил[аи]?|купил[аи]?|взял[аи]?|расходы?|списали|списалось|списал[аи]?|выручил[аи]?|зачислили|заплатили|оплатили|получил[аи]?|заработал[аи]?|доход|рублей|рубля|рубль|руб\.?|наличными|наличкой|с основной карты|с карты|на карту|на основной сч[её]т|основная карта)(?!\p{L})|₽/giu,' ')
   .replace(/^[\s,.:;—\-]+|[\s,.:;—\-]+$/g,'').replace(/^(?:и|на|за|по)\s+/i,'').replace(/\s+/g,' ').trim().replace(/\s+(?:на|за|по)$/iu,'')
   .replace(/тридцатьшестьишесть/gu,'36,6').replace(/восемьдесятпять/gu,'85').replace(/аи(?:девяностодва|девяностопять|девяностовосемь|сто)/gu,x=>({'аидевяностодва':'АИ-92','аидевяностопять':'АИ-95','аидевяностовосемь':'АИ-98','аисто':'АИ-100'}[x])));
 }
+const titleForms={работу:'работа',зарплату:'зарплата',подработку:'подработка',стипендию:'стипендия',
+  пенсию:'пенсия',премию:'премия',аренду:'аренда',консультацию:'консультация',доставку:'доставка',
+  подписку:'подписка',заправку:'заправка',автомойку:'автомойка',мойку:'мойка',стрижку:'стрижка',
+  квартиру:'квартира',куртку:'куртка',футболку:'футболка',машину:'машина',пиццу:'пицца',колу:'кола'};
 // Short labels for spoken records, without changing the source used for classification.
 function conciseTitle(title,type,category){
  let name=title.toLowerCase().replace(/ё/g,'е')
   .replace(/^(?:(?:и|а|еще|также|потом|затем|мы|я|мне|себе)\s+)+/u,'')
   .replace(/^(?:закупились|закупился|закупилась)\s+/u,'')
   .replace(/^(?:на|за)\s+/u,'').trim();
+ name=name.replace(/^(?:([а-я]+(?:ую|юю)) )?([а-я]+)(?!\p{L})/u,(phrase,adjective,noun)=>{
+  if(!Object.hasOwn(titleForms,noun))return phrase;
+  return (adjective?adjective.replace(/ую$/u,'ая').replace(/юю$/u,'яя')+' ':'')+titleForms[noun];
+ });
  if(type==='income'&&category==='Возврат долга')return 'Возврат долга';
  if(category==='Авто'&&/(?:заправил|заправля|бензин|топливо|лукойл|роснефть|азс)/u.test(name)&&!/мойк|ремонт|масл/u.test(name))return 'Заправка';
  if(/^продукт(?:ы|ами|ов|ов на неделю)$/u.test(name))return 'Продукты';
  return name?name[0].toUpperCase()+name.slice(1):type==='income'?'Доход':'Расход';
 }
-const notCompleted=/(?<!\p{L})(?:не\s+(?:покупал|купил|платил|заплатил|оплачивал|оплатил|тратил|потратил|получал|получил|переводил|перевел|вернул|выручил|списал)[аи]?|не\s+(?:списали|списалось|зачислили|начислили|поступил[аи]?|поступили|пришл[аи]|пришли|возместили|компенсировали|рассчитались|принес(?:л[аои])?)|(?:хочу|хотел[аи]?|планирую|собираюсь|надо|нужно|думал[аи]?|напомни)\s+(?:купить|оплатить|потратить|заплатить|перевести|заказать|отложить|вернуть|записать)|(?:должны|должен|должна)\s+(?:зачислить|перевести|вернуть|поступить|начислить|заплатить)|завтра|(?:куплю|оплачу|ожидаю|жду|ожидается|зачислят)|сколько стоит|если)(?!\p{L})/u;
+const notCompleted=/(?<!\p{L})(?:не\s+(?:покупал|купил|платил|заплатил|оплачивал|оплатил|тратил|потратил|получал|получил|переводил|перевел|снял|снимал|вернул|выручил|списал)[аи]?|не\s+(?:списали|списалось|зачислили|начислили|поступил[аи]?|поступили|пришл[аи]|пришли|возместили|компенсировали|рассчитались|принес(?:л[аои])?)|(?:хочу|хотел[аи]?|планирую|собираюсь|надо|нужно|думал[аи]?|напомни)\s+(?:купить|оплатить|потратить|заплатить|перевести|снять|заказать|отложить|вернуть|записать)|(?:должны|должен|должна)\s+(?:зачислить|перевести|вернуть|поступить|начислить|заплатить)|завтра|(?:куплю|оплачу|ожидаю|жду|ожидается|зачислят)|сколько стоит|если)(?!\p{L})/u;
 const accountMovement=/(?<!\p{L})(?:перев[её]л[аи]?|перевод|переведи|скинул[аи]?|перебросил[аи]?|снял[аи]?|снятие|положил[аи]?|закинул[аи]?.*(?:на карту|на накопительный)|пополнил[аи]? (?:свой |банковский |брокерский )*сч[её]т|вывел[аи]?.*сч[её]т[а-я]*|купил[аи]? валюту|обменял[аи]?)(?!\p{L})/u;
-const ownMovement=/(?:между (?:своими )?(?:счетами|картами)|самому себе|(?:на|со?) (?:свой|свою|своего|своей|моей|мой)|с .*на (?:карту|накопительный)|снял[аи]?.*(?:банкомат|карт[а-я]*)|положил[аи]? наличн|брокерск|на накопительный)/u;
+const ownMovement=/(?:между (?:своими )?(?:счетами|картами)|самому себе|(?:на|со?) (?:свой|свою|своего|своей|моей|мой)|с .*на (?:карту|накопительный)|положил[аи]? наличн|брокерск|на накопительный)/u;
 const quantityPattern=/(?<!\p{L})(?:купил[аи]?|взял[аи]?|заказал[аи]?)\s+(\d{1,3}|один|одну|одна|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять)\s+(\p{L}+(?:\s+\p{L}+){0,3}?)\s+(за|по)\s+(?=[\p{L}\d])/u;
 
 function dateString(date){return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');}
@@ -177,8 +185,54 @@ function splitSpokenOperations(text){
  }
  return [...pieces,text.slice(start).trim()];
 }
+const cashAccount=name=>/^налич(?:к[а-я]*|н[а-я]*)(?:\s|$)/u.test(normalizeTitle(name));
+function spokenAccount(name,accounts){
+ const key=normalizeTitle(name);
+ const exact=accounts.filter(a=>normalizeTitle(a.name)===key);
+ if(exact.length)return exact.length===1?exact[0]:null;
+ const stem=value=>normalizeTitle(value).split(' ').map(NLP.stem).join(' ');
+ const inflected=accounts.filter(a=>stem(a.name)===stem(key));
+ if(inflected.length)return inflected.length===1?inflected[0]:null;
+ const cash=cashAccount(key)?accounts.filter(a=>cashAccount(a.name)):[];
+ return cash.length===1?cash[0]:null;
+}
+const currencyToken=/(?<!\p{L})(?:доллар[а-я]*|usd|евро|eur|тенге|kzt|юан[а-яь]*|cny|рубл[а-я]*|руб|rub)(?!\p{L})|[$€₽]/u;
+function currencyIn(clause){
+ const currencyWord=clause.match(currencyToken)?.[0]||'';
+ const currency=/доллар|usd|\$/u.test(currencyWord)?'USD':/евро|eur|€/u.test(currencyWord)?'EUR':/тенге|kzt/u.test(currencyWord)?'KZT':/юан|cny/u.test(currencyWord)?'CNY':currencyWord?'RUB':null;
+ return {currency,word:currencyWord};
+}
+function directedMovement(clause,accounts,defaultAccount,now,internal){
+ const withdrawal=clause.match(/^(?:я\s+)?(?:в банкомате\s+)?(?:снял[аи]?|сними|снятие)(?!\p{L})/u);
+ const route=clause.match(/(?<!\p{L})со?\s+(.+?)\s+на\s+(.+)$/u);
+ const transfer=route&&/(?<!\p{L})(?:переведи|перевел[аи]?|перевод|скинул[аи]?|перебросил[аи]?)(?!\p{L})/u.test(clause);
+ if(!withdrawal&&!transfer)return null;
+ const withoutAmount=text=>text.replace(amountRe,' ').replace(/(?<!\p{L})(?:руб(?:лей|ля|ль)?|rub|usd|eur|доллар[а-я]*|евро|тенге|юан[а-яь]*)(?!\p{L})|[₽$€]/gu,' ').trim();
+ const tail=withdrawal?withoutAmount(clause.slice(withdrawal[0].length)):'';
+ const cash=withdrawal&&(!tail||tail==='деньги'||/(?<!\p{L})(?:налич(?:к[а-я]*|н[а-я]*)|банкомат[а-я]*)(?!\p{L})/u.test(tail)||/^(?:деньги\s+)?со?\s+(?:карт[а-я]*|счет[а-я]*|основн[а-я]*\s+счет[а-я]*)(?:\s|$)/u.test(tail));
+ if(!cash&&!transfer)return null;
+ const {currency}=currencyIn(transfer?clause.slice(0,route.index):clause);
+ const fromWords=transfer?withoutAmount(route[1]):tail.match(/(?<!\p{L})со?\s+(.+?)(?=\s+(?:в банкомате|наличными|наличку)(?:\s|$)|$)/u)?.[1];
+ const toWords=transfer?withoutAmount(route[2]):null;
+ const resolve=name=>spokenAccount(name,accounts)||spokenAccount(name.replace(/^(?:счет[а-я]*|карт[а-я]*)\s+/u,''),accounts);
+ const bankAccounts=accounts.filter(a=>!cashAccount(a.name)&&a.currency===defaultAccount.currency);
+ const preferred=cash&&cashAccount(defaultAccount.name)?(bankAccounts.length===1?bankAccounts[0]:null):defaultAccount;
+ const from=fromWords?resolve(fromWords)||(/^(?:карт[а-я]*|счет[а-я]*)$/u.test(fromWords)?preferred:null):preferred;
+ const accountNames=accounts.filter(a=>a.id!==from?.id&&a.currency===from?.currency&&cashAccount(a.name));
+ const to=toWords?resolve(toWords):accountNames.length===1?accountNames[0]:null;
+ // A route to an external recipient remains an ordinary expense.
+ if(transfer&&!to&&(Speech.expense(clause)==='Переводы'||internal&&/^(?:карт[а-я]*|(?:накопительн[а-я]*\s+)?счет[а-я]*)$/u.test(toWords)))return null;
+ if(!from)return {error:'Уточните название счёта списания.'};
+ if(!to)return {error:cash?(accountNames.length?'Назовите счёт для наличных.':'Добавьте счёт для наличных, чтобы записать снятие.'):'Уточните название счёта зачисления.'};
+ if(from.id===to.id)return {error:'Выберите два разных счёта для перевода.'};
+ if(currency&&currency!==from.currency)return {error:'Выберите счёт списания в '+currency+'.'};
+ const amounts=[...clause.matchAll(amountRe)];
+ const amount=amounts.length===1?amountValue(amounts[0][0]):0;
+ if(!isMoney(amount)||amount<=0)return {error:'Укажите одну сумму списания.'};
+ return {entry:{title:cash?'Снятие наличных':'Перевод',type:'transfer',amount,account:from.id,toAccount:to.id,sourceCurrency:currency,date:dateString(now)}};
+}
 function parse(text,now=new Date(),history=[],state=null,defaultAccount='main'){
-text=slang(text)
+text=slang(SpeechDates.moneyPunctuation(text))
  .replace(/(снял[аи]?\s+)десятк[ау](?=\s+(?:в банкомате|с карты))/gu,'$1десять тысяч')
  .replace(/,\s+(?=котор(?:ый|ая|ые|ую|ое|ого)\s)/gu,' ')
  .replace(/\s+и получил[аи]?\s+перевод(?=\s*[.!?]?\s*$)/u,'')
@@ -198,7 +252,7 @@ if(!clauses.length)return {entries,errors:['Сначала скажите или
 if(!state){for(const part of clauses){if(part.error){errors.push(part.error);continue;}const result=parseLegacy(part.text,part.now,history);entries.push(...result.entries);errors.push(...result.errors);}return {entries,errors};}
 let previous='';
 for(const part of clauses.flatMap(part=>part.error?[part]:splitSpokenOperations(part.text).map(text=>({...part,text})))){
-if(part.error){errors.push(part.error);continue;}let clause=part.text;const clauseNow=part.now;
+if(part.error){errors.push(part.error);continue;}let clause=part.text.replace(/^(?:я\s+)?снял[аи]?\s+(?=квартиру|комнату|жиль[её])/u,'потратил на ');const clauseNow=part.now;
 const resolved=NLP.entities(clause,state);if(resolved.ambiguous){errors.push('Название похоже на несколько целей или счетов. Уточните название.');continue;}clause=resolved.text;
 if(/тысяч|миллион/u.test(previous)&&/из них|отложил[аи]? (?:в копилку|на накопления)|билет[а-я]* в отпуск/u.test(clause)){
  const amounts=[...clause.matchAll(amountRe)];
@@ -218,6 +272,8 @@ if(/^(?:я )?купил[аи]? нов(?:ый|ую|ое)\s/u.test(clause)&&!/че
 const expenseCategory=Speech.expense(clause),incomeCategory=Speech.income(clause);
 const goalIntent=/(?<!\p{L})(?:на|в)\s+цель(?:\s|$)/u.test(clause);
 const internal=accountMovement.test(clause)&&ownMovement.test(clause)&&!['Переводы','Подарки','Финансовые операции'].includes(expenseCategory);
+const movement=goalIntent?null:directedMovement(clause,state.accounts,account,clauseNow,internal);
+if(movement){if(movement.error)errors.push(movement.error);else entries.push(movement.entry);continue;}
 if(accountMovement.test(clause)&&!goalIntent&&!internal&&!incomeCategory&&!/(?<!\p{L})за\s+\p{L}/u.test(clause)&&!['Ставки','Переводы','Подарки','Финансовые операции','Связь'].includes(expenseCategory)){
  errors.push('Уточните, кому перевели деньги или между какими своими счетами их переместили.');
  continue;
@@ -229,9 +285,7 @@ if(/^(?:я )?(?:вернул[аи]?|получил[аи]?|пришло|запл�
 }
 const named=[...state.accounts].sort((a,b)=>b.name.length-a.name.length).find(a=>(' '+normalizeTitle(clause)+' ').includes(' '+normalizeTitle(a.name)+' '));
 if(named&&!internal){account=named;clause=clause.replace(new RegExp(named.name.replace(/[.*+?^\${}()|[\]\\]/g,'\\$&'),'i'),'');}
-const currencyToken=/(?<!\p{L})(?:доллар[а-я]*|usd|евро|eur|тенге|kzt|юан[а-яь]*|cny|рубл[а-я]*|руб|rub)(?!\p{L})|[$€₽]/u;
-const currencyWord=clause.match(currencyToken)?.[0]||'';
-const currency=/доллар|usd|\$/u.test(currencyWord)?'USD':/евро|eur|€/u.test(currencyWord)?'EUR':/тенге|kzt/u.test(currencyWord)?'KZT':/юан|cny/u.test(currencyWord)?'CNY':currencyWord?'RUB':null;
+const {currency,word:currencyWord}=currencyIn(clause);
 if(internal){
  const accounts=state.accounts.filter(a=>!currency||a.currency===currency);
  const amountMatches=[...clause.matchAll(amountRe)];
@@ -363,5 +417,5 @@ function saveDrafts(state,drafts,createdAt=new Date().toISOString(),reminders=[]
 
 function nextPayment(payment,now=new Date()){return Schedule.next(payment,dateString(now));}
 function addEntry(state,entry){const next=structuredClone(state);next.entries.push({...entry,id:entry.id||uid(),createdAt:entry.createdAt??new Date().toISOString()});if(!validateState(next))throw Error('Проверьте операцию');return next;}
-const api={categories,incomeCategories,currencies,parse,isIncomeForStats,balance,goalBalance,totals,validateState,dateString,initialState,migrate,slang,nextPayment,addEntry,normalizeTitle,installmentPlan,saveDrafts,voiceAmounts,depositTopUps,depositPrincipal};if(typeof module!=='undefined')module.exports=api;root.MonoEngine=api;
+const api={categories,incomeCategories,currencies,parse,isIncomeForStats,balance,goalBalance,totals,validateState,dateString,initialState,migrate,slang,nextPayment,addEntry,normalizeTitle,installmentPlan,saveDrafts,moneyPunctuation:SpeechDates.moneyPunctuation,voiceAmounts,depositTopUps,depositPrincipal};if(typeof module!=='undefined')module.exports=api;root.MonoEngine=api;
 })(typeof window!=='undefined'?window:globalThis);

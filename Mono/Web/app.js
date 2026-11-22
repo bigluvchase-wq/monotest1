@@ -53,9 +53,12 @@ if(state.settings)state.settings.language='ru';
 if(state.categories)state.categories=state.categories.filter(c=>c!=='Ставки');
 if(state.incomeCategories)state.incomeCategories=state.incomeCategories.filter(c=>c!=='Ставки');
 try{const svgs=window.MonoCategoryIcons?.svgs;if(svgs){const arrows='<path d="M16 3l4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16"/>';['exchange','transfer','arrows','repeat','swap'].forEach(k=>{if(svgs[k])svgs[k]=arrows;});}}catch{}
-let chartExpanded=false,tourActive=false,tourStep=0,navAnimation=null,backTarget=null;
-let premiumFrom=null;
-function backDestination(){if(page==='health')return 'history';if(page==='premium')return premiumFrom||'profile';return page==='profile'?'home':backTarget||'menu';}
+let chartExpanded=false,tourActive=false,tourStep=0,navAnimation=null;
+const backPages=[],forwardPages=[];
+function backDestination(){return backPages.at(-1)||(page==='health'?'history':page==='profile'?'home':page==='premium'?'profile':'menu');}
+function forwardDestination(){return forwardPages.at(-1)||null;}
+function goBack(){navigate(backDestination(),{historyStep:'back',direction:-1});}
+
 let page='home',operationType='expense',selectedCurrency='RUB',selectedMonth=E.dateString(new Date()).slice(0,7),selectedRange=null,search='',drafts=[],reminderDrafts=[],parseErrors=[],listening=false,holding=false,toastTimer,voiceAccount=state.accounts[0].id;
 const uid=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -126,8 +129,17 @@ function navigate(p,options={}){
  if(holding||listening)cancelVoice();
  if(p==='profile')window.MonoProfile?.startTrial();
  const previous=page,nested=!rootPages.includes(p),app=$('.app');
- if(p==='premium'&&previous!=='premium')premiumFrom=previous;
- if(!nested)backTarget=null;else if(rootPages.includes(previous))backTarget=previous==='home'?'home':null;
+ if(previous!==p){
+  if(options.historyStep==='back'){
+   backPages.pop();forwardPages.push(previous);
+  }else if(options.historyStep==='forward'){
+   forwardPages.pop();backPages.push(previous);
+  }else{
+   forwardPages.length=0;
+   if(!nested||rootPages.includes(previous))backPages.length=0;
+   if(nested)backPages.push(previous);
+  }
+ }
  const menuMotion=options.noAnimation||options.dive?null:window.MonoMenuMotion?.prepare(previous,p);
  $$('.nav-ghost').forEach(el=>el.remove());app.getAnimations().forEach(animation=>animation.cancel());
  const direction=options.direction||(rootPages.includes(previous)&&rootPages.includes(p)?(rootPages.indexOf(p)>rootPages.indexOf(previous)?1:-1):nested||previous==='profile'?1:-1);
@@ -170,7 +182,7 @@ function navigate(p,options={}){
  if(tourActive)requestAnimationFrame(positionTour);
 }
 
-$$('[data-nav]').forEach(b=>b.onclick=()=>navigate(b.dataset.nav));$('#homeLogo').onclick=e=>{e.preventDefault();navigate('home');};$('#backToMenu').onclick=()=>navigate(backDestination());
+$$('[data-nav]').forEach(b=>b.onclick=()=>navigate(b.dataset.nav));$('#homeLogo').onclick=e=>{e.preventDefault();navigate('home');};$('#backToMenu').onclick=goBack;
 function currencyTabs(){const cs=[...new Set(state.accounts.map(a=>a.currency))];if(!cs.includes(selectedCurrency))selectedCurrency=cs[0];return `<div class="currency-tabs">${cs.map(c=>`<button data-currency="${c}" class="${c===selectedCurrency?'active':''}">${c}</button>`).join('')}</div>`;}
 const marks={themes:'<circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1.3"/><circle cx="12" cy="7.5" r="1.3"/><circle cx="15.5" cy="10" r="1.3"/><path d="M12 21a2.5 2.5 0 0 1 0-5h1.5a2 2 0 0 0 0-4"/>',accounts:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h3"/>',deposits:'<path d="M4 20V10m5 10V6m5 14v-7m5 7V4"/><path d="M3 20h18"/>',goals:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 9v6M9 12h6"/>',limits:'<path d="M4 19V9m8 10V4m8 15v-7M2 19h20"/>',payments:'<rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 11h16M8 15h2m4 0h2"/>',categories:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',achievements:'<path d="m12 3 3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 10l6-1z"/>',settings:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>',support:'<path d="M4 17v-5a8 8 0 0 1 16 0v5M4 12H2v6h4v-6zm16 0h2v6h-4v-6zM20 18c0 3-5 3-8 3"/>',reminders:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',rewards:'<rect x="3.5" y="8.5" width="17" height="4" rx="1.2"/><path d="M5 12.5v7.5h14v-7.5M12 8.5V20M12 8.5c-1.6-3.4-6-3.8-6-1.3 0 1.4 2 1.3 6 1.3zm0 0c1.6-3.4 6-3.8 6-1.3 0 1.4-2 1.3-6 1.3z"/>'};
 window.MonoMenuMarks=marks;
@@ -480,7 +492,8 @@ let parseTask=null,parseVersion=0;
 function cancelParse(){voicePlan=null;$('#voicePlan').textContent='';parseVersion++;parseTask?.abort();parseTask=null;$('#parseButton').disabled=false;$('#parseButton').textContent='Разобрать ↗';}
 $('#entryDialog').addEventListener('close',cancelParse);
 async function parseInput(){
- cancelParse();const text=$('#dictation').value.trim();if(!text)return;
+ cancelParse();const original=$('#dictation').value.trim();if(!original)return;
+ const text=MonoVoice.repairReplay(original);
  if(showOperationReport(text))return;
  const allocation=MonoVoiceFinance.review(text,state,voiceAccount);
  if(allocation){
@@ -498,7 +511,7 @@ async function parseInput(){
  try{r=await window.MonoVoiceAI?.parse(text,{signal:controller.signal});}
  catch(error){fallback=true;}
  finally{clearTimeout(timeout);}
- if(version!==parseVersion||!$('#entryDialog').open||$('#dictation').value.trim()!==text)return;
+ if(version!==parseVersion||!$('#entryDialog').open||$('#dictation').value.trim()!==original)return;
  parseTask=null;$('#parseButton').disabled=false;$('#parseButton').textContent='Разобрать ↗';
  if(!r){if(runCommand(text))return;r=MonoCommands.review(text,new Date(),state.entries,state,voiceAccount);}
  if(r.commands?.length&&r.commands.every(c=>c.kind==='reminder')){r.reminders=r.commands.map(c=>({...c.data,date:c.data.date||'',time:c.data.time||'',repeat:c.data.repeat||'once'}));r.commands=[];}
@@ -532,6 +545,17 @@ function draftSummary(title,amount){
 function reminderDraftHTML(r,i,open){
  return `<details class="draft review-draft" data-reminder-index="${i}" ${open?'open':''}>${draftSummary(r.title,r.time||'Напоминание')}<div class="draft-editor"><div class="draft-editor-content"><div class="draft-bottom"><label>Название<input data-reminder-field="title" required maxlength="120" value="${esc(r.title||'')}"></label><label>Описание<input data-reminder-field="text" maxlength="1000" value="${esc(r.text||'')}"></label><label>Дата<input data-reminder-field="date" type="date" required value="${esc(r.date||'')}"></label><label>Время<input data-reminder-field="time" type="time" required value="${esc(r.time||'')}"></label><label>Повтор<select data-reminder-field="repeat">${Object.entries(MonoSchedule.label).map(([value,label])=>`<option value="${value}" ${r.repeat===value?'selected':''}>${label}</option>`).join('')}</select></label></div><div class="draft-actions"><span class="muted tiny">Проверьте дату и время напоминания</span><button type="button" data-remove-reminder="${i}">Убрать</button></div></div></div></details>`;
 }
+let reviewMotionUntil=0,reviewShift=null;
+function positionReview(update,viewportDelta=0){
+ const dialog=$('#entryDialog');
+ const before=dialog.getBoundingClientRect().top;
+ reviewShift?.cancel();reviewShift=null;
+ update();
+ const dy=before+viewportDelta-dialog.getBoundingClientRect().top;
+ if(Math.abs(dy)>1)reviewShift=dialog.animate([{transform:`translateY(${dy}px)`},{transform:'none'}],
+  {duration:420,easing:'cubic-bezier(.22,.72,.25,1)'});
+}
+$('#entryDialog').addEventListener('close',()=>{reviewMotionUntil=0;reviewShift?.cancel();reviewShift=null;});
 function renderDrafts(){
  const list=$('#drafts'),dialog=$('#entryDialog');
  const openDrafts=new Set([...list.querySelectorAll('details[data-index][open]:not(:has(summary[aria-expanded=false]))')].map(row=>Number(row.dataset.index)));
@@ -541,18 +565,25 @@ function renderDrafts(){
  $('#drafts').innerHTML=drafts.map((e,i)=>{const a=account(e.account)||account(voiceAccount),transfer=e.type==='transfer',saving=e.type==='saving',installment=e.installmentTotal!==undefined;
  if(e.depositTopUp)return depositDraftHTML(e,i,openDrafts.has(i));
  const plan=installment&&e.installmentTotal>=4&&e.date?E.installmentPlan(e.installmentTotal,e.date):[];
- return `<details class="draft review-draft" data-index="${i}" ${openDrafts.has(i)?'open':''}>${draftSummary(e.title,draftAmount(e))}<div class="draft-editor"><div class="draft-editor-content"><div class="draft-top"><label>Название<input data-field="title" required maxlength="300" value="${esc(e.title)}"></label><label>${installment?'Полная сумма':'Сумма'}, ${a.currency}<input data-field="${installment?'installmentTotal':'amount'}" type="number" min="${installment?'0.04':'0.01'}" max="10000000000" step="0.01" required value="${(e.installmentTotal??e.amount)/100}"></label></div><div class="draft-bottom"><label>Тип<select data-field="type" ${installment||transfer?'disabled':''}><option value="expense" ${e.type==='expense'?'selected':''}>Расход</option><option value="income" ${e.type==='income'?'selected':''}>Доход</option><option value="saving" ${saving?'selected':''} >Накопления</option>${transfer?'<option value="transfer" selected>Перевод между своими</option>':''}</select></label><label>${transfer?'С какого счёта':'Счёт'}<select data-field="account" required>${transfer?'<option value="">Выберите счёт</option>':''}${accountOptions(e.account,saving?state.goals.find(g=>g.id===e.goalId)?.currency??null:null)}</select></label>${transfer?transferDraftFields(e):saving?`<label>Цель<select data-field="goalId"><option value="" ${!e.goalId?'selected':''}>Накопления без цели</option>${state.goals.filter(g=>g.currency===a.currency).map(g=>`<option value="${esc(g.id)}" ${g.id===e.goalId?'selected':''}>${esc(g.name)}</option>`).join('')}</select></label>`:`<label>Категория<select data-field="category">${categoryOptions(e.type,e.category)}</select></label>`}<label>Дата<input data-field="date" type="date" required value="${e.date}"></label></div>${installment?`<div class="draft-installments"><strong>Долями · 4 платежа</strong><ol data-installment-plan>${installmentRows(plan,a.currency)}</ol></div>`:''}<div class="draft-actions"><span class="muted tiny">${saving?'Со счёта в цель · не расход':'Проверьте сумму, категорию и счёт'}</span><button data-remove="${i}">Убрать</button></div></div></div></details>`;}).join('');
+ return `<details class="draft review-draft" data-index="${i}" ${openDrafts.has(i)?'open':''}>${draftSummary(e.title,draftAmount(e))}<div class="draft-editor"><div class="draft-editor-content"><div class="draft-top"><label>Название<input data-field="title" required maxlength="300" value="${esc(e.title)}"></label><label>${installment?'Полная сумма':'Сумма'}, ${a.currency}<input data-field="${installment?'installmentTotal':'amount'}" type="number" min="${installment?'0.04':'0.01'}" max="10000000000" step="0.01" required value="${(e.installmentTotal??e.amount)/100}"></label></div><div class="draft-bottom"><label>Тип<select data-field="type" ${installment||transfer?'disabled':''}><option value="expense" ${e.type==='expense'?'selected':''}>Расход</option><option value="income" ${e.type==='income'?'selected':''}>Доход</option><option value="saving" ${saving?'selected':''} >Накопления</option>${transfer?`<option value="transfer" selected>${e.title==='Снятие наличных'?'Снятие наличных':'Перевод между своими'}</option>`:''}</select></label><label>${transfer?'С какого счёта':'Счёт'}<select data-field="account" required>${transfer?'<option value="">Выберите счёт</option>':''}${accountOptions(e.account,saving?state.goals.find(g=>g.id===e.goalId)?.currency??null:null)}</select></label>${transfer?transferDraftFields(e):saving?`<label>Цель<select data-field="goalId"><option value="" ${!e.goalId?'selected':''}>Накопления без цели</option>${state.goals.filter(g=>g.currency===a.currency).map(g=>`<option value="${esc(g.id)}" ${g.id===e.goalId?'selected':''}>${esc(g.name)}</option>`).join('')}</select></label>`:`<label>Категория<select data-field="category">${categoryOptions(e.type,e.category)}</select></label>`}<label>Дата<input data-field="date" type="date" required value="${e.date}"></label></div>${installment?`<div class="draft-installments"><strong>Долями · 4 платежа</strong><ol data-installment-plan>${installmentRows(plan,a.currency)}</ol></div>`:''}<div class="draft-actions"><span class="muted tiny">${saving?'Со счёта в цель · не расход':'Проверьте сумму, категорию и счёт'}</span><button data-remove="${i}">Убрать</button></div></div></div></details>`;}).join('');
  $('#voicePlan').innerHTML=voicePlanHTML();
  $('#drafts').insertAdjacentHTML('beforeend',reminderDrafts.map((reminder,i)=>reminderDraftHTML(reminder,i,openReminders.has(i))).join(''));
  const count=drafts.length+reminderDrafts.length;
- if(count&&!dialog.classList.contains('has-review')){
-  dialog.querySelector('.entry-content').scrollTop=0;
-  $('#entrySource').open=false;
-  if(document.activeElement===$('#dictation'))$('#dictation').blur();
- }
- dialog.classList.toggle('has-review',count>0);
- if(!count)$('#entrySource').open=true;
- $('#saveButton').hidden=!count;$('#saveButton').disabled=!!parseErrors.length;$('#saveButton').textContent=reminderDrafts.length?`Сохранить всё · ${count}`:drafts.length===1?'Сохранить запись':`Сохранить записи · ${drafts.length}`;translateUI(dialog);
+ const entering=count&&!dialog.classList.contains('has-review');
+ const finishReview=()=>{
+  if(entering){
+   dialog.querySelector('.entry-content').scrollTop=0;
+   $('#entrySource').open=false;
+   if(document.activeElement===$('#dictation'))$('#dictation').blur();
+  }
+  dialog.classList.toggle('has-review',count>0);
+  if(!count)$('#entrySource').open=true;
+  $('#saveButton').hidden=!count;$('#saveButton').disabled=!!parseErrors.length;$('#saveButton').textContent=reminderDrafts.length?`Сохранить всё · ${count}`:drafts.length===1?'Сохранить запись':`Сохранить записи · ${drafts.length}`;translateUI(dialog);
+ };
+ if(entering&&dialog.open&&dialog.hasAttribute('data-typing-entry')&&!reducedMotion()){
+  reviewMotionUntil=performance.now()+800;
+  positionReview(finishReview);
+ }else finishReview();
 }
 $('#drafts').oninput=e=>{const reminderField=e.target.dataset.reminderField;if(reminderField){const row=e.target.closest('[data-reminder-index]'),reminder=reminderDrafts[Number(row.dataset.reminderIndex)];
   reminder[reminderField]=e.target.value;
@@ -679,7 +710,7 @@ window.MonoNative?.refreshReminders();
 // Видимая область над клавиатурой: окна не уходят под клавиатуру на любых iPhone
 (()=>{const vv=window.visualViewport,root=document.documentElement;if(!vv)return;
  const entry=$('#entryDialog'),content=entry.querySelector('.entry-content');
- let frame=0;
+ let frame=0,lastTop=0,lastHeight=0;
  function keepDraftFieldVisible(){
   const field=document.activeElement;
   if(!entry.open||!field?.matches('.draft-editor input,.draft-editor select')||!content.contains(field))return;
@@ -691,10 +722,16 @@ window.MonoNative?.refreshReminders();
  function sync(){
   frame=0;
   const h=Math.round(vv.height),top=Math.round(vv.offsetTop);
-  root.style.setProperty('--vv-h',h+'px');
-  root.style.setProperty('--vv-top',top+'px');
-  root.classList.toggle('kb',innerHeight-h>120);
-  root.toggleAttribute('data-entry-viewport',vv.scale===1&&(entry.hasAttribute('open')||root.hasAttribute('data-entry-viewport')&&top>0));
+  const syncViewport=()=>{
+   root.style.setProperty('--vv-h',h+'px');
+   root.style.setProperty('--vv-top',top+'px');
+   root.classList.toggle('kb',innerHeight-h>120);
+   root.toggleAttribute('data-entry-viewport',vv.scale===1&&(entry.hasAttribute('open')||root.hasAttribute('data-entry-viewport')&&top>0));
+  };
+  if(entry.open&&entry.classList.contains('has-review')&&performance.now()<reviewMotionUntil&&(top!==lastTop||h!==lastHeight)&&!document.activeElement?.matches('input,textarea,select')){
+   positionReview(syncViewport,top-lastTop);
+  }else syncViewport();
+  lastTop=top;lastHeight=h;
   if(root.classList.contains('kb'))keepDraftFieldVisible();
  }
  const schedule=()=>{if(!frame)frame=requestAnimationFrame(sync);};

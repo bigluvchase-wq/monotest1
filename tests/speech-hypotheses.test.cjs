@@ -31,3 +31,14 @@ test('recognition replaces a replay with a truncated final word and preserves ex
  assert.equal(transcript.update(partial+' '+phrase,0,12),phrase);
  assert.equal(V.repairReplay('Купил в магазине кофе 300 и купил в магазине кофе 300'),'Купил в магазине кофе 300 и купил в магазине кофе 300');
 });
+
+test('recognition repairs the repeated decimal amount without dropping intentional identical purchases',()=>{
+ const replay='Продукты 999,99 руб. копе Продукты 999,99 руб. коек';
+ assert.equal(V.repairReplay(replay),'Продукты 999,99 руб.');
+ const transcript=V.createTranscript();
+ assert.equal(transcript.update('Кофе 300 Кофе 300',0,2),'Кофе 300');
+ const separate=V.createTranscript();
+ assert.equal(separate.update('Кофе 300',0,1),'Кофе 300');
+ assert.equal(separate.update('Кофе 300',2,3),'Кофе 300 Кофе 300');
+ assert.equal(V.createTranscript().update('Кофе 300. Кофе 300',0,3),'Кофе 300. Кофе 300');
+});

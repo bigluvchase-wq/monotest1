@@ -137,3 +137,46 @@ test('goal forms use the dictated title after the command and recognizer pauses'
  assert.equal(parts[0],'Кофе 300');
  assert.deepEqual(Array.from(commands,c=>[c.data.name,c.data.target]),[['Подарок папе',500000],['Отпуск',8000000]]);
 });
+
+test('dictated punctuation, ruble misrecognition and inflected transaction labels',()=>{
+ for(const [phrase,title,type,amount] of [
+  ['Вчера потратил 500 руб. на кофе','Кофе','expense',50000],
+  ['Вчера. потратил, 500. на кофе','Кофе','expense',50000],
+  ['Кофе. 500','Кофе','expense',50000],
+  ['Продукты 999,99 руб. коек','Продукты','expense',99999],
+  ['Кофе 100 руб. 5 копеек','Кофе','expense',10005],
+  ['Заплатили мне за работу 100','Работа','income',10000],
+  ['Получил зарплату 100 рубец','Зарплата','income',10000],
+  ['Купил новую куртку 3000','Новая куртка','expense',300000],
+  ['Снял квартиру 30000','Квартира','expense',3000000]
+ ]){
+  const result=root.MonoCommands.review(phrase,now,[],state,'main');
+  assert.deepEqual(result.errors,[],phrase);
+  assert.deepEqual(result.entries.map(e=>[e.title,e.type,e.amount]),[[title,type,amount]],phrase);
+ }
+ const independent=root.MonoCommands.review('Кофе 300. Такси 500, продукты 900',now,[],state,'main');
+ assert.deepEqual(independent.entries.map(e=>e.amount),[30000,50000,90000]);
+ const reminder=root.MonoCommands.review('Кофе 300 руб. Напомни завтра в 9 купить корм',now,[],state,'main');
+ assert.equal(reminder.entries[0].amount,30000);assert.equal(reminder.reminders[0].title,'Купить корм');
+});
+
+test('spoken cash withdrawals and named transfers resolve the two accounts before saving',()=>{
+ const s=structuredClone(state);
+ s.accounts.push({id:'cash',name:'Наличные',initial:0,currency:'RUB'});
+ for(const [phrase,title,amount] of [
+  ['Снял 1000','Снятие наличных',100000],
+  ['Снял в банкомате 10 000 руб.','Снятие наличных',1000000],
+  ['Переведи тысячу рублей с основного счёта на наличку','Перевод',100000]
+ ]){
+  const result=E.parse(phrase,now,[],s,'main');
+  assert.deepEqual(result.errors,[],phrase);
+  assert.deepEqual(result.entries.map(e=>[e.title,e.type,e.account,e.toAccount,e.amount]),[[title,'transfer','main','cash',amount]],phrase);
+  const {next}=E.saveDrafts(s,result.entries);
+  assert.equal(E.balance(next,'main'),-amount);assert.equal(E.balance(next,'cash'),amount);
+  assert.equal(E.isIncomeForStats(next.entries[0]),false);
+ }
+ assert.match(E.parse('снял 1000',now,[],state,'main').errors[0],/счёт для наличных/);
+ assert.equal(E.parse('я не снял 1000',now,[],s,'main').entries.length,0);
+ assert.match(E.parse('переведи 1000 с основного счета на неизвестный',now,[],s,'main').errors[0],/счёта зачисления/);
+ assert.equal(E.parse('переведи 1000 с основного счета на основной счёт',now,[],s,'main').entries.length,0);
+});
