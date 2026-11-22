@@ -112,6 +112,7 @@ if(!Array.isArray(s.entries)||new Set(s.entries.map(e=>e?.id)).size!==s.entries.
 if(!s.entries.every(e=>{const a=s.accounts.find(a=>a.id===e?.account);if(!e||!a||typeof e.id!=='string'||typeof e.title!=='string'||!e.title.trim()||e.title.length>300||!isMoney(e.amount)||e.amount<=0||!validDate(e.date)||!['income','expense','saving','transfer'].includes(e.type))return false;
 if(e.purchaseReview!==undefined&&(e.type!=='expense'||!e.purchaseReview||!['delighted','useful','disappointed'].includes(e.purchaseReview.value)||!validDate(e.purchaseReview.date)))return false;
 if(e.createdAt!==undefined&&!(typeof e.createdAt==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(e.createdAt)&&Number.isFinite(Date.parse(e.createdAt))&&new Date(e.createdAt).toISOString()===(e.createdAt.includes('.')?e.createdAt:e.createdAt.replace('Z','.000Z'))))return false;
+if(e.depositTopUpId!==undefined)return e.type==='saving'&&!e.goalId&&typeof e.depositTopUpId==='string'&&!!e.depositTopUpId;
 if(e.type==='saving')return s.goals.some(g=>g.id===e.goalId&&g.currency===a.currency);
 if(e.type==='transfer'){const to=s.accounts.find(a=>a.id===e.toAccount);return !!to&&to.id!==a.id&&isMoney(e.toAmount)&&e.toAmount>0&&(to.currency!==a.currency||e.toAmount===e.amount);}
 return [...s.categories,...s.incomeCategories].includes(e.category)&&(e.categoryChosen===undefined||typeof e.categoryChosen==='boolean');}))return false;
@@ -133,6 +134,13 @@ if(!Array.isArray(s.tickets)||!s.tickets.every(t=>t&&typeof t.id==='string'&&typ
 return true;
 }catch{return false;}}
 function slang(text){text=text.toLowerCase().replace(/с половиной\s+[кk](?![\p{L}\d])/gu,'с половиной тысячи').replace(/(?<![\p{L}\d])(\d+(?:[.,]\d{1,2})?)\s*[кk](?![\p{L}\d])/gu,'$1 тысяч').replace(/(?<!\p{L})(?:пару|пара)\s+(?=тысяч)/gu,'две ').replace(/(?<!\p{L})полтос(?!\p{L})/gu,'пятьдесят').replace(/(?<!\p{L})(?:чирик|червонец)(?!\p{L})/gu,'десять').replace(/(?<!\p{L})полтинник(?!\p{L})/gu,'пятьдесят');const hundreds=['','сто','двести','триста','четыреста','пятьсот','шестьсот','семьсот','восемьсот','девятьсот'];return text.toLowerCase().replace(/(?<!\p{L})пятихатк[ауи]?(?!\p{L})/gu,'пятьсот').replace(/(?<!\p{L})питик(?!\p{L})/gu,'пятьсот').replace(/(?<!\p{L})пятик(?!\p{L})/gu,'пять тысяч').replace(/(?<!\p{L})косар[ьяей]+(?!\p{L})|(?<!\p{L})касар[ьяей]+(?!\p{L})/gu,'тысячи').replace(/(?<!\p{L})касарь(?!\p{L})|(?<!\p{L})косарь(?!\p{L})/gu,'тысяча').replace(/(?<!\p{L})тыщ[а-яё]*(?!\p{L})/gu,'тысячи').replace(/(?<!\p{L})сотк[ауи](?!\p{L})/gu,'__HUNDRED__').replace(/(одна|одну|две|два|три|четыре|пять|шесть|семь|восемь|девять|\d+)\s+__HUNDRED__/g,(_,n)=>String((nums[n]||Number(n))*100)).replace(/__HUNDRED__/g,'сто').replace(/(?<!\p{L})(один|одна|одну|два|две|три|четыре|пять|шесть|семь|восемь|девять)\s+(?=сто(?:\s|$)|двести|триста|четыреста|пятьсот|шестьсот|семьсот|восемьсот|девятьсот)/gu,'$1 тысячи ').replace(/(тысяч[аиу]?)\s+([1-9]00)(?!\d)/gu,(_,th,n)=>th+' '+hundreds[Number(n)/100]);}
+function voiceAmounts(raw){
+ const text=slang(raw);
+ const amounts=[...text.matchAll(amountRe)].map(match=>({amount:amountValue(match[0]),start:match.index,end:match.index+match[0].length}));
+ return {text,amounts};
+}
+function depositTopUps(state,id){return state.entries.filter(e=>e.type==='saving'&&e.depositTopUpId===id);}
+function depositPrincipal(state,deposit){return deposit.principal+depositTopUps(state,deposit.id).reduce((sum,e)=>sum+e.amount,0);}
 function matchGoal(clause,goals){
  const stop=new Set(['на','в','для','и','к','цель']);
  const stem=w=>{w=normalizeTitle(w);const r=w.replace(/(?:иями|ями|ами|ого|ему|ому|ыми|ими|ая|яя|ую|юю|ое|ее|ий|ый|ой|ов|ев|ам|ям|ах|ях|ом|ем|ы|и|а|я|у|ю|е)$/u,'');return r.length>=3?r:w;};
@@ -309,7 +317,7 @@ function installmentPlan(total,date){
 }
 function saveDrafts(state,drafts,createdAt=new Date().toISOString(),reminders=[]){
  const next=structuredClone(state);
- const added=drafts.map(({installmentTotal,sourceCurrency,...draft})=>{
+ const added=drafts.map(({installmentTotal,sourceCurrency,depositTopUp,...draft})=>{
   const entry={...draft,title:draft.title.trim(),id:uid(),createdAt};
   if(entry.type==='transfer'){
    const from=next.accounts.find(a=>a.id===entry.account),to=next.accounts.find(a=>a.id===entry.toAccount);
@@ -317,7 +325,14 @@ function saveDrafts(state,drafts,createdAt=new Date().toISOString(),reminders=[]
    if(sourceCurrency&&sourceCurrency!==from.currency)throw Error('Выберите счёт списания в '+sourceCurrency+'.');
    if(from.currency===to.currency)entry.toAmount=entry.amount;
   }
-  if(entry.type==='saving'&&!entry.goalId){
+  if(depositTopUp||entry.depositTopUpId!==undefined){
+   const deposit=(next.deposits||[]).find(d=>d.id===entry.depositTopUpId);
+   const from=next.accounts.find(a=>a.id===entry.account),target=next.accounts.find(a=>a.id===deposit?.account);
+   if(entry.type!=='saving'||!deposit||!from||target?.currency!==from.currency)throw Error('Выберите вклад в валюте счёта списания.');
+   if(entry.date<deposit.start||entry.date>=deposit.end||entry.date>dateString(new Date(createdAt)))throw Error('Дата пополнения должна попадать в действующий срок вклада.');
+   if(!isMoney(entry.amount)||entry.amount<=0)throw Error('Введите сумму пополнения вклада.');
+   delete entry.goalId;entry.title='Пополнение вклада · '+deposit.name;
+  }else if(entry.type==='saving'&&!entry.goalId){
    const currency=next.accounts.find(a=>a.id===entry.account)?.currency;
    let goal=next.goals.find(g=>g.general&&g.currency===currency);
    if(!goal){goal={id:uid(),name:'Накопления',currency,target:null,general:true};next.goals.push(goal);}
@@ -338,11 +353,15 @@ function saveDrafts(state,drafts,createdAt=new Date().toISOString(),reminders=[]
  });
  if(addedReminders.length){next.reminders=next.reminders||[];next.reminders.push(...addedReminders);}
  next.entries.push(...added);
+ for(const id of new Set(added.map(e=>e.depositTopUpId).filter(Boolean))){
+  const deposit=next.deposits.find(d=>d.id===id);
+  if(!isMoney(depositPrincipal(next,deposit)))throw Error('Сумма вклада превышает допустимый предел.');
+ }
  if(!validateState(next))throw Error('Проверьте поля каждой записи.');
  return {next,added,addedReminders};
 }
 
 function nextPayment(payment,now=new Date()){return Schedule.next(payment,dateString(now));}
 function addEntry(state,entry){const next=structuredClone(state);next.entries.push({...entry,id:entry.id||uid(),createdAt:entry.createdAt??new Date().toISOString()});if(!validateState(next))throw Error('Проверьте операцию');return next;}
-const api={categories,incomeCategories,currencies,parse,isIncomeForStats,balance,goalBalance,totals,validateState,dateString,initialState,migrate,slang,nextPayment,addEntry,normalizeTitle,installmentPlan,saveDrafts};if(typeof module!=='undefined')module.exports=api;root.MonoEngine=api;
+const api={categories,incomeCategories,currencies,parse,isIncomeForStats,balance,goalBalance,totals,validateState,dateString,initialState,migrate,slang,nextPayment,addEntry,normalizeTitle,installmentPlan,saveDrafts,voiceAmounts,depositTopUps,depositPrincipal};if(typeof module!=='undefined')module.exports=api;root.MonoEngine=api;
 })(typeof window!=='undefined'?window:globalThis);

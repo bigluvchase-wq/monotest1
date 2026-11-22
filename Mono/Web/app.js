@@ -369,15 +369,57 @@ function runCommand(text){
 }
 function nextCommand(){const cmd=commandQueue.shift();if(cmd){MonoCommands.run(cmd);if(!$('#actionDialog').open)nextCommand();return;}if(commandAfter){const done=commandAfter;commandAfter=null;done();return;}if(commandRest){const t=commandRest;commandRest='';openEntry(t);}}
 $('#actionDialog').addEventListener('close',()=>{if(commandQueue.length||commandRest||commandAfter)setTimeout(nextCommand,320);});
+let voicePlan=null;
+function renderVoiceInsight(report){
+ const format=period=>esc(MonoPeriod.label(period));
+ const textLines=items=>items.map(({title,detail})=>`<div class="report-total"><strong>${esc(title)}</strong><span>${esc(detail)}</span></div>`).join('');
+ const noItems='За этот период данных нет.';
+ if(report.kind==='compare'){
+  const currencies=[...new Set([...report.rows,...report.priorRows].map(entryCurrency))];
+  const lines=currencies.map(currency=>{
+   const total=rows=>rows.filter(e=>entryCurrency(e)===currency).reduce((n,e)=>n+e.amount,0);
+   const current=total(report.rows),prior=total(report.priorRows),delta=current-prior;
+   const percent=prior?' · '+(delta>0?'+':'')+new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1}).format(delta/prior*100)+'%':'';
+   return {title:currency,detail:`${money(current,currency)} и ${money(prior,currency)} · ${delta>0?'+':delta<0?'−':''}${money(Math.abs(delta),currency)}${percent}`};
+  });
+  actionDialog('Сравнение расходов',`<p class="muted">${format(report.period)} и ${format(report.previous)}${report.category?' · '+esc(report.category):''}</p>`+(textLines(lines)||`<p>${noItems}</p>`));return;
+ }
+ if(report.kind==='budget'){
+  const lines=report.items.map(({name,limit,spent})=>({title:name,detail:`Потрачено ${money(spent,report.currency)} из ${money(limit,report.currency)}. ${spent>limit?'Превышение':'Осталось'} ${money(Math.abs(limit-spent),report.currency)}`}));
+  actionDialog('Лимиты за месяц',textLines(lines)||'<p>В валюте счёта записи нет лимитов.</p>');return;
+ }
+ if(report.kind==='goals'){
+  const lines=report.items.map(g=>({title:g.name,detail:`Накоплено ${money(g.saved,g.currency)}${g.target?' из '+money(g.target,g.currency)+'. Осталось '+money(Math.max(0,g.target-g.saved),g.currency):''}`}));
+  actionDialog('Накопления по целям',textLines(lines)||'<p>У вас пока нет целей.</p>');return;
+ }
+ const lines=report.items.map(({payment,due})=>({title:payment.name,detail:`${fmtDate(due)} · ${money(payment.amount,account(payment.account)?.currency)}`}));
+ const byCurrency={};
+ for(const {payment} of report.items){const currency=account(payment.account)?.currency;if(currency)byCurrency[currency]=(byCurrency[currency]||0)+payment.amount;}
+ const totals=Object.entries(byCurrency).map(([currency,amount])=>({title:'Всего · '+currency,detail:money(amount,currency)}));
+ actionDialog('Что предстоит оплатить',`<p class="muted">${report.untilSalary?'До зарплаты':'По'} ${esc(fmtDate(report.end))}</p>`+(textLines(lines.concat(totals))||'<p>Неоплаченных платежей нет.</p>'));
+}
+function voicePlanHTML(){
+ if(!voicePlan)return '';
+ const income=drafts.find(e=>e.type==='income'),a=account(income?.account||drafts[0]?.account);
+ if(!a)return '';
+ if(voicePlan.type==='expense')return `<p class="muted">Общая сумма покупки · ${money(voicePlan.total,a.currency)}</p>`;
+ const assigned=drafts.filter(e=>e.type==='saving').reduce((n,e)=>n+e.amount,0);
+ return `<p class="muted">Поступило ${money(income?.amount||0,a.currency)} · После пополнений останется ${money((income?.amount||0)-assigned,a.currency)}</p>`;
+}
+function depositDraftHTML(draft,i,opened){
+ const a=account(draft.account);
+ const options=(state.deposits||[]).filter(d=>account(d.account)?.currency===a?.currency&&d.start<=draft.date&&draft.date<d.end);
+ return `<details class="draft review-draft" data-index="${i}" ${opened||!draft.depositTopUpId?'open':''}>${draftSummary(draft.title,draftAmount(draft))}
+ <div class="draft-editor"><div class="draft-bottom"><label>Вклад<select data-field="depositTopUpId" required><option value="">Выберите вклад</option>${options.map(d=>`<option value="${esc(d.id)}" ${d.id===draft.depositTopUpId?'selected':''}>${esc(d.name)}</option>`).join('')}</select></label>
+ <label>Сумма, ${esc(a?.currency||'')}<input data-field="amount" type="number" min="0.01" max="10000000000" step="0.01" required value="${draft.amount/100}"></label></div>
+ <div class="draft-actions"><span class="muted tiny">Со счёта «${esc(a?.name||'')}» на вклад</span><button type="button" data-remove="${i}">Убрать</button></div></div></details>`;
+}
 function showOperationReport(text){
- const query=MonoOperationQuery.report(text,state);
+ const query=MonoVoiceFinance.read(text,state,voiceAccount)||MonoOperationQuery.report(text,state);
  if(!query)return false;
  if(query.error){notify(query.error);return true;}
- const entry=$('#entryDialog');
- if(entry.open){
-  entry.addEventListener('close',()=>renderOperationReport(query),{once:true});
-  entry.close();
- }else renderOperationReport(query);
+ const entry=$('#entryDialog'),show=()=>query.kind?renderVoiceInsight(query):renderOperationReport(query);
+ if(entry.open){entry.addEventListener('close',show,{once:true});entry.close();}else show();
  return true;
 }
 function renderOperationReport({type,period,category}){
@@ -391,7 +433,7 @@ function renderOperationReport({type,period,category}){
  const heading=`<p class="muted">${esc(MonoPeriod.label(period))}${category?' · '+esc(category):''}</p>`;
  actionDialog(title,heading+totals+(rows.length?groupedEntriesHTML(rows):empty('За этот период операций нет','',false)));
 }
-function openEntry(text='',how=''){const gallery=document.querySelector('[data-document-pick]');if(gallery)gallery.hidden=!!text;cancelParse();if(text&&showOperationReport(text))return;if(text&&!window.MonoVoiceAI?.enabled()&&runCommand(text))return;$('#entryDialog').dataset.enter=how;
+function openEntry(text='',how=''){const gallery=document.querySelector('[data-document-pick]');if(gallery)gallery.hidden=!!text;cancelParse();if(text&&showOperationReport(text))return;if(text&&!MonoVoiceFinance.isAllocation(text)&&!window.MonoVoiceAI?.enabled()&&runCommand(text))return;$('#entryDialog').dataset.enter=how;
  if(listening||holding)cancelVoice();drafts=[];reminderDrafts=[];parseErrors=[];$('#dictation').value=text;$('#drafts').innerHTML='';$('#parseErrors').textContent='';$('#saveButton').hidden=true;$('#sheetTitle').textContent='Что запишем?';const dialog=$('#entryDialog');
  dialog.classList.remove('has-review');$('#entrySource').open=true;
  if(!dialog.open)dialog.showModal();
@@ -402,11 +444,17 @@ function openEntry(text='',how=''){const gallery=document.querySelector('[data-d
 $('#textEntry').onclick=()=>openEntry();$('#closeEntry').onclick=()=>$('#entryDialog').close();
 $('#dictation').oninput=()=>{$('#entryDialog').classList.remove('has-review');cancelParse();drafts=[];reminderDrafts=[];parseErrors=[];$('#drafts').innerHTML='';$('#saveButton').hidden=true;$('#parseErrors').textContent='';};
 let parseTask=null,parseVersion=0;
-function cancelParse(){parseVersion++;parseTask?.abort();parseTask=null;$('#parseButton').disabled=false;$('#parseButton').textContent='Разобрать ↗';}
+function cancelParse(){voicePlan=null;$('#voicePlan').textContent='';parseVersion++;parseTask?.abort();parseTask=null;$('#parseButton').disabled=false;$('#parseButton').textContent='Разобрать ↗';}
 $('#entryDialog').addEventListener('close',cancelParse);
 async function parseInput(){
  cancelParse();const text=$('#dictation').value.trim();if(!text)return;
  if(showOperationReport(text))return;
+ const allocation=MonoVoiceFinance.review(text,state,voiceAccount);
+ if(allocation){
+  drafts=allocation.entries;reminderDrafts=[];parseErrors=allocation.errors;voicePlan=allocation.plan||null;
+  $('#parseErrors').innerHTML=parseErrors.map(e=>`<p class="warn">${esc(e)}</p>`).join('');
+  renderDrafts();return;
+ }
  if(!window.MonoVoiceAI?.enabled()&&runCommand(text))return;
  const version=parseVersion,controller=new AbortController();parseTask=controller;
  const timeout=setTimeout(()=>controller.abort(),15000);
@@ -458,8 +506,10 @@ function renderDrafts(){
  const gallery=document.querySelector('[data-document-pick]');if(gallery)gallery.hidden=drafts.length>0||!!$('#dictation').value.trim();
  $('#sheetTitle').textContent=drafts.length+reminderDrafts.length?'Проверим и запишем':'Что запишем?';
  $('#drafts').innerHTML=drafts.map((e,i)=>{const a=account(e.account)||account(voiceAccount),transfer=e.type==='transfer',saving=e.type==='saving',installment=e.installmentTotal!==undefined;
+ if(e.depositTopUp)return depositDraftHTML(e,i,openDrafts.has(i));
  const plan=installment&&e.installmentTotal>=4&&e.date?E.installmentPlan(e.installmentTotal,e.date):[];
  return `<details class="draft review-draft" data-index="${i}" ${openDrafts.has(i)?'open':''}>${draftSummary(e.title,draftAmount(e))}<div class="draft-editor"><div class="draft-top"><label>Название<input data-field="title" required maxlength="300" value="${esc(e.title)}"></label><label>${installment?'Полная сумма':'Сумма'}, ${a.currency}<input data-field="${installment?'installmentTotal':'amount'}" type="number" min="${installment?'0.04':'0.01'}" max="10000000000" step="0.01" required value="${(e.installmentTotal??e.amount)/100}"></label></div><div class="draft-bottom"><label>Тип<select data-field="type" ${installment||transfer?'disabled':''}><option value="expense" ${e.type==='expense'?'selected':''}>Расход</option><option value="income" ${e.type==='income'?'selected':''}>Доход</option><option value="saving" ${saving?'selected':''} >Накопления</option>${transfer?'<option value="transfer" selected>Перевод между своими</option>':''}</select></label><label>${transfer?'С какого счёта':'Счёт'}<select data-field="account" required>${transfer?'<option value="">Выберите счёт</option>':''}${accountOptions(e.account,saving?state.goals.find(g=>g.id===e.goalId)?.currency??null:null)}</select></label>${transfer?transferDraftFields(e):saving?`<label>Цель<select data-field="goalId"><option value="" ${!e.goalId?'selected':''}>Накопления без цели</option>${state.goals.filter(g=>g.currency===a.currency).map(g=>`<option value="${esc(g.id)}" ${g.id===e.goalId?'selected':''}>${esc(g.name)}</option>`).join('')}</select></label>`:`<label>Категория<select data-field="category">${categoryOptions(e.type,e.category)}</select></label>`}<label>Дата<input data-field="date" type="date" required value="${e.date}"></label></div>${installment?`<div class="draft-installments"><strong>Долями · 4 платежа</strong><ol data-installment-plan>${installmentRows(plan,a.currency)}</ol></div>`:''}<div class="draft-actions"><span class="muted tiny">${saving?'Со счёта в цель · не расход':'Проверьте сумму, категорию и счёт'}</span><button data-remove="${i}">Убрать</button></div></div></details>`;}).join('');
+ $('#voicePlan').innerHTML=voicePlanHTML();
  $('#drafts').insertAdjacentHTML('beforeend',reminderDrafts.map((reminder,i)=>reminderDraftHTML(reminder,i,openReminders.has(i))).join(''));
  const count=drafts.length+reminderDrafts.length;
  if(count&&!dialog.classList.contains('has-review')){
@@ -476,6 +526,11 @@ $('#drafts').oninput=e=>{const reminderField=e.target.dataset.reminderField;if(r
   row.querySelector('[data-summary-title]').textContent=reminder.title;
   row.querySelector('[data-summary-amount]').textContent=reminder.time||'Напоминание';
   return;}const field=e.target.dataset.field;if(!field)return;const draft=drafts[Number(e.target.closest('[data-index]').dataset.index)];draft[field]=['amount','installmentTotal','toAmount'].includes(field)?cents(e.target.value):e.target.value;if(field==='category')draft.categoryChosen=true;
+ if(field==='depositTopUpId'){
+  const deposit=(state.deposits||[]).find(d=>d.id===draft.depositTopUpId);
+  draft.title=deposit?'Пополнение вклада · '+deposit.name:'Выберите вклад';
+ }
+ if(voicePlan)$('#voicePlan').innerHTML=voicePlanHTML();
  const summary=e.target.closest('.review-draft').querySelector('summary');
  summary.querySelector('[data-summary-title]').textContent=draft.title;
  summary.querySelector('[data-summary-amount]').textContent=draftAmount(draft);
@@ -490,10 +545,17 @@ $('#drafts').oninput=e=>{const reminderField=e.target.dataset.reminderField;if(r
  }else if(field==='account'||field==='goalId')renderDrafts();
 };
 $('#drafts').onclick=e=>{const reminder=e.target.closest('[data-remove-reminder]');if(reminder){reminderDrafts.splice(Number(reminder.dataset.removeReminder),1);$('#drafts').replaceChildren();renderDrafts();return;}const b=e.target.closest('[data-remove]');if(b){drafts.splice(Number(b.dataset.remove),1);$('#drafts').replaceChildren();renderDrafts();}};
-$('#saveButton').onclick=()=>{if((!drafts.length&&!reminderDrafts.length)||parseErrors.length)return;if(reminderDrafts.length&&!requireAccess('reminders'))return;if(drafts.some(d=>d.type==='saving')&&!requireAccess('goals'))return;if(drafts.some(d=>d.installmentTotal!==undefined)&&!requireAccess('payments'))return;for(const input of $('#drafts').querySelectorAll('input,select'))if(!input.checkValidity()){const row=input.closest('details'),summary=row.querySelector('summary'),editor=row.querySelector('.draft-editor');
+$('#saveButton').onclick=()=>{if((!drafts.length&&!reminderDrafts.length)||parseErrors.length)return;if(reminderDrafts.length&&!requireAccess('reminders'))return;if(drafts.some(d=>d.depositTopUp)&&!requireAccess('deposits'))return;if(drafts.some(d=>d.type==='saving'&&!d.depositTopUp)&&!requireAccess('goals'))return;if(drafts.some(d=>d.installmentTotal!==undefined)&&!requireAccess('payments'))return;for(const input of $('#drafts').querySelectorAll('input,select'))if(!input.checkValidity()){const row=input.closest('details'),summary=row.querySelector('summary'),editor=row.querySelector('.draft-editor');
  row.open=true;row.setAttribute('data-editing','');summary.setAttribute('aria-expanded','true');
- MonoDisclosure(editor,true);input.reportValidity();return;}let next,added;try{({next,added}=E.saveDrafts(state,drafts,new Date().toISOString(),reminderDrafts));}catch(error){notify(error.message);return;}
- if(added.some(e=>e.type==='saving'&&E.balance(next,e.account)<0)&&!confirm('Пополнение цели сделает остаток счёта отрицательным. Продолжить?'))return;
+ MonoDisclosure(editor,true);input.reportValidity();return;}if(voicePlan?.type==='expense'&&(drafts.some(e=>e.type!=='expense'||e.account!==drafts[0]?.account)||drafts.reduce((n,e)=>n+e.amount,0)!==voicePlan.total)){notify('Сумма частей должна совпадать с общей суммой покупки.');return;}
+ if(voicePlan?.type==='income'){
+  const income=drafts.find(e=>e.type==='income'),assigned=drafts.filter(e=>e.type==='saving').reduce((n,e)=>n+e.amount,0);
+  if(!income||assigned>income.amount||drafts.some(e=>!['income','saving'].includes(e.type)||e.account!==income.account)){
+   notify('Пополнения должны списываться с того же счёта и помещаться в сумму дохода.');return;
+  }
+ }
+ let next,added;try{({next,added}=E.saveDrafts(state,drafts,new Date().toISOString(),reminderDrafts));}catch(error){notify(error.message);return;}
+ if(added.some(e=>e.type==='saving'&&E.balance(next,e.account)<0)&&!confirm('Пополнение сделает остаток счёта отрицательным. Продолжить?'))return;
  for(const entry of added)window.MonoBankMerchants?.remember(next,entry);
  const finish=()=>{
   if(!persist(next))return false;
