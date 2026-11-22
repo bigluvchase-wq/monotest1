@@ -18,16 +18,17 @@ function hides(part){if(!hidden)return false;const s=cfg().hideScope;return s===
 function html(){
  const c=cur(),t=E.dateString(new Date()),ym=t.slice(0,7);
  const balance=E.totals(state,c).available;
- const exp=state.entries.filter(e=>e.type==='expense'&&entryCurrency(e)===c&&e.date.startsWith(ym)).reduce((n,e)=>n+e.amount,0);
- const inc=state.entries.filter(e=>E.isIncomeForStats(e)&&entryCurrency(e)===c&&e.date.startsWith(ym)).reduce((n,e)=>n+e.amount,0);
+ const items=state.entries.filter(e=>entryCurrency(e)===c&&e.date.startsWith(ym)&&inChart(e));
+ const exp=items.reduce((n,e)=>e.type==='expense'?n+e.amount:n,0);
+ const inc=items.reduce((n,e)=>e.type==='income'?n+e.amount:n,0);
  const hb=hides('balance'),hf=hides('flows');
  // Под балансом — разница за этот месяц: доходы минус расходы с 1-го числа
  const saved=inc-exp,monthName=['январе','феврале','марте','апреле','мае','июне','июле','августе','сентябре','октябре','ноябре','декабре'][new Date().getMonth()];
  const deltaHTML=(inc||exp)?(hb||hf?`<button type="button" class="hd-delta muted" data-hd-explain="saved">••• ₽<small>доходы − расходы</small></button>`:`<button type="button" class="hd-delta ${saved>=0?'up':'down'}" data-hd-explain="saved">${saved>=0?'+':'−'}${money(Math.abs(saved),c)}<small>${saved>=0?'доходы − расходы':'расходы выше доходов'}</small></button>`):'';
  return `<div class="hd-top"><div class="hd-label">Общий баланс <button type="button" class="hd-eye" data-hd-eye aria-pressed="${hidden}" aria-label="${hidden?'Показать суммы':'Скрыть суммы'}">${hidden?ico.eyeOff:ico.eye}</button></div>
  <div class="hd-balance">${hb?MASK:money(balance,c)}</div>${deltaHTML}</div>
- <div class="hd-row"><button type="button" class="hd-card hd-flow" data-hd-go="expense"><span class="hd-flow-top"><span class="hd-ic out">${ico.down}</span>Расходы</span><b>${hf?MASK:money(exp,c)}</b></button>
- <button type="button" class="hd-card hd-flow" data-hd-go="income"><span class="hd-flow-top"><span class="hd-ic in">${ico.up}</span>Доходы</span><b>${hf?MASK:money(inc,c)}</b></button></div>
+ <div class="hd-row"><button type="button" class="hd-card hd-flow" data-hd-go="expense"><span class="hd-flow-top"><span class="hd-ic out">${ico.down}</span>Расходы</span><b>${hf?MASK:money(exp,c)}</b>${miniBar(hf?[]:items,"expense")}</button>
+ <button type="button" class="hd-card hd-flow" data-hd-go="income"><span class="hd-flow-top"><span class="hd-ic in">${ico.up}</span>Доходы</span><b>${hf?MASK:money(inc,c)}</b>${miniBar(hf?[]:items,"income")}</button></div>
 `;
 }
 

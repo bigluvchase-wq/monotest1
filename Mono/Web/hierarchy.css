@@ -11,7 +11,7 @@ html[data-design=sapphire] input::placeholder,html[data-design=sapphire] textare
 /* Task hierarchy, common to both comparison modes. */
 header .icon-btn{width:44px!important;height:44px!important;min-height:44px!important}
 .hd-eye{width:44px;min-height:44px;margin:-8px 0}
-.page-head h1{font-size:30px!important;letter-spacing:-.03em!important;line-height:1.16!important;margin:12px 0 22px!important}
+.page-head h1{font-size:30px!important;letter-spacing:-.03em!important;line-height:1.16!important;margin:8px 0 16px!important}
 .page-head .back-pill{min-height:44px;box-shadow:none!important;padding:7px 0!important;background:none!important;border:0!important;margin:0!important}
 :is(.secondary,.small-link,.record-button,.together-mode){min-height:44px!important}
 .field{font-size:13px;gap:8px}.tiny{font-size:12px;line-height:1.5}
@@ -32,26 +32,26 @@ header .icon-btn{width:44px!important;height:44px!important;min-height:44px!impo
 .menu-group .menu-copy{flex:1}.menu-group .menu-copy strong{font-size:16px!important;font-weight:550}.menu-group .menu-copy small{font-size:12px!important;margin-top:3px}.menu-chevron{font-size:24px;color:var(--muted)}
 /* Review preserves all native fields, revealing them only when needed. */
 #entryDialog .eyebrow{display:none}#entryDialog .sheet-head h2{font-size:25px;letter-spacing:-.025em;margin:0;line-height:1.2}
-#entryDialog{padding:22px 18px 20px!important;scroll-padding-top:18px;scroll-padding-bottom:100px}
-#entryDialog .sheet-head{align-items:center;margin-bottom:20px}
-.entry-source{border:0;border-radius:0;margin:0 0 20px;padding:0}
-.entry-source>summary{min-height:48px;display:flex;align-items:center;cursor:pointer;color:var(--muted);font-size:13px;list-style:none}
+#entryDialog{padding:12px 18px!important}
+#entryDialog .sheet-head{align-items:center;margin-bottom:8px;flex:none}
+.entry-source{border:0;border-radius:0;margin:0;padding:0}
+.entry-source>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;color:var(--muted);font-size:13px;list-style:none}
 .entry-source>summary::after{content:'⌄';margin-left:auto}.entry-source[open]>summary::after{transform:rotate(180deg)}
-.entry-source textarea{margin:0;box-shadow:none!important;border:1px solid var(--line)!important;padding:14px!important;background:var(--input)!important;min-height:132px;width:100%;font-size:16px;line-height:1.5;border-radius:14px}
+.entry-source textarea{margin:0;box-shadow:none!important;border:1px solid var(--line)!important;padding:14px!important;background:var(--input)!important;min-height:100px;width:100%;font-size:16px;line-height:1.5;border-radius:14px}
 .entry-source .input-meta{align-items:center;gap:12px;font-size:12px;margin:12px 0;flex-wrap:wrap}
 .entry-source .parse-tools{margin-left:auto}.entry-source .small-link{padding:8px 12px!important}
 .entry-source .phrases-link{min-height:44px}
 #drafts .review-draft{padding:0;border:1px solid var(--line);border-radius:14px;margin:10px 0;overflow:hidden;background:var(--surface)}
-.draft-summary{display:flex;align-items:center;gap:10px;padding:16px;min-height:80px;list-style:none;cursor:pointer}
+.draft-summary{display:flex;align-items:center;gap:10px;padding:12px 14px;min-height:64px;list-style:none;cursor:pointer}
 .draft-summary::-webkit-details-marker,.entry-source>summary::-webkit-details-marker{display:none}
 .draft-summary>span:first-child{flex:1;min-width:0}.draft-summary strong{font-size:16px;line-height:1.35;display:block;overflow-wrap:anywhere}.draft-summary small{display:block;font-size:12px;color:var(--muted);line-height:1.4;margin-top:5px;overflow-wrap:anywhere}
 .draft-summary>b{font-size:17px;font-weight:600;max-width:42%;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.draft-chevron{font-size:18px;flex:none;color:var(--muted)}
 .review-draft[open] .draft-chevron{transform:rotate(180deg)}
 .draft-editor{padding:0 16px 16px;border-top:1px solid var(--line)}.draft-editor .draft-top{margin-top:16px}
 #drafts .draft-actions{gap:12px}.draft-actions>button{min-height:44px;box-shadow:none!important;background:none!important;border:0!important;color:var(--accent);padding:8px!important}
-.review-account{margin:14px 0 20px}.review-account label{font-size:13px;display:block;color:var(--muted)}.review-account select{display:block;width:100%;min-height:48px;font-size:15px;padding:10px 12px;margin-top:8px;border:1px solid var(--line);border-radius:12px;background:var(--input);color:var(--ink)}.review-account small{font-size:11px;line-height:1.5;color:var(--muted);display:block;margin-top:6px}
-.review-footer{position:sticky;bottom:-20px;padding:14px 0 calc(20px + env(safe-area-inset-bottom));background:var(--card-solid,var(--paper));z-index:3;margin:16px -18px -20px;padding-inline:18px;border-top:1px solid var(--line);isolation:isolate}
-.review-footer:has([hidden]){display:none}.review-footer .primary{width:100%;min-height:52px;margin:0!important}
+.review-account{margin:6px 0 10px}.review-account label{font-size:13px;display:block;color:var(--muted)}.review-account select{display:block;width:100%;min-height:48px;font-size:15px;padding:10px 12px;margin-top:8px;border:1px solid var(--line);border-radius:12px;background:var(--input);color:var(--ink)}.review-account small{font-size:11px;line-height:1.5;color:var(--muted);display:block;margin-top:6px}
+.review-footer{flex:none;padding-top:8px;border-top:1px solid var(--line)}
+.review-footer:has([hidden]){display:none}.review-footer .primary{width:100%;margin:0!important}
 #drafts>[data-reminder-index]{padding:16px;border:1px solid var(--line);border-radius:14px;margin:18px 0;background:var(--surface)}
 #drafts>[data-reminder-index]>strong{display:block;margin-bottom:16px;font-size:14px;color:var(--accent)}
 #drafts>[data-reminder-index] .draft-bottom{gap:14px 12px}
@@ -140,13 +140,13 @@ html[data-design][data-theme] .entry-day{padding:4px 16px 8px;contain-intrinsic-
 /* One sheet, one text field, then actions; no nested card around the input. */
 #entryDialog:not(.has-review) .entry-source>summary{display:none}
 #entryDialog .entry-source>summary{padding:0;gap:8px}
-#entryDialog .input-meta{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin:14px 0 0;line-height:1.5}
+#entryDialog .input-meta{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin:8px 0 0;line-height:1.5}
 #entryDialog .input-meta>span:first-child{font-size:12px}
 #entryDialog .phrases-link{display:inline-flex;align-items:center;min-height:44px;margin:0;padding:4px 0;text-align:left;font-size:13px}
 #entryDialog .parse-tools{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin:0;width:100%}
 html[data-design][data-theme] #entryDialog .parse-tools .gallery-pick{width:48px!important;height:48px!important;min-width:48px;min-height:48px;flex:none;margin:0;padding:12px!important;border-radius:12px!important}
 html[data-design][data-theme] #entryDialog .parse-tools #parseButton{min-height:48px;flex:1;min-width:0;margin:0;padding:12px 18px!important;font-size:15px;text-align:center;border-radius:12px}
-#entryDialog .sheet-head{margin-bottom:20px;gap:12px}#entryDialog #closeEntry{width:44px;height:44px;min-width:44px;flex:none}
+#entryDialog .sheet-head{gap:12px}#entryDialog #closeEntry{width:44px;height:44px;min-width:44px;flex:none}
 #entryDialog textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #entryDialog .draft-editor{padding:16px}.draft-editor .draft-top{margin-top:0}.draft-top,.draft-bottom{gap:14px 12px}
 #entryDialog .draft-actions{align-items:flex-start;margin-top:14px}.draft-actions .tiny{flex:1}
@@ -161,7 +161,7 @@ html[data-design][data-theme] #entryDialog .parse-tools #parseButton{min-height:
 /* Center normal input/review sheets in the available area without transforming their content. */
 html[data-theme] dialog#entryDialog:not(#chartDialog):not(#onboarding):not(#lockDialog),html[data-theme] dialog#actionDialog{top:calc(var(--vv-top,0px) + env(safe-area-inset-top,0px) + 16px)!important;bottom:max(16px,calc(100dvh - var(--vv-top,0px) - var(--vv-h,100dvh) + env(safe-area-inset-bottom,0px)))!important;margin:auto!important;height:fit-content;max-height:calc(var(--vv-h,100dvh) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 32px)!important;overflow-y:auto;overscroll-behavior-y:contain}
 html[data-theme] #entryDialog .review-footer{background:var(--card-solid,var(--paper))!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
-#entryDialog .review-footer .primary{display:block;min-height:52px;border-radius:14px}
+#entryDialog .review-footer .primary{display:block;min-height:48px;border-radius:14px}
 .ops-selectors{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;min-width:0}
 .ops-selectors .together-mode.secondary{margin:0;flex:none}
 .ops-selectors .currency-tabs{margin:0 0 0 auto;display:flex;gap:8px;overflow-x:auto;min-width:0;max-width:100%;padding:0;scrollbar-width:none}
@@ -171,7 +171,7 @@ html[data-theme] #entryDialog .review-footer{background:var(--card-solid,var(--p
 #searchLayer .search-results{top:calc(var(--vv-top,0px) + env(safe-area-inset-top,0px) + 66px)}
 #searchLayer .search-backdrop{position:absolute;inset:0}
 html.modal-scroll-locked body{position:fixed!important;top:var(--modal-scroll-top,0px)!important;left:0;right:0;width:100%;overflow:hidden!important}
-@media(max-width:360px){.review-footer{margin-inline:-14px;padding-inline:14px}}
+
 @media(max-height:650px){
  :is(#home,[data-preview-id=home]).home-dash .recording-block{padding-top:0!important}
  :is(#home,[data-preview-id=home]).home-dash .voice-zone{width:112px!important;height:112px!important}

@@ -11,7 +11,16 @@ body:not(.pointer-navigation) :is(input,select,textarea):focus-visible { outline
 body.pointer-navigation :is(.limit-items input,.friend-row input):focus{box-shadow:none!important;border-color:var(--line)!important}
 .chart-ring-flight{position:fixed;pointer-events:none;z-index:5}
 #chartDialog .chart-return-card{position:fixed;z-index:4;pointer-events:none}
-.chart-origin .hd-flow{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;width:100%;height:100%;padding:10px 14px}
+.chart-origin .hd-flow{width:100%;height:100%}
+:is(.hd-row,.chart-origin) .hd-flow{display:flex;flex-direction:column;align-items:stretch;padding:12px 13px}
+.hd-row .hd-flow{min-height:92px}
+.hd-flow .mini-chart{display:flex;width:100%;height:5px;flex:none;margin:auto 0 0}
+.hd-flow b{padding-bottom:8px}
+@media(max-height:760px){
+ :is(.hd-row,.chart-origin) .hd-flow{padding:8px 11px}
+ .hd-row .hd-flow{min-height:80px}
+ :is(.hd-row,.chart-origin) .hd-flow b{padding-bottom:6px;font-size:16px}
+}
 body[data-page=menu] #workspace{overscroll-behavior:contain;mask-image:none!important}
 html[data-design][data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) :is(.menu-group-items,.menu-group .menu-tile){box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 html[data-design][data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-group-items{background:var(--card-solid,var(--paper))!important;border:1px solid var(--line)}
@@ -28,23 +37,37 @@ html[data-theme] .agenda-day.today.selected{background:var(--soft)!important;bor
 #actionDialog :is(.payment-form,.deposit-form) .field{margin:10px 0}
 #actionDialog :is(.payment-form,.deposit-form) .form-grid{align-items:end}
 /* Keep the typing surface near the top before WebKit scrolls to the caret. */
-html[data-theme] dialog#entryDialog[data-typing]:not(.has-review):not(#chartDialog):not(#onboarding):not(#lockDialog){
+html[data-theme] dialog#entryDialog[data-typing]:not(#chartDialog):not(#onboarding):not(#lockDialog){
  top:calc(var(--vv-top,0px) + env(safe-area-inset-top,0px) + clamp(12px,4svh,32px))!important;
  bottom:auto!important;margin:0 auto!important;
  max-height:calc(var(--vv-h,100dvh) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - clamp(12px,4svh,32px) - 12px)!important;
 }
+html[data-theme] dialog#entryDialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog){
+ display:flex;flex-direction:column;overflow:hidden;
+}
+#entryDialog .entry-content{
+ min-height:0;overflow:hidden auto;overscroll-behavior:contain;scroll-padding-block:8px;
+}
+#entryDialog #parseErrors:empty{display:none}
+#entryDialog [role=status].muted{margin:8px 0 0}
+#entryDialog.has-review :is(#drafts,.review-footer){animation:mono-review-in 200ms ease-out both}
+@keyframes mono-review-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 html[data-entry-viewport] body > :is(.app,.bottom-nav,.bg-float){translate:0 var(--vv-top,0px)}
 @keyframes mono-entry-appear{from{opacity:0}to{opacity:1}}
 html[data-theme] dialog#entryDialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog){
  animation:mono-entry-appear 240ms ease-out both!important;
 }
-html[data-theme] #entryDialog::backdrop{
+html[data-theme] #entryDialog[open]::backdrop{
  animation:mono-entry-appear 200ms ease-out both!important;
  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
 }
+html[data-theme] #entryDialog.closing::backdrop{
+ animation:mono-entry-appear 150ms ease-in reverse both!important;transition:none;
+}
 @media(prefers-reduced-motion:reduce){
  html[data-theme] dialog#entryDialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog),
- html[data-theme] #entryDialog::backdrop{animation:none!important}
+ html[data-theme] #entryDialog[open]::backdrop,
+ html[data-theme] #entryDialog.has-review :is(#drafts,.review-footer){animation:none!important}
 }
 html[data-design][data-theme] :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){
  overflow:visible!important;background:transparent!important;border:0!important;box-shadow:none!important;
@@ -93,3 +116,10 @@ html[data-design] #entryDialog .sheet-head h2{font-size:clamp(20px,5.6vw,24px)}
   min-height:60px!important;padding-block:10px!important;
  }
 }
+
+:is(.app,.root-preview) .empty{padding:22px 16px}
+:is(.app,.root-preview) .empty h2{font-size:18px;line-height:1.25;margin:0}
+:is(.app,.root-preview) .empty p{line-height:1.5;margin:6px 0 0}
+:is(.app,.root-preview) .empty button{min-height:44px;margin-top:10px}
+.summary-pair .operation-card{padding-block:14px}
+.summary-pair .operation-card>.mini-chart{height:6px;margin-top:12px}
