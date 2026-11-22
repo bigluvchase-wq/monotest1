@@ -25,9 +25,24 @@ function joinSpeech(parts){
  return words.join(' ');
 }
 // A recognizer can restart the same hypothesis after emitting an unfinished word.
-function repairReplay(text){
+function repairReplay(text,{short=false}={}){
  const words=String(text).trim().split(/\s+/);
  const keys=words.map(word=>word.toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}]/gu,''));
+ const label=/^\p{L}+$/u,number=/^\d+(?:[.,]\d{1,2})?$/u;
+ if(label.test(words[0])&&number.test(words[1])&&keys[0]){
+  if(short&&words.length===4&&keys[0]===keys[2]&&words[1]===words[3])return words.slice(2).join(' ');
+  // A decimal amount already contains the kopecks. iOS can replay it around a garbled currency tail.
+  const ruble=/^руб(?:ль|ля|лей)?$/;
+  if(short&&words.length===6&&ruble.test(keys[2])&&keys[0]===keys[3]&&words[1]===words[4]&&keys[2]===keys[5])return words.slice(3).join(' ');
+  const noise=/^ко(?:п(?:е(?:ек|йка|йки)?)?|ек)$/;
+  if(words.length>=7&&/[.,]/.test(words[1])&&ruble.test(keys[2])&&noise.test(keys[3])&&
+   keys[0]===keys[4]&&words[1]===words[5]&&ruble.test(keys[6])){
+   const tail=words.slice(7);
+   if(noise.test(keys[7]))tail.shift();
+   return [...words.slice(4,7),...tail].join(' ');
+  }
+ }
+
  for(let restart=5;restart<=Math.floor((words.length+1)/2);restart++){
   const first=keys.slice(0,restart),next=keys.slice(restart,restart*2);
   // Require the same amount and sentence prefix. A conjunction is an explicit boundary.
@@ -45,13 +60,15 @@ function createTranscript(){
  const key=s=>s.toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
  return {update(text,rawStart,rawEnd){
   if(!text)return joinSpeech([prefix,current]);
-  text=repairReplay(text);
+  text=repairReplay(text,{short:true});
   const nextStart=rawStart===undefined?NaN:Number(rawStart),nextEnd=rawEnd===undefined?NaN:Number(rawEnd);
   const full=joinSpeech([prefix,current]),incoming=key(text),known=key(full);
   // A cumulative hypothesis supersedes all earlier versions, including shifted timestamps.
   if(known&&known.split(' ').length>=8&&incoming===known+' '+known)return full;
-  if((start!==null&&Number.isFinite(nextStart)&&nextStart<start-.15)||(known&&(incoming===known||incoming.startsWith(known+' '))))prefix='';
-  else if(start!==null&&end!==null&&nextStart>end+.15&&nextStart>start){prefix=full;}
+  const separate=start!==null&&end!==null&&nextStart>end+.15&&nextStart>start;
+  if(separate&&incoming===known&&known.split(' ').length<4)prefix=full;
+  else if((start!==null&&Number.isFinite(nextStart)&&nextStart<start-.15)||(known&&(incoming===known||incoming.startsWith(known+' '))))prefix='';
+  else if(separate)prefix=full;
   // Sliding-window revisions replace the current window rather than repeatedly appending it.
   current=text;
   start=Number.isFinite(nextStart)?nextStart:null;end=Number.isFinite(nextEnd)?nextEnd:null;
@@ -89,8 +106,8 @@ rec.onstart=()=>{if(active!==session||session.failed)return;clearTimer(session.t
 rec.onresult=event=>{
 if(active!==session||session.failed)return;
 const results=Array.from(event.results);
-session.text=repairReplay(results.map(r=>r[0]?.transcript||'').join(' ').trim());
-session.finalText=repairReplay(results.filter(r=>r.isFinal).map(r=>r[0]?.transcript||'').join(' ').trim());
+session.text=repairReplay(results.map(r=>repairReplay(r[0]?.transcript||'',{short:true})).join(' ').trim());
+session.finalText=repairReplay(results.filter(r=>r.isFinal).map(r=>repairReplay(r[0]?.transcript||'',{short:true})).join(' ').trim());
 heldText=session.text||session.finalText;onProgress([...heldParts,session.text].filter(Boolean).join(' '));
 };
 rec.onerror=event=>{if(held&&event.error==='no-speech')return;held=false;clearTimer(restartTimer);restartTimer=null;fail(session,event.error||'unknown-error',String(event.message||''));};

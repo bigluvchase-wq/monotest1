@@ -61,5 +61,17 @@ function queryDay(text,now,{embedded=false}={}){
  }else date=absoluteDate(now,mark)||past(now,mark.toLowerCase());
  return [String(date.getFullYear()).padStart(4,'0'),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
 }
-const api={clauses,past,queryDay,queryDayPhrase};root.MonoSpeechDates=api;if(typeof module==='object')module.exports=api;
+function moneyPunctuation(text){
+ return text
+  .replace(/(?<=\d)\s+рубец(?!\p{L})/giu,' рублей')
+  .replace(/(?<=\d)\s+руб\.(?=\s+(?:напомни(?:те)?|создай|добавь|поставь|установи|открой|удали)(?!\p{L}))/giu,' рублей;')
+  .replace(/(?<=\d)\s+руб\.(?!\p{L})/giu,' рублей')
+  .replace(/(?<![\d.,])(\d[\d \u00a0]*)\s+(?:руб(?:лей|ля|ль)|₽)\s+(\d{1,2})\s+коп(?:еек|ейки|ейка)(?!\p{L})/giu,(_,rub,kopecks)=>rub+','+kopecks.padStart(2,'0')+' рублей')
+  .replace(/(\d[.,]\d{1,2}\s+руб(?:лей|ля|ль))\s+ко(?:п(?:е(?:ек|йки|йка)?)?|ек)(?=[.!?,;\s]*$)/giu,'$1')
+  .replace(/(?<!\p{L})(потратил[аи]?|купил[аи]?|получил[аи]?|заплатили|снял[аи]?|переведи|за|на)[,.]\s+(?=[\p{L}\d])/giu,'$1 ')
+  .replace(/(?<!\p{L})(вчера|сегодня|позавчера)[,.]\s+(?=(?:потратил|купил|получил|снял|заплатил))/giu,'$1 ')
+  .replace(/(\d(?:\s+(?:руб(?:лей|ля|ль)|₽))?)[,.]\s+(?=(?:на|за|с|со|в)\s+\p{L}[^.,;!?\n\d]*(?:[.,;!?]|$))/giu,'$1 ')
+  .replace(/(\p{L})[,.]\s+(?=\d[\d \u00a0]*(?:[.,]\d{1,2})?(?:\s+(?:руб(?:лей|ля|ль)|₽))?[.!?]?$)/giu,'$1 ');
+}
+const api={clauses,past,queryDay,queryDayPhrase,moneyPunctuation};root.MonoSpeechDates=api;if(typeof module==='object')module.exports=api;
 })(typeof window==='object'?window:globalThis);

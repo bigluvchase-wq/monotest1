@@ -21,13 +21,20 @@ test('presets start on the selected date and chart buckets stay inside the perio
   ]);
 });
 
-const cases = require('../server/voice-examples.json').examples.filter(e=>e.id.startsWith('legacy-')).map(e=>[e.text,e.legacyExpected]);
+const cases = require('../server/voice-examples.json').examples.filter(e=>e.id.startsWith('legacy-'));
 
 // Legacy references are preserved for compatibility; disputed cases are marked review in the shared corpus.
 test('continuous dictation preserves 85 existing operation references across 28 examples', () => {
   const now = new Date(2026, 10, 9, 12);
-  for (const [phrase, expected] of cases) {
-    const result = Engine.parse(phrase, now, [], Engine.initialState());
+  for (const {id, text: phrase, legacyExpected} of cases) {
+    const state = Engine.initialState();
+    let expected = legacyExpected;
+    if (id === 'legacy-17') {
+      // This fixture used to expense cash withdrawals. A cash account keeps the cash in the ledger.
+      state.accounts.push({id: 'cash', name: 'Наличные', initial: 0, currency: 'RUB'});
+      expected = expected.replace('5000:Финансовые_операции', '5000:::transfer');
+    }
+    const result = Engine.parse(phrase, now, [], state);
     const entries = expected.split(' ').map(operation => {
       const [rubles, category, day, type] = operation.split(':');
       return [Number(rubles) * 100, category.replaceAll('_', ' ') || undefined, '2026-11-' + (day || '09'), type || 'expense'];
