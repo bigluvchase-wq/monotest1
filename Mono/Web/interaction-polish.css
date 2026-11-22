@@ -27,19 +27,21 @@ html[data-theme] .agenda-day.today.selected{background:var(--soft)!important;bor
 #actionDialog[open]:has(#actionFooter:not([hidden])){display:flex;flex-direction:column;overflow:hidden!important}
 #actionDialog:has(#actionFooter:not([hidden])) .sheet-head{flex:none;margin-bottom:12px}
 #actionDialog:has(#actionFooter:not([hidden])) #actionBody{min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 3px 6px}
+#actionDialog:has(:is(.payment-form,.deposit-form)) #actionBody{scrollbar-width:none}
+#actionDialog:has(:is(.payment-form,.deposit-form)) #actionBody::-webkit-scrollbar{display:none}
 #actionFooter{flex:none;padding-top:10px;border-top:1px solid var(--line)}
 #actionFooter .primary{margin:0;min-height:46px}
 #actionDialog :is(.payment-form,.deposit-form) .field{margin:10px 0}
 #actionDialog :is(.payment-form,.deposit-form) .form-grid{align-items:end}
-/* Keep the typing surface near the top before WebKit scrolls to the caret. */
-html[data-theme] dialog#entryDialog[data-typing]:not(#chartDialog):not(#onboarding):not(#lockDialog){
- top:calc(var(--vv-top,0px) + env(safe-area-inset-top,0px) + clamp(12px,4svh,32px))!important;
- bottom:auto!important;margin:0 auto!important;
- max-height:calc(var(--vv-h,100dvh) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - clamp(12px,4svh,32px) - 12px)!important;
-}
+/* Center the sheet in the actual visible area, including with the keyboard open. */
+#entryDialog{--entry-bottom-inset:env(safe-area-inset-bottom,0px)}
 html[data-theme] dialog#entryDialog[open]:not(#chartDialog):not(#onboarding):not(#lockDialog){
+ top:calc(var(--vv-top,0px) + env(safe-area-inset-top,0px) + 12px)!important;
+ bottom:calc(100dvh - var(--vv-top,0px) - var(--vv-h,100dvh) + var(--entry-bottom-inset) + 12px)!important;
+ max-height:calc(var(--vv-h,100dvh) - env(safe-area-inset-top,0px) - var(--entry-bottom-inset) - 24px)!important;
  display:flex;flex-direction:column;overflow:hidden;
 }
+html.kb #entryDialog[open]{--entry-bottom-inset:0px}
 #entryDialog .entry-content{
  min-height:0;overflow:hidden auto;overscroll-behavior:contain;scroll-padding-block:8px;
 }
@@ -64,17 +66,22 @@ html[data-theme] #entryDialog.closing::backdrop{
  html[data-theme] #entryDialog[open]::backdrop,
  html[data-theme] #entryDialog.has-review :is(#drafts,.review-footer){animation:none!important}
 }
-/* Center both home layouts in viewport coordinates. Keep the controls below the microphone. */
-html[data-design] :is(#home,[data-preview-id=home]){--mic-center-size:clamp(94px,18svh,150px)}
+/* Both layouts share the same anchor. Leave more space below it for reminders. */
+html[data-design] :is(#home,[data-preview-id=home]){
+ --mic-center-size:clamp(94px,18svh,150px);--mic-center-y:calc(50svh + clamp(18px,12svh - 45px,54px));
+}
+html[data-design] :is(#home,[data-preview-id=home]).has-rem{
+ --mic-center-y:calc(50svh + clamp(8px,12svh - 60px,36px));
+}
 html[data-design] :is(#home,[data-preview-id=home]) .voice-zone{
- position:fixed;left:50%;top:50svh;translate:-50% -50%;scale:1!important;
+ position:fixed;left:50%;top:var(--mic-center-y);translate:-50% -50%;scale:1!important;
  width:var(--mic-center-size)!important;height:var(--mic-center-size)!important;margin:0!important;
 }
 html[data-design] :is(#home,[data-preview-id=home]) .voice-zone :is(#mic,[data-preview-id=mic]){
  width:var(--mic-center-size)!important;height:var(--mic-center-size)!important;
 }
 :is(#home,[data-preview-id=home]) .home-lower{
- position:fixed;top:calc(50svh + var(--mic-center-size)/2 + 10px);left:50%;translate:-50% 0;
+ position:fixed;top:calc(var(--mic-center-y) + var(--mic-center-size)/2 + 10px);left:50%;translate:-50% 0;
  width:min(calc(100% - 32px),440px);display:flex;flex-direction:column;align-items:center;
 }
 html[data-design] :is(#home,[data-preview-id=home]) .home-lower .recording-block{
@@ -104,25 +111,30 @@ html[data-design] #entryDialog .sheet-head h2{font-size:clamp(20px,5.6vw,24px)}
  html[data-design] :is(#home,[data-preview-id=home]).home-dash .hd-flow{min-height:59px;padding-block:6px}
  html[data-design] :is(#home,[data-preview-id=home]).home-dash .hd-balance{font-size:24px}
  html[data-design] :is(#home,[data-preview-id=home]).home-dash .hd-flow b{padding-bottom:4px}
+ .home-lower .rem-carousel{padding-bottom:0}
+ .home-lower .rem-dots{margin-bottom:0}
 }
-/* The last row is shared by Settings and Support. */
+@media(max-height:760px){
+ html[data-design] :is(#home,[data-preview-id=home]).has-rem:not(.home-dash) .home-lower .recording-block{
+  display:grid;grid-template-columns:minmax(0,1fr) 44px;column-gap:6px;
+ }
+ :is(#home,[data-preview-id=home]).has-rem:not(.home-dash) .home-lower .account-picker{width:100%}
+ :is(#home,[data-preview-id=home]).has-rem:not(.home-dash) .home-lower .keyboard-entry{grid-area:1/2;margin:0}
+ :is(#home,[data-preview-id=home]).has-rem:not(.home-dash) .home-lower .voice-caption{grid-column:1/-1}
+}
+/* Two columns of tiles and a single wide Support tile. */
 html[data-design] :is(body[data-page=menu],.root-preview[data-page=menu]) :is(#pageBody,[data-preview-id=pageBody]){
  display:flex;flex:1;min-height:0;width:100%;
 }
-html[data-design] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-grid{
- grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(5,minmax(0,1fr))!important;gap:8px!important;
-}
 html[data-design][data-theme] :is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile{
- display:flex;flex-direction:row;justify-content:flex-start;align-items:center;gap:8px;
- padding:6px 10px;min-height:0;border-radius:13px!important;box-shadow:none!important
+ box-shadow:inset 0 1px 0 var(--card-edge),0 3px 9px var(--shadow)!important;
 }
-:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile[data-go=reminders]{grid-column:1/-1}
-:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile .menu-symbol{width:28px;height:28px;border-radius:8px}
-:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile .menu-symbol svg{width:17px;height:17px}
-:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile .menu-copy{min-width:0}
-:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile .menu-copy strong{font-size:clamp(12px,3.65vw,15px);line-height:1.15}
-:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile .menu-copy small{line-height:1.15}
-@media(max-height:680px){:is(body[data-page=menu],.root-preview[data-page=menu]) .menu-tile .menu-copy small{display:none!important}}
+html[data-design] :is(body[data-page=history],.root-preview[data-page=history]) .entry-title{
+ font-size:14px!important;line-height:1.25;
+}
+html[data-design] :is(body[data-page=history],.root-preview[data-page=history]) .entry-meta{
+ font-size:11px!important;line-height:1.3;margin-top:3px;
+}
 /* Let the profile sheet scroll independently of the page above the keyboard. */
 html[data-theme] dialog#actionDialog[open]:has(.profile-edit-form){
  display:flex;flex-direction:column;overflow:hidden;

@@ -4,19 +4,19 @@
  const dialog=document.querySelector('#chartDialog'),panel=document.querySelector('#chartPanel');
  let current=null,running=false,closed=false,closeQueued=false,animations=[],frame=0,closingOrigin=null;
  const categoryWord=n=>n%10===1&&n%100!==11?'категория':n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?'категории':'категорий';
- const duration=680,easing='cubic-bezier(.22,1,.36,1)',closeDuration=460,closeEasing='cubic-bezier(.45,0,.2,1)';
+ const duration=410,easing='cubic-bezier(.22,1,.36,1)',closeDuration=300,closeEasing='cubic-bezier(.45,0,.2,1)';
  function rect(el){const r=el.getBoundingClientRect();return {left:r.left,top:r.top,width:r.width,height:r.height};}
  function cancelAnimations(){cancelAnimationFrame(frame);frame=0;dialog.querySelector('.chart-ring-flight')?.remove();closingOrigin?.remove();closingOrigin=null;animations.forEach(a=>a.cancel());animations=[];running=false;}
  // On Home the real cards remain under the chart, so their typography never needs a clone.
  function homeSurface(closing,dragOffset=0){
   const frames=closing?[{opacity:1},{opacity:0}]:[{opacity:0},{opacity:1}];
   if(dragOffset)panel.style.transform=`translateY(${dragOffset}px)`;
-  const motion=panel.animate(frames,{duration:closing?closeDuration:duration,easing:closing?'ease-in':'ease-out',fill:'both'});
+  const motion=panel.animate(frames,{duration:closing?closeDuration:duration,easing:closing?closeEasing:'ease-out',fill:'both'});
   animations.push(motion);return motion;
  }
  function surfaceAnimation(from,to,closing){const clipFor=(r,off=0,radius=23)=>`inset(${(r.top-off).toFixed(1)}px ${(innerWidth-r.left-r.width).toFixed(1)}px ${(innerHeight-(r.top-off)-r.height).toFixed(1)}px ${r.left.toFixed(1)}px round ${radius}px)`,full=clipFor({left:0,top:0,width:innerWidth,height:innerHeight},0,0);
   const frames=closing?[{translate:`0px ${from.top||0}px`,clipPath:full},{translate:'0px 0px',clipPath:clipFor(to)}]:[{clipPath:clipFor(from)},{clipPath:full}];
-  const a=panel.animate(frames,{duration:closing?closeDuration:duration,easing:closing?closeEasing:easing,fill:'both'});animations.push(a);const content=panel.querySelector('.chart-details-content'),origin=panel.querySelector('.chart-origin');animations.push(content.animate(closing?[{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(12px)'}]:[{opacity:0},{opacity:1}],{duration:closing?180:370,delay:closing?0:160,fill:'both',easing:'ease-out'}));animations.push(origin.animate(closing?[{opacity:0},{opacity:1}]:[{opacity:1},{opacity:0}],{duration:closing?closeDuration*.45:160,delay:closing?closeDuration*.55:0,fill:'both'}));return a;}
+  const a=panel.animate(frames,{duration:closing?closeDuration:duration,easing:closing?closeEasing:easing,fill:'both'});animations.push(a);const content=panel.querySelector('.chart-details-content'),origin=panel.querySelector('.chart-origin');animations.push(content.animate(closing?[{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(12px)'}]:[{opacity:0},{opacity:1}],{duration:closing?120:230,delay:closing?0:85,fill:'both',easing:'ease-out'}));animations.push(origin.animate(closing?[{opacity:0},{opacity:1}]:[{opacity:1},{opacity:0}],{duration:closing?closeDuration*.45:105,delay:closing?closeDuration*.55:0,fill:'both'}));return a;}
  // Unroll the actual ring outlines into the source strip, then bend them back into place.
  function animateRing(opening, source, done){
   const space=panel.querySelector('.chart-morph-space'),ring=space.querySelector('.chart-static-ring');
@@ -152,7 +152,7 @@
   if(scrolled&&!current.fromHome){closingOrigin=origin.cloneNode(true);closingOrigin.classList.add('chart-return-card');dialog.append(closingOrigin);}
   const target=closingOrigin||origin;
   Object.assign(target.style,{left:source.left+'px',top:source.top+'px',width:source.width+'px',height:source.height+'px',opacity:'0'});
-  if(closingOrigin)animations.push(target.animate([{opacity:0},{opacity:1}],{duration:190,delay:240,fill:'both'}));
+  if(closingOrigin)animations.push(target.animate([{opacity:0},{opacity:1}],{duration:closeDuration*.45,delay:closeDuration*.55,fill:'both'}));
   const transition=current.fromHome?homeSurface(true,dragOffset):surfaceAnimation({left:0,top:dragOffset,width:innerWidth,height:innerHeight},source,true);
   if(scrolled||root.MonoChartPeriod?.isMonthly()){
    running=true;transition.finished.then(finish,()=>{});
