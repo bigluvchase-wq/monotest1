@@ -5,12 +5,15 @@ const Period=typeof module==='object'?require('./period'):root.MonoPeriod;
 const normalize=text=>text.toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ').trim();
 const iso=date=>[String(date.getFullYear()).padStart(4,'0'),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
 const shifted=(date,days)=>new Date(date.getFullYear(),date.getMonth(),date.getDate()+days,12);
-function searchDay(text,now=new Date()){
+function searchDay(text,now=new Date(),{future=false}={}){
  const query=normalize(text);
  if(!query)return null;
  try{
   if(/^\d{4}-\d{2}-\d{2}$/.test(query))return Period.validDate(query)?query:null;
-  return Dates.queryDay(query,now);
+  const day=Dates.queryDay(query,now);
+  if(!day||!future||day>=iso(now)||/\d{4}|вчера|сегодня|прошл/u.test(query))return day;
+  const next=String(Number(day.slice(0,4))+1)+day.slice(4);
+  return Period.validDate(next)?next:null;
  }catch{return null;}
 }
 function spokenPeriod(text,now){
@@ -60,5 +63,5 @@ function report(text,state,now=new Date()){
   return {type,period,category};
  }catch(error){return {error:error.message};}
 }
-const api={searchDay,report};root.MonoOperationQuery=api;if(typeof module==='object')module.exports=api;
+const api={searchDay,report,spokenPeriod};root.MonoOperationQuery=api;if(typeof module==='object')module.exports=api;
 })(typeof window==='object'?window:globalThis);
