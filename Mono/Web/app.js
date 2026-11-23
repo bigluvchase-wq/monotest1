@@ -62,7 +62,12 @@ function goBack(){navigate(backDestination(),{historyStep:'back',direction:-1});
 let page='home',operationType='expense',selectedCurrency='RUB',selectedMonth=E.dateString(new Date()).slice(0,7),selectedRange=null,search='',drafts=[],reminderDrafts=[],parseErrors=[],listening=false,holding=false,toastTimer,voiceAccount=state.accounts[0].id;
 const uid=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money=(n,c='RUB')=>new Intl.NumberFormat(state.settings.language==='en'?'en-US':'ru-RU',{style:'currency',currency:c,maximumFractionDigits:n%100?2:0}).format(n/100);
+const moneyFormats=new Map();
+const money=(n,c='RUB')=>{
+ const locale=state.settings.language==='en'?'en-US':'ru-RU',digits=n%100?2:0,key=locale+'|'+c+'|'+digits;
+ if(!moneyFormats.has(key))moneyFormats.set(key,new Intl.NumberFormat(locale,{style:'currency',currency:c,maximumFractionDigits:digits}));
+ return moneyFormats.get(key).format(n/100);
+};
 const account=id=>state.accounts.find(a=>a.id===id);
 const entryCurrency=e=>account(e.account)?.currency||'RUB';
 const currentMonth=()=>E.dateString(new Date()).slice(0,7);
@@ -119,7 +124,25 @@ $('#voiceAccount').onchange=async e=>{const value=e.target.value;if(await window
 const rootPages=['history','home','menu'];
 const reducedMotion=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
 // Копия страницы для анимации перехода: выкидываем то, что ниже экрана — меньше работы телефону
-function trimOffscreen(orig,clone){const sel='.entry-day,.entry,#pageBody>*,.card';const a=orig.querySelectorAll(sel),b=clone.querySelectorAll(sel);if(a.length!==b.length)return;const limit=innerHeight*1.15;const drop=[];for(let i=0;i<a.length;i++){if(a[i].getBoundingClientRect().top>limit)drop.push(b[i]);}drop.forEach(el=>el.remove());}
+function trimOffscreen(orig,clone){
+ const limit=innerHeight*1.15,drop=[];
+ const list=orig.querySelector('#historyList'),copy=clone.querySelector('#historyList');
+ if(list&&copy){
+  // History rows are in vertical order. Locate the visible edge without measuring every row.
+  const rows=list.querySelectorAll('.entry-day,.entry'),copies=copy.querySelectorAll('.entry-day,.entry');
+  let first=0,last=rows.length;
+  while(first<last){
+   const middle=(first+last)>>>1;
+   if(rows[middle].getBoundingClientRect().top>limit)last=middle;else first=middle+1;
+  }
+  for(let i=first;i<copies.length;i++)drop.push(copies[i]);
+ }
+ const selector=':is(.entry-day,.entry,#pageBody>*,.card):not(#historyList *)';
+ const live=orig.querySelectorAll(selector),copies=clone.querySelectorAll(selector);
+ if(live.length!==copies.length)return;
+ for(let i=0;i<live.length;i++){if(live[i].getBoundingClientRect().top>limit)drop.push(copies[i]);}
+ drop.forEach(el=>el.remove());
+}
 function navigate(p,options={}){
  window.MonoReminderMotion?.cancel();
  document.documentElement.classList.remove('reminder-opening');
@@ -229,25 +252,40 @@ function showLimitAlert(){
 }
 $('#limitDialog .limit-alert-ok').onclick=()=>{$('#limitDialog').close();setTimeout(showLimitAlert,320);};
 function entryHTML(e,showDate=true){const a=account(e.account),saving=e.type==='saving',transfer=e.type==='transfer',over=e.type==='expense'&&overLimitIds().has(e.id);return `<div class="entry${over?' over-limit':''}" data-entry-id="${esc(e.id)}"><button type="button" class="entry-open" data-entry-open="${esc(e.id)}" aria-label="Подробнее об операции ${esc(e.title)}"><span class="entry-icon">${saving?MonoGoalIcons.svg(state.goals.find(g=>g.id===e.goalId)?.icon):transfer?'<svg viewBox="0 0 24 24"><path d="M5 7h14m-4-4 4 4-4 4M19 17H5m4-4-4 4 4 4"/></svg>':MonoCategoryIcons.category(e.category,e.type)}</span><span class="entry-text"><span class="entry-title">${esc(e.title)}</span><span class="entry-meta">${esc(saving?'Накопления':transfer?'Перевод':e.category)} · ${esc(a?.name)}${transfer?' → '+esc(account(e.toAccount)?.name):''}${showDate?' · '+esc(e.date.split('-').reverse().join('.')):''}</span>${over?'<span class="limit-flag">Достигнут лимит</span>':''}</span><span class="entry-amount ${e.type==='income'?'positive':''}">${e.type==='income'?'+':'−'}${money(e.amount,a.currency)}${transfer&&account(e.toAccount)?.currency!==a.currency?`<br><small>+${money(e.toAmount,account(e.toAccount).currency)}</small>`:''}</span></button><button class="delete-entry" data-delete="${esc(e.id)}" aria-label="Удалить операцию ${esc(e.title)}">×</button></div>`;}
-function categoryValues(items,type){const cats=type==='expense'?state.categories:state.incomeCategories;return cats.map(c=>({name:c,n:items.filter(e=>e.type===type&&e.category===c).reduce((n,e)=>n+e.amount,0)})).filter(v=>v.n>0).sort((a,b)=>b.n-a.n);}
+function categoryValues(items,type){
+ const categories=type==='expense'?state.categories:state.incomeCategories,totals=new Map();
+ for(const e of items){if(e.type===type)totals.set(e.category,(totals.get(e.category)||0)+e.amount);}
+ return categories.map(name=>({name,n:totals.get(name)||0})).filter(v=>v.n>0).sort((a,b)=>b.n-a.n);
+}
 function miniBar(items,type){const values=categoryValues(items,type),total=values.reduce((n,v)=>n+v.n,0);return `<span class="mini-chart" aria-hidden="true">${total?values.map((v,i)=>`<i style="width:${v.n/total*100}%;background:${palette[i%palette.length]}"></i>`).join(''):'<i class="mini-empty"></i>'}</span>`;}
 function ringChart(items,type){const values=categoryValues(items,type),total=values.reduce((s,v)=>s+v.n,0);let cursor=0;return `<div class="expanded-chart"><svg class="animated-ring" viewBox="0 0 180 180" role="img" aria-label="${type==='income'?'Доходы':'Расходы'} по категориям"><circle class="ring-track" cx="90" cy="90" r="70"/>${values.map((v,i)=>{const width=v.n/total*100,start=cursor;cursor+=width;return `<circle class="ring-segment" cx="90" cy="90" r="70" pathLength="100" stroke="${palette[i%palette.length]}" stroke-dasharray="${width} ${100-width}" stroke-dashoffset="${-start}" style="--segment-delay:${i*45}ms"/>`;}).join('')}<text x="90" y="88" class="ring-center">${values.length}</text><text x="90" y="107" class="ring-subtitle">категорий</text></svg><div class="legend">${values.map((v,i)=>`<div class="legend-row"><i class="legend-dot" style="background:${palette[i%palette.length]}"></i><span>${esc(v.name)}</span><b>${(v.n/total*100).toFixed(1).replace('.',',')}%</b></div>`).join('')||'<p class="muted">Пока нет операций</p>'}</div></div>`;}
 // У даты показываем только расходы за весь день, независимо от строки поиска.
-function daySumHTML(rows){
- const currency=rows.length?entryCurrency(rows[0]):selectedCurrency,date=rows[0]?.date;
- const out=state.entries.filter(e=>e.type==='expense'&&e.date===date&&entryCurrency(e)===currency).reduce((n,e)=>n+e.amount,0);
- return `<button type="button" class="day-sum" data-day-expense="${esc(date)}" aria-label="Расходы за день: ${esc(money(out,currency))}. Нажмите для пояснения">${money(out,currency)}</button>`;
+function daySumHTML(rows,totals){
+ const currency=entryCurrency(rows[0]),date=rows[0].date,key=date+'|'+currency;
+ const sum=money(totals.get(key)||0,currency);
+ return `<button type="button" class="day-sum" data-day-expense="${esc(date)}" aria-label="Расходы за день: ${esc(sum)}. Нажмите для пояснения">${sum}</button>`;
 }
-function groupedEntriesHTML(entries){
- const groups=new Map();
+function groupedEntriesHTML(entries,{limit=Infinity}={}){
+ const groups=new Map(),totals=new Map();
  for(const entry of entries){
   if(!groups.has(entry.date))groups.set(entry.date,[]);
   groups.get(entry.date).push(entry);
  }
+ if(!groups.size)return '';
+ for(const entry of state.entries){
+  if(entry.type!=='expense'||!groups.has(entry.date))continue;
+  const key=entry.date+'|'+entryCurrency(entry);
+  totals.set(key,(totals.get(key)||0)+entry.amount);
+ }
  const formatter=new Intl.DateTimeFormat(state.settings.language==='en'?'en-US':'ru-RU',{day:'numeric',month:'long',year:'numeric'});
- return [...groups].sort(([a],[b])=>b.localeCompare(a)).map(([date,rows])=>
-  `<section class="entry-day"><h3><time datetime="${esc(date)}">${esc(formatter.format(new Date(date+'T12:00:00')))}</time>${daySumHTML(rows)}</h3>${rows.map((e,i)=>[e,i]).sort((a,b)=>String(b[0].createdAt||'').localeCompare(String(a[0].createdAt||''))||b[1]-a[1]).map(([e])=>entryHTML(e,false)).join('')}</section>`
- ).join('');
+ const sections=[];
+ for(const [date,rows] of [...groups].sort(([a],[b])=>b.localeCompare(a))){
+  if(limit<=0)break;
+  const visible=rows.map((e,i)=>[e,i]).sort((a,b)=>String(b[0].createdAt||'').localeCompare(String(a[0].createdAt||''))||b[1]-a[1]).slice(0,limit);
+  sections.push(`<section class="entry-day"><h3><time datetime="${esc(date)}">${esc(formatter.format(new Date(date+'T12:00:00')))}</time>${daySumHTML(rows,totals)}</h3>${visible.map(([e])=>entryHTML(e,false)).join('')}</section>`);
+  limit-=visible.length;
+ }
+ return sections.join('');
 }
 function searchedOperations(){
  const day=MonoOperationQuery.searchDay(search);
@@ -255,9 +293,9 @@ function searchedOperations(){
  const query=search.toLowerCase().replace(/ё/g,'е').trim();
  return entries.filter(e=>['income','expense','transfer'].includes(e.type)&&(day||(e.title+' '+(e.category||'')).toLowerCase().replace(/ё/g,'е').includes(query))).sort((a,b)=>b.date.localeCompare(a.date));
 }
-function renderOperations(){
+function renderOperations({preview=false}={}){
  const tabs=currencyTabs(),all=selectedEntries(),items=all.filter(inChart),income=sum(items,'income'),expense=sum(items,'expense'),filtered=searchedOperations();
- return `<div class="ops-head"><div class="balance-top"><span class="total-label">На счетах</span><div class="operations-total">${money(E.totals(state,selectedCurrency).available,selectedCurrency)}</div></div></div><div class="ops-selectors">${window.MonoTogether?.modeHTML?.()||''}${tabs}</div><div class="summary-pair" id="operationCards">${[['expense','Расходы',expense],['income','Доходы',income]].map(([type,label,value])=>`<button class="operation-card " data-operation="${type}" aria-expanded="false" aria-controls="chartDialog"><strong class="${type==='income'?'positive':''}">${money(value,selectedCurrency)}</strong><span>${label}</span>${miniBar(items,type)}</button>`).join('')}</div><div class="operations-tools"><label class="month-control"><span class="month-label" aria-hidden="true">${esc(selectedRange?periodLabel():new Date(selectedMonth+'-01T12:00:00').toLocaleDateString(state.settings.language==='en'?'en-US':'ru-RU',{month:'long',year:'numeric'}).replace(/ г\.$/,''))}</span><input type="month" id="monthFilter" value="${selectedMonth}" min="${periodBounds().min}" max="${periodBounds().max}" aria-label="Месяц"></label><button class="record-button" data-add>+ Записать</button></div><div class="filter-row compact-search"><input type="search" id="search" value="${esc(search)}" placeholder="Найти операцию" aria-label="Поиск операций"></div><div id="historyList">${filtered.length?groupedEntriesHTML(filtered):empty('Пока нет операций','Начните с кнопки «+ Записать»',false)}</div>`;
+ return `<div class="ops-head"><div class="balance-top"><span class="total-label">На счетах</span><div class="operations-total">${money(E.totals(state,selectedCurrency).available,selectedCurrency)}</div></div></div><div class="ops-selectors">${window.MonoTogether?.modeHTML?.()||''}${tabs}</div><div class="summary-pair" id="operationCards">${[['expense','Расходы',expense],['income','Доходы',income]].map(([type,label,value])=>`<button class="operation-card " data-operation="${type}" aria-expanded="false" aria-controls="chartDialog"><strong class="${type==='income'?'positive':''}">${money(value,selectedCurrency)}</strong><span>${label}</span>${miniBar(items,type)}</button>`).join('')}</div><div class="operations-tools"><label class="month-control"><span class="month-label" aria-hidden="true">${esc(selectedRange?periodLabel():new Date(selectedMonth+'-01T12:00:00').toLocaleDateString(state.settings.language==='en'?'en-US':'ru-RU',{month:'long',year:'numeric'}).replace(/ г\.$/,''))}</span><input type="month" id="monthFilter" value="${selectedMonth}" min="${periodBounds().min}" max="${periodBounds().max}" aria-label="Месяц"></label><button class="record-button" data-add>+ Записать</button></div><div class="filter-row compact-search"><input type="search" id="search" value="${esc(search)}" placeholder="Найти операцию" aria-label="Поиск операций"></div><div id="historyList">${filtered.length?groupedEntriesHTML(filtered,{limit:preview?Math.max(16,Math.ceil(innerHeight/42)):Infinity}):empty('Пока нет операций','Начните с кнопки «+ Записать»',false)}</div>`;
 }
 
 function renderAccounts(){return `<div class="action-row"><button class="secondary" data-action="account">+ Добавить счёт</button><button class="secondary" data-action="transfer" ${state.accounts.length<2?'disabled':''}>Перевести между своими</button></div><p class="muted"></p>${[...new Set(state.accounts.map(a=>a.currency))].map(c=>{const totals=E.totals(state,c);return `<div class="section-row"><h2>${c}</h2><span class="muted">На счетах ${money(totals.available,c)}</span></div><div class="account-stack" data-account-stack="${esc(c)}">${state.accounts.filter(a=>a.currency===c).map(a=>`<div class="card" data-stack-card="${esc(a.id)}"><div class="category-head"><button type="button" class="account-stack-select" data-account-select="${esc(a.id)}" aria-pressed="false"><span class="account-stack-name">${esc(a.name)}</span><span class="account-stack-amount">${money(E.balance(state,a.id),c)}</span></button><button class="small-link" data-edit-account="${esc(a.id)}">Изменить</button></div><div class="account-balance">${money(E.balance(state,a.id),c)}</div></div>`).join('')}</div><p class="tiny muted">В целях отдельно: ${money(totals.saved,c)}</p>`;}).join('')}<div class="section-row"><h2>Переводы</h2></div>${state.entries.filter(e=>e.type==='transfer').slice().reverse().map(e=>entryHTML(e)).join('')||'<p class="muted">Переводов пока нет.</p>'}`;}
@@ -539,8 +577,8 @@ function draftAmount(draft){
  const sign=draft.type==='expense'?'−':draft.type==='income'?'+':'';
  return sign+money(draft.installmentTotal??draft.amount,currency);
 }
-function draftSummary(title,amount){
- return `<summary class="draft-summary"><strong data-summary-title>${esc(title)}</strong><b data-summary-amount>${esc(amount)}</b><span class="draft-edit-label">Изменить</span><span class="draft-done-label">Готово</span></summary>`;
+function draftSummary(title,amount,category=''){
+ return `<summary class="draft-summary"><span class="draft-description"><strong data-summary-title>${esc(title)}</strong>${category?`<small data-summary-category title="${esc(category)}">${esc(category)}</small>`:''}</span><b data-summary-amount>${esc(amount)}</b><span class="draft-edit-label">Изменить</span><span class="draft-done-label">Готово</span></summary>`;
 }
 function reminderDraftHTML(r,i,open){
  return `<details class="draft review-draft" data-reminder-index="${i}" ${open?'open':''}>${draftSummary(r.title,r.time||'Напоминание')}<div class="draft-editor"><div class="draft-editor-content"><div class="draft-bottom"><label>Название<input data-reminder-field="title" required maxlength="120" value="${esc(r.title||'')}"></label><label>Описание<input data-reminder-field="text" maxlength="1000" value="${esc(r.text||'')}"></label><label>Дата<input data-reminder-field="date" type="date" required value="${esc(r.date||'')}"></label><label>Время<input data-reminder-field="time" type="time" required value="${esc(r.time||'')}"></label><label>Повтор<select data-reminder-field="repeat">${Object.entries(MonoSchedule.label).map(([value,label])=>`<option value="${value}" ${r.repeat===value?'selected':''}>${label}</option>`).join('')}</select></label></div><div class="draft-actions"><span class="muted tiny">Проверьте дату и время напоминания</span><button type="button" data-remove-reminder="${i}">Убрать</button></div></div></div></details>`;
@@ -565,7 +603,7 @@ function renderDrafts(){
  $('#drafts').innerHTML=drafts.map((e,i)=>{const a=account(e.account)||account(voiceAccount),transfer=e.type==='transfer',saving=e.type==='saving',installment=e.installmentTotal!==undefined;
  if(e.depositTopUp)return depositDraftHTML(e,i,openDrafts.has(i));
  const plan=installment&&e.installmentTotal>=4&&e.date?E.installmentPlan(e.installmentTotal,e.date):[];
- return `<details class="draft review-draft" data-index="${i}" ${openDrafts.has(i)?'open':''}>${draftSummary(e.title,draftAmount(e))}<div class="draft-editor"><div class="draft-editor-content"><div class="draft-top"><label>Название<input data-field="title" required maxlength="300" value="${esc(e.title)}"></label><label>${installment?'Полная сумма':'Сумма'}, ${a.currency}<input data-field="${installment?'installmentTotal':'amount'}" type="number" min="${installment?'0.04':'0.01'}" max="10000000000" step="0.01" required value="${(e.installmentTotal??e.amount)/100}"></label></div><div class="draft-bottom"><label>Тип<select data-field="type" ${installment||transfer?'disabled':''}><option value="expense" ${e.type==='expense'?'selected':''}>Расход</option><option value="income" ${e.type==='income'?'selected':''}>Доход</option><option value="saving" ${saving?'selected':''} >Накопления</option>${transfer?`<option value="transfer" selected>${e.title==='Снятие наличных'?'Снятие наличных':'Перевод между своими'}</option>`:''}</select></label><label>${transfer?'С какого счёта':'Счёт'}<select data-field="account" required>${transfer?'<option value="">Выберите счёт</option>':''}${accountOptions(e.account,saving?state.goals.find(g=>g.id===e.goalId)?.currency??null:null)}</select></label>${transfer?transferDraftFields(e):saving?`<label>Цель<select data-field="goalId"><option value="" ${!e.goalId?'selected':''}>Накопления без цели</option>${state.goals.filter(g=>g.currency===a.currency).map(g=>`<option value="${esc(g.id)}" ${g.id===e.goalId?'selected':''}>${esc(g.name)}</option>`).join('')}</select></label>`:`<label>Категория<select data-field="category">${categoryOptions(e.type,e.category)}</select></label>`}<label>Дата<input data-field="date" type="date" required value="${e.date}"></label></div>${installment?`<div class="draft-installments"><strong>Долями · 4 платежа</strong><ol data-installment-plan>${installmentRows(plan,a.currency)}</ol></div>`:''}<div class="draft-actions"><span class="muted tiny">${saving?'Со счёта в цель · не расход':'Проверьте сумму, категорию и счёт'}</span><button data-remove="${i}">Убрать</button></div></div></div></details>`;}).join('');
+ return `<details class="draft review-draft" data-index="${i}" ${openDrafts.has(i)?'open':''}>${draftSummary(e.title,draftAmount(e),e.category)}<div class="draft-editor"><div class="draft-editor-content"><div class="draft-top"><label>Название<input data-field="title" required maxlength="300" value="${esc(e.title)}"></label><label>${installment?'Полная сумма':'Сумма'}, ${a.currency}<input data-field="${installment?'installmentTotal':'amount'}" type="number" min="${installment?'0.04':'0.01'}" max="10000000000" step="0.01" required value="${(e.installmentTotal??e.amount)/100}"></label></div><div class="draft-bottom"><label>Тип<select data-field="type" ${installment||transfer?'disabled':''}><option value="expense" ${e.type==='expense'?'selected':''}>Расход</option><option value="income" ${e.type==='income'?'selected':''}>Доход</option><option value="saving" ${saving?'selected':''} >Накопления</option>${transfer?`<option value="transfer" selected>${e.title==='Снятие наличных'?'Снятие наличных':'Перевод между своими'}</option>`:''}</select></label><label>${transfer?'С какого счёта':'Счёт'}<select data-field="account" required>${transfer?'<option value="">Выберите счёт</option>':''}${accountOptions(e.account,saving?state.goals.find(g=>g.id===e.goalId)?.currency??null:null)}</select></label>${transfer?transferDraftFields(e):saving?`<label>Цель<select data-field="goalId"><option value="" ${!e.goalId?'selected':''}>Накопления без цели</option>${state.goals.filter(g=>g.currency===a.currency).map(g=>`<option value="${esc(g.id)}" ${g.id===e.goalId?'selected':''}>${esc(g.name)}</option>`).join('')}</select></label>`:`<label>Категория<select data-field="category">${categoryOptions(e.type,e.category)}</select></label>`}<label>Дата<input data-field="date" type="date" required value="${e.date}"></label></div>${installment?`<div class="draft-installments"><strong>Долями · 4 платежа</strong><ol data-installment-plan>${installmentRows(plan,a.currency)}</ol></div>`:''}<div class="draft-actions"><span class="muted tiny">${saving?'Со счёта в цель · не расход':'Проверьте сумму, категорию и счёт'}</span><button data-remove="${i}">Убрать</button></div></div></div></details>`;}).join('');
  $('#voicePlan').innerHTML=voicePlanHTML();
  $('#drafts').insertAdjacentHTML('beforeend',reminderDrafts.map((reminder,i)=>reminderDraftHTML(reminder,i,openReminders.has(i))).join(''));
  const count=drafts.length+reminderDrafts.length;
@@ -598,6 +636,10 @@ $('#drafts').oninput=e=>{const reminderField=e.target.dataset.reminderField;if(r
  const summary=e.target.closest('.review-draft').querySelector('summary');
  summary.querySelector('[data-summary-title]').textContent=draft.title;
  summary.querySelector('[data-summary-amount]').textContent=draftAmount(draft);
+ if(field==='category'){
+  const category=summary.querySelector('[data-summary-category]');
+  if(category)category.textContent=category.title=draft.category;
+ }
  if(draft.installmentTotal!==undefined&&['installmentTotal','date'].includes(field)){
   const plan=e.target.validity.valid&&draft.installmentTotal>=4&&draft.date?E.installmentPlan(draft.installmentTotal,draft.date):[];
   e.target.closest('.draft').querySelector('[data-installment-plan]').innerHTML=installmentRows(plan,account(draft.account).currency);

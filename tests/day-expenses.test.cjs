@@ -4,11 +4,11 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const source=fs.readFileSync(require.resolve('../Mono/Web/app.js'),'utf8');
 const start=source.indexOf('function daySumHTML(');
-const end=source.indexOf('\nfunction groupedEntriesHTML',start);
+const end=source.indexOf('\nfunction searchedOperations',start);
 function render(entries,visible){
- const context={state:{entries},selectedCurrency:'RUB',entryCurrency:e=>e.currency||'RUB',esc:String,money:(amount,currency)=>`${amount/100} ${currency}`};
+ const context={state:{entries,settings:{language:'ru'}},entryCurrency:e=>e.currency||'RUB',entryHTML:()=>'',esc:String,money:(amount,currency)=>`${amount/100} ${currency}`};
  vm.createContext(context);vm.runInContext(source.slice(start,end),context);
- return context.daySumHTML(visible);
+ return context.groupedEntriesHTML(visible);
 }
 const expense=(date,amount,currency='RUB')=>({date,amount,currency,type:'expense'});
 test('day total includes all expenses for the date when search shows only one entry',()=>{

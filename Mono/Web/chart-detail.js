@@ -132,17 +132,28 @@
   if(dialog.open||running)return;
   const homeFilters=homeCurrency?{selectedCurrency,selectedMonth,selectedRange}:null;
   if(homeFilters){selectedCurrency=homeCurrency;selectedMonth=currentMonth();selectedRange=null;}
-  const items=selectedEntries().filter(inChart),values=categoryValues(items,type),total=sum(items,type),source=rect(button),bar=rect(button.querySelector('.mini-chart'));
+  const items=selectedEntries().filter(inChart),values=categoryValues(items,type),total=sum(items,type),source=rect(button);
   const rows=items.filter(e=>e.type===type).slice().sort((a,b)=>b.date.localeCompare(a.date));
   current={type,values,rows,total,category:null,closing:false,button,homeFilters};closed=false;closeQueued=false;
   panel.innerHTML=`<div class="chart-origin summary-pair" aria-hidden="true" style="left:${source.left}px;top:${source.top}px;width:${source.width}px;height:${source.height}px"><div class="operation-card">${homeFilters?'':button.innerHTML}</div></div>`+`<div class="chart-details-content chart-static-view chart-animated-view"><div class="chart-details-head"><h1 id="chartDetailsTitle">${current.type==='income'?'Доходы':'Расходы'}</h1><button class="chart-close icon-btn" aria-label="Закрыть подробности">×</button></div><div class="chart-summary"><div class="chart-totals"><div class="chart-details-total ${current.type==='income'?'positive':''}">${money(total,selectedCurrency)}</div><div class="monthly-total chart-details-total ${current.type==='income'?'positive':''}" aria-live="polite" inert></div></div><div class="chart-period-actions"><button class="chart-period-button" aria-label="Выбрать период: ${esc(periodLabel())}" aria-haspopup="dialog">${esc(periodLabel(true))}<span aria-hidden="true">⌄</span></button><div class="chart-seg" role="group" aria-label="Вид графика"><button type="button" data-chart-view="ring" aria-pressed="true">Структура</button><button type="button" data-monthly-chart="${type}" aria-pressed="false" aria-controls="monthlyChart">Динамика</button></div></div></div><div class="chart-visual"><div class="chart-ring-stage"><button class="chart-side-arrow" data-chart-month="-1" aria-label="Предыдущий месяц">‹</button><div class="chart-morph-space">${MonoChartRing.render(values,palette,current.type)}<div class="chart-ring-label"><strong>${money(total,selectedCurrency)}</strong><span>Всего</span></div></div><button class="chart-side-arrow" data-chart-month="1" aria-label="Следующий месяц">›</button></div><section class="monthly-chart" id="monthlyChart" aria-label="График за выбранный период" inert><label class="monthly-category">Категория<select data-graph-category aria-label="Категория графика"></select></label><p class="monthly-month muted" aria-live="polite"></p><div class="monthly-scroll"><div class="monthly-bars" aria-label="Столбики графика"></div></div></section></div><ul class="chart-colour-legend" aria-label="Категории">${categoryLegend(values,total)}</ul><div class="chart-category-list">${categoryList(values,total)}</div><div class="chart-category-filter" hidden><strong></strong><button type="button" class="secondary" data-chart-all>Все категории</button></div><div class="chart-ops-head"><h2>Операции</h2></div><div class="chart-transaction-list"></div></div>`;
-  panel.style.cssText='';panel.scrollTop=0;dialog.showModal();document.body.classList.add('chart-detail-open');button.setAttribute('aria-expanded','true');
+  panel.style.cssText='';panel.scrollTop=0;dialog.toggleAttribute('data-home-chart',!!homeFilters);dialog.showModal();document.body.classList.add('chart-detail-open');button.setAttribute('aria-expanded','true');
   panel.querySelector('.chart-close').onclick=close;
   // Removing an operation is handled by the existing guarded deletion flow after closing.
   showTransactions();
-  const space=rect(panel.querySelector('.chart-morph-space')),circle=circleAt(space);
+  const session=current;
   if(homeFilters||reducedMotion())panel.querySelector('.chart-origin').style.opacity='0';
   if(reducedMotion()){showRing();return;}
+  if(homeFilters){
+   // Keep the chart in its final layout and reveal the opaque panel from the card.
+   showRing();running=true;
+   surfaceAnimation(source,null,false).finished.then(()=>{
+    if(current!==session)return;
+    cancelAnimations();
+    if(closeQueued){closeQueued=false;close();}
+   },()=>{});
+   return;
+  }
+  const bar=rect(button.querySelector('.mini-chart')),space=rect(panel.querySelector('.chart-morph-space')),circle=circleAt(space);
   const labelLayer=document.createElementNS(NS,'svg');labelLayer.classList.add('chart-morph-labels');labelLayer.setAttribute('viewBox',`0 0 ${MonoChartRing.size} ${MonoChartRing.size}`);labelLayer.setAttribute('aria-hidden','true');labelLayer.style.cssText=`left:${space.left}px;top:${space.top}px;width:${space.width}px;height:${space.height}px;opacity:0`;const staticRing=panel.querySelector('.chart-static-ring');for(const group of staticRing.querySelectorAll('.chart-ring-icons,.chart-ring-percentages'))labelLayer.append(group.cloneNode(true));dialog.append(labelLayer);current.labels=labelLayer;
   surfaceAnimation(source,null,false);
   animatePaths(values,bar,circle,true,()=>{if(!current)return;cancelAnimations();panel.querySelector('.chart-origin').style.opacity='0';showRing();if(closeQueued){closeQueued=false;close();}});
@@ -151,20 +162,21 @@
   if(!current||!dialog.open||current.closing)return;root.MonoMonthMotion?.cancel();if(running){if(!current.closing)closeQueued=true;return;}
   const button=sourceButton();
   if(!button){finish();return;}
-  const fromHome=!!current.homeFilters,scrolled=panel.scrollTop>1;
+  const fromHome=!!current.homeFilters;
   if(!fromHome)panel.scrollTop=0;
-  const source=rect(button),bar=rect(button.querySelector('.mini-chart')),circle=circleAt(rect(panel.querySelector('.chart-morph-space'))),values=current.values;
-  const dragOffset=Number(options.dragOffset)||0;panel.style.transform='';
+  const source=rect(button),dragOffset=Number(options.dragOffset)||0;
+  panel.style.transform='';
   if(reducedMotion()){finish();return;}
   current.closing=true;
   const closeSurface=()=>surfaceAnimation({top:dragOffset},source,true);
-  if(fromHome&&(scrolled||root.MonoChartPeriod?.isMonthly())){
-   closeSurface().finished.then(finish,()=>{});
+  if(fromHome){
+   const session=current;
+   closeSurface().finished.then(()=>{if(current===session)finish();},()=>{});
    return;
   }
-  const space=panel.querySelector('.chart-morph-space');
-  if(fromHome)animations.push(space.querySelector('.chart-static-ring').animate([{opacity:1},{opacity:0}],{duration:85,fill:'forwards'}));
-  else space.classList.remove('ring-ready');
+  const bar=rect(button.querySelector('.mini-chart')),space=panel.querySelector('.chart-morph-space');
+  const circle=circleAt(rect(space)),values=current.values;
+  space.classList.remove('ring-ready');
   const origin=panel.querySelector('.chart-origin');origin.style.left=source.left+'px';origin.style.top=source.top+'px';origin.style.width=source.width+'px';origin.style.height=source.height+'px';origin.style.opacity='0';
   const transition=closeSurface();
   if(root.MonoChartPeriod?.isMonthly()){
@@ -179,6 +191,7 @@
   if(filters){selectedCurrency=filters.selectedCurrency;selectedMonth=filters.selectedMonth;selectedRange=filters.selectedRange;}
   cancelAnimations();dialog.querySelectorAll('.chart-morph-layer').forEach(el=>el.remove());
   if(dialog.open)dialog.close();
+  dialog.removeAttribute('data-home-chart');
   document.body.classList.remove('chart-detail-open');
   button?.setAttribute('aria-expanded','false');
   if(root.MonoFocus?.isKeyboard())button?.focus({preventScroll:true});else button?.blur();
@@ -188,11 +201,12 @@
  dialog.addEventListener('close',()=>{if(current)finish();});
  window.addEventListener('pagehide',()=>{if(current)finish();});
  // Keep a static ring attached to the scrollable page after rotation or viewport resizing.
- window.addEventListener('resize',()=>{if(!current)return;if(running){if(current.closing){finish();return;}cancelAnimations();panel.querySelector('.chart-origin').style.opacity='0';showRing();if(closeQueued){closeQueued=false;close();}}});
+ window.addEventListener('resize',()=>{if(!current)return;if(current.closing){finish();return;}if(running){cancelAnimations();panel.querySelector('.chart-origin').style.opacity='0';showRing();if(closeQueued){closeQueued=false;close();}}});
  function refresh(){
   if(!current||!dialog.open||current.closing)return;
   const items=selectedEntries().filter(inChart),values=categoryValues(items,current.type),total=sum(items,current.type);
   const rows=items.filter(e=>e.type===current.type).sort((a,b)=>b.date.localeCompare(a.date));
+  const queued=running&&closeQueued;
   if(running){cancelAnimations();panel.querySelector('.chart-origin').style.opacity='0';}
   Object.assign(current,{values,rows,total});
   if(!values.some(v=>v.name===current.category))current.category=null;
@@ -203,6 +217,7 @@
   panel.querySelector('.chart-category-list').innerHTML=categoryList(values,total);
   panel.querySelector('.chart-static-ring').outerHTML=MonoChartRing.render(values,palette,current.type);
   showRing();showTransactions();root.MonoChartPeriod?.refreshMonthly();
+  if(queued){closeQueued=false;close();}
  }
  panel.addEventListener('click',event=>{
   if(!current||running||root.MonoMonthMotion?.isBusy()||root.MonoChartPeriod?.isMonthly())return;
