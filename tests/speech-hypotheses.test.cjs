@@ -42,3 +42,17 @@ test('recognition repairs the repeated decimal amount without dropping intention
  assert.equal(separate.update('Кофе 300',2,3),'Кофе 300 Кофе 300');
  assert.equal(V.createTranscript().update('Кофе 300. Кофе 300',0,3),'Кофе 300. Кофе 300');
 });
+
+test('a replay with rewritten amounts keeps one copy and preserves unrelated operations',()=>{
+ const first='Кофе 300 и продукты 1999',second='Кофе 300 и продукты тыща 999';
+ const transcript=V.createTranscript();
+ transcript.update(first,0,4);
+ assert.equal(transcript.update(first+' '+second,0,8),second);
+ assert.equal(V.repairReplay(first+' '+second+' и такси 650'),second+' и такси 650');
+ assert.equal(V.repairReplay(first+' и еще '+second),first+' и еще '+second);
+ assert.equal(V.repairReplay(first+'. '+second),first+'. '+second);
+ assert.equal(V.repairReplay(first+' Кофе 300 и продукты 2000'),first+' Кофе 300 и продукты 2000');
+ const separate=V.createTranscript();
+ separate.update(first,0,4);
+ assert.equal(separate.update(second,4.3,8),second);
+});
