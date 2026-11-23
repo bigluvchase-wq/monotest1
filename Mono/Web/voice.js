@@ -24,6 +24,15 @@ function joinSpeech(parts){
  }
  return words.join(' ');
 }
+const Engine=typeof module==='object'?require('./engine'):root.MonoEngine;
+function moneySignature(text){
+ const {text:normalized,amounts}=Engine.voiceAmounts(text);
+ let result='',cursor=0;
+ for(const {amount,start,end} of amounts){
+  result+=normalized.slice(cursor,start)+' #'+amount+' ';cursor=end;
+ }
+ return {key:(result+normalized.slice(cursor)).toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}#]+/gu,' ').trim().split(' '),count:amounts.length};
+}
 // A recognizer can restart the same hypothesis after emitting an unfinished word.
 function repairReplay(text,{short=false}={}){
  const words=String(text).trim().split(/\s+/);
@@ -43,7 +52,15 @@ function repairReplay(text,{short=false}={}){
   }
  }
 
- for(let restart=5;restart<=Math.floor((words.length+1)/2);restart++){
+ for(let restart=5;restart<=words.length-4;restart++){
+  const boundary=words[restart-1];
+  if(keys[restart]!==keys[0]||/[.!?;,:]$/u.test(boundary)||/^(?:и|а|потом|затем|снова|еще|плюс|также)$/u.test(keys[restart-1]))continue;
+  // The recognizer can repeat the same amount in a different notation: “1999” / “тыща 999”.
+  const earlier=moneySignature(words.slice(0,restart).join(' '));
+  if(earlier.count>=2){
+   const later=moneySignature(words.slice(restart).join(' '));
+   if(earlier.key.every((token,index)=>token===later.key[index]))return words.slice(restart).join(' ');
+  }
   const first=keys.slice(0,restart),next=keys.slice(restart,restart*2);
   // Require the same amount and sentence prefix. A conjunction is an explicit boundary.
   if(!first.slice(0,-1).some(key=>/\d|тысяч/u.test(key))||!first.slice(0,-1).every((key,i)=>key===next[i]))continue;
