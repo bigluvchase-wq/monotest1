@@ -30,8 +30,11 @@ const {chromium}=require(process.env.MONO_PLAYWRIGHT_MODULE||'playwright'),expre
  await p.locator('[data-index]>summary').waitFor();
  assert.equal(await p.locator('[data-index] [data-field=title]').isVisible(),false);
  assert.match(await p.locator('[data-index]>summary').innerText(),/Кофе[\s\S]*250[\s\S]*Изменить/);
+ assert.equal(await p.locator('[data-summary-category]').innerText(),'Кафе');
  await p.locator('[data-index]>summary').click();
  await p.locator('[data-field=amount]').fill('270');
+ await p.locator('[data-field=category]').selectOption('Продукты');
+ assert.equal(await p.locator('[data-summary-category]').innerText(),'Продукты');
  assert.match(await p.locator('[data-index]>summary').innerText(),/270/);
  await p.locator('[data-index]>summary').click();
  await p.waitForFunction(()=>!document.querySelector('details[data-index]').open);
@@ -87,6 +90,7 @@ const {chromium}=require(process.env.MONO_PLAYWRIGHT_MODULE||'playwright'),expre
    frames:panel.getAnimations().flatMap(animation=>animation.effect.getKeyframes())
   }));
   assert.equal(reveal.opacity,'1','the chart surface must stay opaque during the reveal');
+  assert.equal(await p.locator('#chartDialog').evaluate(el=>getComputedStyle(el).transform),'none');
   assert(reveal.frames.some(frame=>frame.clipPath?.startsWith('inset(')));
   assert(reveal.frames.every(frame=>frame.opacity===undefined));
   await p.waitForFunction(()=>!MonoCharts.isBusy());
