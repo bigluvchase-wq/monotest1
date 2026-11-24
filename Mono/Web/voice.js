@@ -20,6 +20,21 @@ function joinSpeech(parts){
  const key=w=>w.toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}]/gu,'');
  for(const part of parts){const next=String(part).trim().split(/\s+/).filter(Boolean),nk=next.map(key);let overlap=0;
   for(let n=Math.min(keys.length,nk.length);n>=4;n--)if(keys.slice(-n).every((w,i)=>w===nk[i])){overlap=n;break;}
+  if(!overlap&&words.length>=4&&next.length>=4){
+   const prefixes=new Map();
+   for(let length=4;length<=next.length;length++){
+    const candidate=next.slice(0,length).join(' ');
+    prefixes.set(moneySignature(candidate).key.join(' '),length);
+   }
+   for(let length=words.length;length>=4;length--){
+    if(keys[keys.length-length]!==nk[0])continue;
+    const signature=moneySignature(words.slice(-length).join(' '));
+    const match=prefixes.get(signature.key.join(' '));
+    if(match){
+     words.splice(-length);keys.splice(-length);break;
+    }
+   }
+  }
   words.push(...next.slice(overlap));keys.push(...nk.slice(overlap));
  }
  return words.join(' ');
@@ -52,12 +67,12 @@ function repairReplay(text,{short=false}={}){
   }
  }
 
- for(let restart=5;restart<=words.length-4;restart++){
+ for(let restart=3;restart<=words.length-3;restart++){
   const boundary=words[restart-1];
   if(keys[restart]!==keys[0]||/[.!?;,:]$/u.test(boundary)||/^(?:и|а|потом|затем|снова|еще|плюс|также)$/u.test(keys[restart-1]))continue;
   // The recognizer can repeat the same amount in a different notation: “1999” / “тыща 999”.
   const earlier=moneySignature(words.slice(0,restart).join(' '));
-  if(earlier.count>=2){
+  if(earlier.count>=1&&earlier.key.length>=4||/^(?:напомни(?:те)?|напоминай|не забудь)(?:\s|$)/iu.test(words.slice(0,restart).join(' '))){
    const later=moneySignature(words.slice(restart).join(' '));
    if(earlier.key.every((token,index)=>token===later.key[index]))return words.slice(restart).join(' ');
   }

@@ -56,3 +56,19 @@ test('a replay with rewritten amounts keeps one copy and preserves unrelated ope
  separate.update(first,0,4);
  assert.equal(separate.update(second,4.3,8),second);
 });
+
+test('reminders replay without an amount and explicitly repeated reminders stay visible',()=>{
+ const phrase='Напомни завтра купить корм';
+ assert.equal(V.repairReplay('Напомни купить корм Напомни купить корм'),'Напомни купить корм');
+ assert.equal(V.repairReplay(phrase+' '+phrase),phrase);
+ assert.equal(V.repairReplay(phrase+' и еще '+phrase),phrase+' и еще '+phrase);
+ assert.equal(V.repairReplay(phrase+'. '+phrase),phrase+'. '+phrase);
+ assert.equal(V.repairReplay(phrase+' Напомни завтра купить хлеб'),phrase+' Напомни завтра купить хлеб');
+});
+test('review detects repeated money and reminders while distinct details remain separate',()=>{
+ const first={title:'Кофе',type:'expense',amount:30000,date:'2026-11-25',account:'main'};
+ const reminder={title:'Купить корм',date:'2026-11-26',time:'09:00',repeat:'once'};
+ assert.equal(E.duplicateDraftCount([first,{...first,category:'Работа'}],[reminder,{...reminder}]),2);
+ assert.equal(E.duplicateDraftCount([first,{...first,amount:35000},{...first,account:'cash'},{...first,date:'2026-11-24'}],
+  [reminder,{...reminder,time:'10:00'},{...reminder,text:'Для кота'}]),0);
+});
