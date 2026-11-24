@@ -376,6 +376,21 @@ function installmentPlan(total,date){
   return {amount,date:dateString(due)};
  });
 }
+function duplicateDraftCount(drafts,reminders=[]){
+ const seen=new Set();
+ let count=0;
+ for(const draft of drafts){
+  const key=JSON.stringify(['money',normalizeTitle(draft.title||''),draft.type,draft.amount,draft.date,
+   draft.account,draft.toAccount,draft.toAmount,draft.goalId,draft.depositTopUpId,draft.installmentTotal]);
+  if(seen.has(key))count++;else seen.add(key);
+ }
+ for(const reminder of reminders){
+  const key=JSON.stringify(['reminder',normalizeTitle(reminder.title||''),normalizeTitle(reminder.text||''),
+   reminder.date,reminder.time,reminder.repeat||'once']);
+  if(seen.has(key))count++;else seen.add(key);
+ }
+ return count;
+}
 function saveDrafts(state,drafts,createdAt=new Date().toISOString(),reminders=[]){
  const next=structuredClone(state);
  const added=drafts.map(({installmentTotal,sourceCurrency,depositTopUp,...draft})=>{
@@ -424,5 +439,5 @@ function saveDrafts(state,drafts,createdAt=new Date().toISOString(),reminders=[]
 
 function nextPayment(payment,now=new Date()){return Schedule.next(payment,dateString(now));}
 function addEntry(state,entry){const next=structuredClone(state);next.entries.push({...entry,id:entry.id||uid(),createdAt:entry.createdAt??new Date().toISOString()});if(!validateState(next))throw Error('Проверьте операцию');return next;}
-const api={categories,incomeCategories,currencies,parse,isIncomeForStats,balance,goalBalance,totals,validateState,dateString,initialState,migrate,slang,nextPayment,addEntry,normalizeTitle,installmentPlan,saveDrafts,moneyPunctuation:SpeechDates.moneyPunctuation,voiceAmounts,depositTopUps,depositPrincipal};if(typeof module!=='undefined')module.exports=api;root.MonoEngine=api;
+const api={categories,incomeCategories,currencies,parse,isIncomeForStats,balance,goalBalance,totals,validateState,dateString,initialState,migrate,slang,nextPayment,addEntry,normalizeTitle,installmentPlan,saveDrafts,duplicateDraftCount,moneyPunctuation:SpeechDates.moneyPunctuation,voiceAmounts,depositTopUps,depositPrincipal};if(typeof module!=='undefined')module.exports=api;root.MonoEngine=api;
 })(typeof window!=='undefined'?window:globalThis);

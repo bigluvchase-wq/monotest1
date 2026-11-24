@@ -24,3 +24,27 @@ test('repeated cumulative speech across a session restart does not duplicate ope
  assert.deepEqual(f.results,['Купил кофе за 300 '+phrase]);
  assert.equal(Voice.joinSpeech(['кофе 300','кофе 300']),'кофе 300 кофе 300','short identical purchases can be intentional');
 });
+
+test('restarted dictation revises amount notation and appends the new reminder once',()=>{
+ const f=fixture();
+ f.voice.start({hold:true});
+ f.result(f.sessions[0],'Кофе 300 и продукты 1999');f.sessions[0].onend();f.restart();
+ f.result(f.sessions[1],'Кофе 300 и продукты тыща 999 и напомни завтра в 9 купить корм');
+ f.voice.stop();
+ assert.deepEqual(f.results,['Кофе 300 и продукты тыща 999 и напомни завтра в 9 купить корм']);
+});
+test('a repeated reminder hypothesis is emitted once and ignores late session events',()=>{
+ const f=fixture(),phrase='Напомни завтра в 9 купить корм';
+ f.voice.start({hold:true});
+ f.result(f.sessions[0],phrase+' '+phrase);
+ f.voice.stop();f.sessions[0].onend();f.voice.stop();
+ assert.deepEqual(f.results,[phrase]);
+});
+test('a resumed reminder with a revised numeric time keeps its new trailing command',()=>{
+ const f=fixture();
+ f.voice.start({hold:true});f.result(f.sessions[0],'Напомни завтра в девять купить корм');
+ f.sessions[0].onend();f.restart();
+ f.result(f.sessions[1],'Напомни завтра в 9 купить корм и напомни вечером позвонить маме');
+ f.voice.stop();
+ assert.deepEqual(f.results,['Напомни завтра в 9 купить корм и напомни вечером позвонить маме']);
+});

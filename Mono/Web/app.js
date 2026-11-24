@@ -660,11 +660,16 @@ $('#saveButton').onclick=()=>{if((!drafts.length&&!reminderDrafts.length)||parse
    notify('Пополнения должны списываться с того же счёта и помещаться в сумму дохода.');return;
   }
  }
+ const duplicates=E.duplicateDraftCount(drafts,reminderDrafts);
+ if(duplicates&&!confirm('В списке есть одинаковые операции или напоминания. Это отдельные записи, и нужно сохранить все повторы?'))return;
  let next,added;try{({next,added}=E.saveDrafts(state,drafts,new Date().toISOString(),reminderDrafts));}catch(error){notify(error.message);return;}
  if(added.some(e=>e.type==='saving'&&E.balance(next,e.account)<0)&&!confirm('Пополнение сделает остаток счёта отрицательным. Продолжить?'))return;
  for(const entry of added)window.MonoBankMerchants?.remember(next,entry);
+ let committed=false;
  const finish=()=>{
+  if(committed)return true;
   if(!persist(next))return false;
+  committed=true;
   drafts=[];reminderDrafts=[];
   const dialog=$('#entryDialog'),message=added.some(e=>e.type==='saving')?'Накопления пополнены. В расходы не включены.':'Записано. Всё на своих местах.';
   dialog.addEventListener('close',()=>requestAnimationFrame(()=>notify(message,true,{gentle:true})),{once:true});
